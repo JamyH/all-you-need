@@ -1,6 +1,24 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, nativeImage, screen } = require('electron');
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, screen, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
+
+// --data-dir=<Ordner> legt Einstellungen, Caches und Debug-Dateien woandershin als %APPDATA%
+// (z. B. wenn C: voll ist). Muss vor der Instanz-Sperre stehen, die hängt am Datenordner.
+const DATA_DIR_ARG = process.argv.find((a) => a.startsWith('--data-dir='));
+if (DATA_DIR_ARG) app.setPath('userData', path.resolve(DATA_DIR_ARG.slice('--data-dir='.length)));
+
+// Nur eine Instanz: ein zweiter Start öffnet das Stats-Fenster der laufenden App statt eines zweiten Overlays
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  return;
+}
+// Ein ausgeblendetes Overlay kommt dabei auch wieder zurück
+app.on('second-instance', () => {
+  overlayHidden = false;
+  if (overlay && overlay.isVisible()) raiseOverlay(); // sonst blendet der nächste Spiel-Abruf es ein
+  refreshTrayMenu();
+  openStats();
+});
 const ddragon = require('./src/ddragon');
 const live = require('./src/live');
 const lcu = require('./src/lcu');
@@ -8,20 +26,23 @@ const ocr = require('./src/ocr');
 const capture = require('./src/capture');
 const setup = require('./src/setup');
 const layout = require('./src/layout');
+const lolalytics = require('./src/lolalytics');
 
-// Beim Entwickeln liegen Config und Debug-Dateien im Projektordner, in der installierten App
-// (schreibgeschützt) unter %APPDATA%\All You Need
-const DATA_DIR = app.isPackaged ? app.getPath('userData') : __dirname;
+// Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
+// der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
+const DATA_DIR = app.getPath('userData');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 // Erster Start: eigene config.json aus der Vorlage anlegen (config.json steht nicht im Repo)
 if (!fs.existsSync(CONFIG_FILE)) fs.copyFileSync(path.join(__dirname, 'config.example.json'), CONFIG_FILE);
 const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-// Nur geänderte Schlüssel zurückschreiben, damit Handänderungen an config.json erhalten bleiben
+// Nur geänderte Schlüssel zurückschreiben, damit Handänderungen an config.json erhalten bleiben.
+// Erst in eine Temp-Datei, dann umbenennen: ist die Platte voll, bleibt die alte config.json heil.
 const saveConfig = (patch) => {
   Object.assign(config, patch);
   const onDisk = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...onDisk, ...patch }, null, 2));
+  fs.writeFileSync(`${CONFIG_FILE}.tmp`, JSON.stringify({ ...onDisk, ...patch }, null, 2));
+  fs.renameSync(`${CONFIG_FILE}.tmp`, CONFIG_FILE);
 };
 
 // League-Ordner automatisch finden (Installationsliste des Riot Clients), falls der eingetragene nicht passt
@@ -29,8 +50,8 @@ const detectedPath = setup.findLeaguePath(config.leaguePath);
 if (detectedPath !== config.leaguePath) saveConfig({ leaguePath: detectedPath });
 
 const APP_ICON = path.join(__dirname, 'assets', 'icon.ico');
-// eigener Eintrag in der Taskleiste statt „Electron“
-app.setAppUserModelId('All You Need');
+// eigener Eintrag in der Taskleiste statt „Electron“ (gleiche ID wie die Verknüpfungen des Installers)
+app.setAppUserModelId('com.jamyh.allyouneed');
 
 let overlay = null;
 let stats = null;
@@ -62,8 +83,22 @@ function createOverlay() {
   overlay.webContents.on('did-finish-load', () => overlay.webContents.send('panel-pos', config.panel));
 }
 
-function openStats() {
-  if (stats && !stats.isDestroyed()) return stats.focus();
+// Windows nimmt dem Fenster „immer im Vordergrund“ manchmal weg (z. B. nach Alt+Tab), dann liegt es
+// hinter dem Spiel. Daher bei jedem Spiel-Abruf neu setzen; moveTop aktiviert das Fenster nicht.
+function raiseOverlay() {
+  overlay.setAlwaysOnTop(true, 'screen-saver');
+  overlay.moveTop();
+}
+
+// tab: Reiter, der angezeigt werden soll; inactive: einblenden, ohne dem League-Client den Fokus zu nehmen
+// (Champ-Auswahl). Auch Klick-Handler rufen das auf, opts kann dann ein Event sein.
+function openStats(opts = {}) {
+  const { tab, inactive } = opts;
+  if (stats && !stats.isDestroyed()) {
+    if (stats.isMinimized()) stats.restore();
+    if (tab) stats.webContents.send('show-tab', tab);
+    return inactive ? stats.showInactive() : stats.focus();
+  }
   stats = new BrowserWindow({
     width: 1000,
     height: 720,
@@ -71,9 +106,23 @@ function openStats() {
     icon: APP_ICON,
     autoHideMenuBar: true,
     backgroundColor: '#0f1117',
+    show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
+  stats.once('ready-to-show', () => (inactive ? stats.showInactive() : stats.show()));
+  if (tab) stats.webContents.once('did-finish-load', () => stats.webContents.send('show-tab', tab));
   stats.loadFile('renderer/stats.html');
+  // beim ersten Schließen einmal erklären, dass die App im Hintergrund weiterläuft
+  stats.on('closed', () => {
+    if (config.closedHint || !tray) return;
+    tray.displayBalloon({
+      iconType: 'custom',
+      icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+      title: 'All You Need läuft weiter',
+      content: 'Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.',
+    });
+    saveConfig({ closedHint: true });
+  });
 }
 
 function setEditMode(on) {
@@ -82,6 +131,7 @@ function setEditMode(on) {
   overlay.setFocusable(on);
   overlay.webContents.send('edit-mode', on);
   if (on) overlay.showInactive();
+  refreshTrayMenu();
 }
 
 // Dev-Helfer: Änderungen in renderer/ laden sofort neu, Rohdaten und Fehler landen in debug/
@@ -106,7 +156,7 @@ if (!app.isPackaged) {
 async function pollGame() {
   const data = await live.fetchGame();
   const summary = data
-    ? live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), config.builds)
+    ? live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), buildFor)
     : null;
   if (summary && !gameRunning) refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
   gameRunning = !!summary;
@@ -116,11 +166,16 @@ async function pollGame() {
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (data && Date.now() - lastDump > 5000) {
     lastDump = Date.now();
-    fs.mkdirSync(DEBUG_DIR, { recursive: true });
-    fs.writeFileSync(path.join(DEBUG_DIR, 'last-game.json'), JSON.stringify({ summary, data }, null, 2));
+    try {
+      fs.mkdirSync(DEBUG_DIR, { recursive: true });
+      fs.writeFileSync(path.join(DEBUG_DIR, 'last-game.json'), JSON.stringify({ summary, data }, null, 2));
+    } catch (e) {
+      console.warn('Debug-Datei:', e.message); // z. B. Platte voll: das Overlay muss trotzdem weiterlaufen
+    }
   }
   if (summary && !overlayHidden) {
     if (!overlay.isVisible()) overlay.showInactive();
+    raiseOverlay();
     overlay.webContents.send('game', summary);
   } else if (!summary && overlay.isVisible() && !editMode) {
     overlay.hide();
@@ -135,6 +190,21 @@ let screenState = { cs: null, xp: null, spells: {} };
 // Regionen aus Auflösung und HUD-Größe (game.cfg) berechnen; neu bei jedem Spielstart,
 // falls die HUD-Skalierung inzwischen geändert wurde
 let L = null;
+// game.cfg alle paar Sekunden auf Änderungen prüfen: League schreibt die HUD-Skalierung sofort,
+// wenn sie im Spiel geändert wird (nur Änderungszeit lesen, kostet praktisch nichts)
+let cfgMtime = 0;
+let cfgChecked = 0;
+function checkHudChange() {
+  if (Date.now() - cfgChecked < 3000) return;
+  cfgChecked = Date.now();
+  try {
+    const m = fs.statSync(path.join(config.leaguePath, 'Config', 'game.cfg')).mtimeMs;
+    if (cfgMtime && m !== cfgMtime) refreshLayout();
+    cfgMtime = m;
+  } catch {
+    // game.cfg fehlt -> Standardwerte bleiben
+  }
+}
 function refreshLayout() {
   const d = screen.getPrimaryDisplay();
   const hud = setup.readHudScale(config.leaguePath);
@@ -154,6 +224,7 @@ async function pollScreen() {
   if (!gameRunning || ocrBusy) return;
   ocrBusy = true;
   try {
+    checkHudChange();
     const slots = Object.entries(L.spells);
     const readCs = Date.now() - lastCsRead >= config.ocr.intervalMs;
     const regions = slots.map(([, r]) => r);
@@ -243,6 +314,17 @@ function startTabHook() {
 // Zuletzt gespielter / gewählter Champion (Data-Dragon-ID), Vorauswahl im Build-Editor
 let lastChampion = null;
 let lastRuneKey = null;
+let lastSuggestionKey = null;
+let lastPosition = ''; // Rolle aus der letzten Champ-Auswahl, für Riots Runen-Empfehlung
+
+// lolalytics-Vorschläge: an, solange nicht ausdrücklich abgeschaltet
+const suggestionsOn = () => !config.lolalytics || config.lolalytics.enabled !== false;
+const ownBuild = (champId) => ((config.builds || {})[champId] || []).length > 0;
+// Spar-Ziel im Spiel: eigener Build, sonst der zuletzt geladene Vorschlag
+function buildFor(champId) {
+  if (ownBuild(champId)) return config.builds[champId];
+  return (suggestionsOn() && lolalytics.cached(champId)?.items) || null;
+}
 
 const describeRunes = (r) =>
   r && {
@@ -262,21 +344,81 @@ async function applyRunesFor(champId) {
   return `Runen für ${champId} gesetzt (Seite „${lcu.PAGE_NAME}“).`;
 }
 
+// Fester Pick ohne eigene Runen/eigenen Build: Vorschlag von lolalytics laden (aus dem Cache, wenn
+// jünger als ein Tag) und die Runen setzen. Antwortet lolalytics nicht, kommen Riots eigene Empfehlungen.
+async function useSuggestion(champId, key, position) {
+  if (ownBuild(champId) && (config.runes || {})[champId]) return; // nichts zu ergänzen, kein Abruf
+  let source = 'lolalytics.com';
+  let rune = null;
+  try {
+    rune = (await lolalytics.load(champId, position)).runes;
+    notifyStats('suggestion', champId);
+  } catch (e) {
+    console.warn('lolalytics:', e.message);
+    source = 'Riot-Empfehlung';
+  }
+  const ownRunes = (config.runes || {})[champId];
+  if (ownRunes || config.runesAuto === false) return;
+  if (!rune) rune = await lcu.recommendedRunes(config.leaguePath, key, position).catch(() => null);
+  if (!rune) return;
+  await lcu.applyRunePage(config.leaguePath, rune);
+  notifyStats('runes:status', `Runen für ${champId} von ${source} gesetzt (Seite „${lcu.PAGE_NAME}“).`);
+}
+
+// Item-Set „All You Need – Champ“ in den Client schreiben, im Spiel im Shop wählbar: eigener Build
+// und/oder der lolalytics-Vorschlag (Start, Kern, danach). Ohne beides passiert nichts.
+const LANE_LABEL = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', support: 'Support' };
+// Vor jedes Item seine Teile (gleiche Teile zusammengefasst, z. B. 2× Verstärkender Foliant), dann das Item
+const withParts = (ids) =>
+  ids.flatMap((id) => {
+    const parts = new Map();
+    for (const p of ddragon.components(id)) parts.set(p, (parts.get(p) || 0) + 1);
+    return [...[...parts].map(([pid, count]) => ({ id: pid, count })), { id }];
+  });
+async function importItemSet(champId) {
+  const key = ddragon.championKey(champId);
+  const s = suggestionsOn() ? lolalytics.cached(champId) : null;
+  const blocks = [];
+  if (ownBuild(champId)) blocks.push({ title: 'Dein Build (All You Need)', items: withParts(config.builds[champId]) });
+  if (s) {
+    blocks.push({ title: 'Start – lolalytics.com', items: s.starting.map((id) => ({ id, count: (s.startCount || {})[id] || 1 })) });
+    // Kern-Build erst ohne Teile als Überblick, dann jedes Item mit seinen Teilen in Kaufreihenfolge
+    blocks.push({ title: 'Kern-Build – lolalytics.com', items: s.items.slice(0, 3).map((id) => ({ id })) });
+    s.items.slice(0, 3).forEach((id, i) => blocks.push({ title: `${i + 1}. ${ddragon.itemName(id)} – Teile`, items: withParts([id]) }));
+    if (s.items.length > 3) blocks.push({ title: 'Danach – lolalytics.com', items: withParts(s.items.slice(3)) });
+  }
+  if (!key || !blocks.length) throw new Error(`Für ${champId} gibt es weder eigenen Build noch Vorschlag.`);
+  const name = ddragon.champion(key).name;
+  await lcu.applyItemSet(config.leaguePath, key, `All You Need – ${name}${s && LANE_LABEL[s.lane] ? ` ${LANE_LABEL[s.lane]}` : ''}`, blocks);
+  return `Item-Set „All You Need – ${name}“ ist im Client, im Spiel im Shop wählbar.`;
+}
+
 async function pollClient() {
   const phase = await lcu.gameflowPhase(config.leaguePath);
   if (phase === 'EndOfGame' && lastPhase !== 'EndOfGame' && config.autoOpenStatsAfterGame) openStats();
-  if (phase !== 'ChampSelect') lastRuneKey = null;
+  if (phase !== 'ChampSelect') lastRuneKey = lastSuggestionKey = null;
   // Champ-Auswahl: gespeicherte Runen des gewählten Champs automatisch setzen (einmal pro Champ)
   if (phase === 'ChampSelect') {
     try {
-      const key = await lcu.champSelectChampion(config.leaguePath);
-      if (key && key !== lastRuneKey) {
-        lastRuneKey = key;
-        const champId = ddragon.champion(key).id;
+      const sel = await lcu.champSelect(config.leaguePath);
+      const champId = sel.key ? ddragon.champion(sel.key).id : null;
+      lastPosition = sel.position;
+      if (sel.key && sel.key !== lastRuneKey) {
+        lastRuneKey = sel.key;
         lastChampion = champId;
         notifyStats('build:champion', champId);
         if (config.runesAuto !== false && (config.runes || {})[champId]) {
           notifyStats('runes:status', await applyRunesFor(champId));
+        }
+      }
+      // Vorschlag erst beim festen Pick, damit Durchklicken beim Hovern keine Abrufe auslöst
+      const suggestionKey = `${sel.key}|${sel.position}`;
+      if (sel.locked && suggestionKey !== lastSuggestionKey) {
+        lastSuggestionKey = suggestionKey;
+        if (config.openInChampSelect !== false) openStats({ tab: 'build', inactive: true });
+        if (suggestionsOn()) await useSuggestion(champId, sel.key, sel.position);
+        if (config.itemSetAuto !== false) {
+          importItemSet(champId).then((msg) => notifyStats('build:status', msg), (e) => notifyStats('build:status', `Item-Set: ${e.message}`));
         }
       }
     } catch (e) {
@@ -343,6 +485,9 @@ ipcMain.handle('build:data', () => ({
   builds: config.builds || {},
   runes: Object.fromEntries(Object.entries(config.runes || {}).map(([c, r]) => [c, describeRunes(r)])),
   runesAuto: config.runesAuto !== false,
+  suggestions: suggestionsOn(),
+  openInChampSelect: config.openInChampSelect !== false,
+  itemSetAuto: config.itemSetAuto !== false,
   current: lastChampion,
 }));
 ipcMain.handle('build:set', (_e, champId, ids) => {
@@ -357,6 +502,58 @@ ipcMain.handle('runes:saveCurrent', async (_e, champId) => {
 ipcMain.handle('runes:apply', (_e, champId) => applyRunesFor(champId));
 ipcMain.handle('runes:auto', (_e, on) => saveConfig({ runesAuto: on }));
 
+// lolalytics-Vorschlag fürs Stats-Fenster: aus dem Cache; load = true holt ihn (Standard-Rolle des Champs)
+ipcMain.handle('suggestion:get', async (_e, champId, load) => {
+  const s = lolalytics.cached(champId) || (load ? await lolalytics.load(champId, '') : null);
+  return s && {
+    lane: s.lane, url: s.url, fetchedAt: s.fetchedAt, starting: s.starting, items: s.items,
+    runes: describeRunes(s.runes),
+  };
+});
+ipcMain.handle('suggestion:take', (_e, champId, what) => {
+  const s = lolalytics.cached(champId);
+  if (!s) throw new Error('Kein Vorschlag geladen.');
+  if (what === 'build') saveConfig({ builds: { ...(config.builds || {}), [champId]: s.items } });
+  if (what === 'runes' && s.runes) saveConfig({ runes: { ...(config.runes || {}), [champId]: s.runes } });
+});
+// Runenseiten zur Auswahl: lolalytics-Vorschlag (falls geladen) und Riots empfohlene Seiten für Champion
+// und Rolle. Doppelte Seiten fliegen raus. Die Liste wird gemerkt, „Setzen“/„Merken“ geben nur den Index an.
+const runeOptions = new Map();
+const LANE_TO_POSITION = { top: 'top', jungle: 'jungle', middle: 'middle', bottom: 'bottom', support: 'utility' };
+ipcMain.handle('runes:options', async (_e, champId) => {
+  const s = suggestionsOn() ? lolalytics.cached(champId) : null;
+  const position = (champId === lastChampion && lastPosition) || LANE_TO_POSITION[s?.lane] || '';
+  const options = [];
+  if (s?.runes) options.push({ source: 'lolalytics.com', url: s.url, runes: s.runes });
+  const riot = await lcu.recommendedRunePages(config.leaguePath, ddragon.championKey(champId), position).catch(() => []);
+  riot.forEach((runes) => options.push({ source: 'Riot-Empfehlung', runes }));
+  const seen = new Set();
+  const unique = options.filter((o) => {
+    const k = o.runes.selectedPerkIds.join(',');
+    return !seen.has(k) && seen.add(k);
+  });
+  runeOptions.set(champId, unique);
+  return unique.map((o) => ({ source: o.source, url: o.url, runes: describeRunes(o.runes) }));
+});
+ipcMain.handle('runes:useOption', async (_e, champId, i, save) => {
+  const o = (runeOptions.get(champId) || [])[i];
+  if (!o) throw new Error('Runenseite nicht mehr verfügbar, bitte neu laden.');
+  if (save) {
+    saveConfig({ runes: { ...(config.runes || {}), [champId]: o.runes } });
+    return 'Als deine Runen gespeichert.';
+  }
+  await lcu.applyRunePage(config.leaguePath, o.runes);
+  return `Gesetzt (Seite „${lcu.PAGE_NAME}“).`;
+});
+ipcMain.handle('build:itemSet', (_e, champId) => importItemSet(champId));
+ipcMain.handle('build:itemSetAuto', (_e, on) => saveConfig({ itemSetAuto: on }));
+ipcMain.handle('build:openInChampSelect', (_e, on) => saveConfig({ openInChampSelect: on }));
+ipcMain.handle('suggestion:enabled', (_e, on) => saveConfig({ lolalytics: { ...(config.lolalytics || {}), enabled: on } }));
+// Quellen-Link im Standardbrowser öffnen, nur lolalytics-Seiten
+ipcMain.handle('suggestion:open', (_e, url) => {
+  if (/^https:\/\/lolalytics\.com\//.test(url)) shell.openExternal(url);
+});
+
 // Maus über dem Griff: Fenster fängt Klicks ab, sonst gehen sie durch zum Spiel
 ipcMain.on('grip-hover', (_e, over) => {
   if (!editMode) overlay.setIgnoreMouseEvents(!over, { forward: true });
@@ -370,17 +567,65 @@ ipcMain.handle('stats:summoner', async () => lcu.currentSummoner(config.leaguePa
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));
 ipcMain.handle('ddragon:version', () => ddragon.getVersion());
 
+function toggleOverlay() {
+  overlayHidden = !overlayHidden;
+  if (overlayHidden) overlay.hide(); // eingeblendet wird beim nächsten Spiel-Abruf
+  refreshTrayMenu();
+}
+
+// Tray-Icon unten rechts: zeigt, dass die App läuft; Klick öffnet die Stats, Rechtsklick das Menü mit Beenden
+let tray = null;
+// Autostart: beim Start aus dem Quellcode electron.exe mit dem Projektordner eintragen, nicht electron.exe allein
+const LOGIN_ITEM = {
+  ...(app.isPackaged ? {} : { path: process.execPath }),
+  args: [...(app.isPackaged ? [] : [app.getAppPath()]), ...(DATA_DIR_ARG ? [DATA_DIR_ARG] : [])],
+};
+function refreshTrayMenu() {
+  if (!tray) return;
+  const keys = config.hotkeys;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Stats-Fenster öffnen', accelerator: keys.openStats, click: openStats },
+    { type: 'separator' },
+    { label: 'Overlay anzeigen', type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
+    { label: 'Panel verschieben', type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
+    {
+      label: 'Mit Windows starten',
+      type: 'checkbox',
+      checked: app.getLoginItemSettings(LOGIN_ITEM).openAtLogin,
+      click: (item) => app.setLoginItemSettings({ ...LOGIN_ITEM, openAtLogin: item.checked }),
+    },
+    { type: 'separator' },
+    { label: `All You Need ${app.getVersion()}`, enabled: false },
+    { label: 'Beenden', click: () => app.quit() },
+  ]));
+}
+function createTray() {
+  tray = new Tray(APP_ICON);
+  tray.setToolTip(`All You Need ${app.getVersion()} läuft`);
+  tray.on('click', openStats);
+  refreshTrayMenu();
+  // erster Start: zeigen, wo die App steckt
+  if (!config.welcomed) {
+    tray.displayBalloon({
+      iconType: 'custom',
+      icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+      title: 'All You Need läuft',
+      content: 'Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.',
+    });
+    saveConfig({ welcomed: true });
+  }
+}
+
 app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
+  lolalytics.init(app.getPath('userData'));
   refreshLayout();
   createOverlay();
+  createTray();
   openStats();
 
   const keys = config.hotkeys;
-  globalShortcut.register(keys.toggleOverlay, () => {
-    overlayHidden = !overlayHidden;
-    if (overlayHidden) overlay.hide();
-  });
+  globalShortcut.register(keys.toggleOverlay, toggleOverlay);
   globalShortcut.register(keys.editMode, () => setEditMode(!editMode));
   globalShortcut.register(keys.openStats, openStats);
 

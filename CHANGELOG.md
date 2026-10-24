@@ -1,5 +1,40 @@
 # Changelog
 
+## Unveröffentlicht
+
+## 1.2.0 – 2026-10-24
+
+Champ-Auswahl
+- Build- und Runen-Vorschlag von lolalytics.com für Champion und Rolle: wird beim festen Pick einmal geladen
+  und einen Tag gespeichert. Ohne eigene Runen werden die vorgeschlagenen gesetzt, ohne eigenen Build nutzt
+  das Spar-Ziel im Spiel den Vorschlag. Im Stats-Fenster mit Quelle und „Übernehmen“; abschaltbar.
+  Antwortet lolalytics nicht, kommt Riots eigene Runen-Empfehlung
+- Runen-Auswahl: bis zu vier Runenseiten pro Champion (lolalytics + Riots empfohlene Seiten für die Rolle),
+  jede mit „Setzen“ (sofort auf die Seite „All You Need“) und „Merken“ (als eigene Runen speichern)
+- Item-Set für den Shop: beim Pick (und per Knopf) landet „All You Need – Champion“ im Client, mit
+  Start-Items, Kern-Build und jedem Kern-Item samt seinen Teilen; andere Item-Sets bleiben unangetastet
+- Stats-Fenster öffnet sich beim festen Pick direkt auf „Build & Runen“, ohne dem Client den Fokus zu
+  nehmen (abschaltbar)
+
+App
+- Installations-Assistent mit Zielordner, Desktop- und Startmenü-Verknüpfung und „App starten“ am Ende
+- Tray-Icon unten rechts: zeigt, dass die App läuft; Menü mit Stats-Fenster, Overlay ein/aus, Panel verschieben,
+  „Mit Windows starten“ und Beenden
+- Hinweis beim ersten Start und beim ersten Schließen des Stats-Fensters, wo die App weiterläuft
+- Nur eine Instanz: ein zweiter Start öffnet das Stats-Fenster der laufenden App
+- `--data-dir=<Ordner>` legt Einstellungen und Caches woandershin als `%APPDATA%` (z. B. wenn C: voll ist);
+  `npm start` nutzt dieselben Einstellungen wie die installierte App
+- Copyright- und Herstellerangaben in den Dateieigenschaften der `.exe`
+
+Fixes
+- Overlay konnte hinter dem Spiel verschwinden; es wird jetzt jede Sekunde wieder nach vorne geholt.
+  Ein zweiter Start der `.exe` blendet ein per Hotkey ausgeblendetes Overlay wieder ein
+- Wird die HUD-Skalierung mitten im Spiel geändert, passt sich die Erkennung nach wenigen Sekunden an
+  (bisher erst beim nächsten Spielstart)
+- Volle Festplatte: `config.json` kann nicht mehr leer zurückbleiben, und das Overlay läuft weiter, wenn die
+  Debug-Datei nicht geschrieben werden kann
+- „Mit Windows starten“ funktioniert auch beim Start aus dem Quellcode
+
 ## 1.1.0 – 2026-10-24
 
 - Download: Windows-Installer und portable `.exe` auf der Releases-Seite, kein Node.js mehr nötig

@@ -33,5 +33,10 @@
   },
   "builds": {},
   "runes": {},
-  "runesAuto": true
+  "runesAuto": true,
+  "openInChampSelect": true,
+  "itemSetAuto": true,
+  "lolalytics": {
+    "enabled": true
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "all-you-need",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "All You Need – A lightweight overlay for League of Legends (Windows, Electron)",
   "main": "main.js",
   "private": true,
@@ -48,16 +48,25 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "legalTrademarks": "All You Need"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
       "shortcutName": "All You Need",
+      "runAfterFinish": true,
+      "uninstallDisplayName": "All You Need",
       "artifactName": "All-You-Need-Setup-${version}.exe"
     },
     "portable": {
       "artifactName": "All-You-Need-${version}-portable.exe"
-    }
+    },
+    "copyright": "Copyright © 2026 Jamy Haas"
   }
 }

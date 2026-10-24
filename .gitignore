@@ -5,3 +5,5 @@ config.json
 debug/
 *.log
 dist/
+# Datenordner bei Start mit --data-dir=userdata (Einstellungen, Caches)
+userdata/

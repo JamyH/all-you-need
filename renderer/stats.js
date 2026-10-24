@@ -209,6 +209,9 @@ async function loadBuild() {
     .map((i) => `<option value="${esc(i.name)}">${i.gold} g${i.completed ? '' : ' · Teil'}</option>`).join('');
   buildData.items.forEach((i) => itemByName.set(i.name.toLowerCase(), i));
   $('runesAuto').checked = buildData.runesAuto;
+  $('suggestionsOn').checked = buildData.suggestions;
+  $('openInChampSelect').checked = buildData.openInChampSelect;
+  $('itemSetAuto').checked = buildData.itemSetAuto;
   selectChampion(champId || buildData.current);
 }
 
@@ -219,6 +222,7 @@ function selectChampion(id) {
   $('champInput').value = champ.name;
   renderBuild();
   renderRunes();
+  renderSuggestion();
 }
 
 function renderBuild() {
@@ -252,6 +256,94 @@ function renderRunes() {
        <div class="rune-row">${img(r.primary)}${r.perks.map(img).join('')}${img(r.sub)}</div>`
     : `<p class="hint">Für diesen Champion ist noch keine Runenseite gespeichert. Stell sie im Client ein und klick „Aktuelle Runenseite speichern“.</p>`;
 }
+
+// lolalytics-Vorschlag unter Build und Runen, mit Quelle und „Übernehmen“
+const LANE_NAMES = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', support: 'Support' };
+async function renderSuggestion(load = false) {
+  const b = $('buildSuggestion');
+  b.innerHTML = '';
+  if (buildData.suggestions && champId) {
+    try {
+      const s = await window.lol.suggestion(champId, load);
+      if (!s) {
+        b.innerHTML = '<p class="hint">Noch kein Vorschlag geladen. Er kommt automatisch beim Pick in der Champ-Auswahl.</p><div class="btn-row"><button id="loadSuggestion">Jetzt von lolalytics laden</button></div>';
+      } else {
+        const icon = (id) => `<img src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png" alt="" title="${esc(buildData.items.find((x) => x.id === id)?.name || '')}">`;
+        b.innerHTML = `<p class="hint">Vorschlag von <a href="#" data-url="${esc(s.url)}">lolalytics.com</a>
+          (${esc(LANE_NAMES[s.lane] || 'Standard-Rolle')}, Emerald+, Stand ${new Date(s.fetchedAt).toLocaleDateString('de-DE')})</p>
+          <div class="icons">${s.starting.map(icon).join('')}<span class="sep">›</span>${s.items.map(icon).join('')}</div>
+          <div class="btn-row"><button data-take="build">Als meinen Build übernehmen</button></div>`;
+      }
+    } catch (e) {
+      b.innerHTML = `<p class="hint">lolalytics.com: ${esc(e.message)}</p>`;
+    }
+  }
+  renderRuneOptions();
+}
+
+// Mehrere Runenseiten zur Auswahl (lolalytics + Riot-Empfehlungen): „Setzen“ schreibt sie sofort auf die
+// Seite „All You Need“, „Merken“ speichert sie als deine Runen für diesen Champion
+async function renderRuneOptions() {
+  const r = $('runeSuggestion');
+  const forChamp = champId;
+  const options = forChamp ? await window.lol.runeOptions(forChamp).catch(() => []) : [];
+  if (forChamp !== champId) return; // inzwischen anderer Champion gewählt
+  const img = (x) => (x ? `<img src="${esc(x.icon)}" alt="${esc(x.name)}" title="${esc(x.name)}">` : '');
+  r.innerHTML = options.length
+    ? `<p class="hint">Runenseiten zur Auswahl</p>${options.map((o, i) => `
+        <div class="rune-option">
+          <div class="icons">${o.runes.perks.slice(0, 6).map(img).join('')}</div>
+          <span class="label">${esc(o.runes.primary?.name || '')} / ${esc(o.runes.sub?.name || '')}<br>
+            ${o.url ? `<a href="#" data-url="${esc(o.url)}">${esc(o.source)}</a>` : esc(o.source)}</span>
+          <button data-rune="${i}">Setzen</button><button data-rune="${i}" data-save="1">Merken</button>
+        </div>`).join('')}`
+    : '';
+}
+document.querySelectorAll('.suggestion').forEach((el) => el.addEventListener('click', async (e) => {
+  const link = e.target.closest('a[data-url]');
+  if (link) {
+    e.preventDefault();
+    return window.lol.openSource(link.dataset.url);
+  }
+  if (e.target.id === 'loadSuggestion') return renderSuggestion(true);
+  const option = e.target.closest('button[data-rune]');
+  if (option && champId) {
+    try {
+      runeStatus(await window.lol.useRuneOption(champId, Number(option.dataset.rune), !!option.dataset.save));
+      if (option.dataset.save) {
+        buildData = await window.lol.buildData();
+        renderRunes();
+      }
+    } catch (e) {
+      runeStatus(`Fehler: ${e.message.includes('läuft nicht') ? 'League-Client läuft nicht.' : e.message}`);
+    }
+    return;
+  }
+  const take = e.target.closest('button[data-take]');
+  if (!take || !champId) return;
+  await window.lol.takeSuggestion(champId, take.dataset.take);
+  buildData = await window.lol.buildData();
+  renderBuild();
+  renderRunes();
+}));
+$('suggestionsOn').addEventListener('change', async () => {
+  buildData.suggestions = $('suggestionsOn').checked;
+  await window.lol.setSuggestions(buildData.suggestions);
+  renderSuggestion();
+});
+window.lol.onSuggestion((id) => id === champId && renderSuggestion());
+$('openInChampSelect').addEventListener('change', () => window.lol.setOpenInChampSelect($('openInChampSelect').checked));
+const buildStatus = (msg) => ($('buildStatus').textContent = msg);
+$('importItemSet').addEventListener('click', async () => {
+  if (!champId) return;
+  try {
+    buildStatus(await window.lol.importItemSet(champId));
+  } catch (e) {
+    buildStatus(`Fehler: ${e.message.includes('läuft nicht') ? 'League-Client läuft nicht.' : e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`);
+  }
+});
+$('itemSetAuto').addEventListener('change', () => window.lol.setItemSetAuto($('itemSetAuto').checked));
+window.lol.onBuildStatus(buildStatus);
 
 $('champInput').addEventListener('change', () => {
   const c = champByName.get($('champInput').value.trim().toLowerCase());
@@ -317,5 +409,6 @@ function showTab(tab) {
   if (tab === 'live') renderLive();
 }
 document.querySelectorAll('nav button[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.lol.onShowTab(showTab); // Champ-Auswahl öffnet direkt „Build & Runen“
 $('reload').addEventListener('click', loadAll);
 loadAll();

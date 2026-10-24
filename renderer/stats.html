@@ -47,6 +47,11 @@
             <button id="addItem">Hinzufügen</button>
           </div>
           <p class="hint">Im Spiel zeigt das Panel das erste Item der Liste, das du noch nicht hast, und wie viel Gold fehlt. Teile im Inventar werden angerechnet. Reicht dein Gold, erscheint RECALL.</p>
+          <div class="btn-row"><button id="importItemSet">Als Item-Set in den Client</button></div>
+          <label class="check"><input type="checkbox" id="itemSetAuto"> Beim Pick automatisch als Item-Set in den Client</label>
+          <p id="buildStatus" class="hint"></p>
+          <p class="hint">Das Set „All You Need – Champion“ findest du im Spiel im Shop bei deinen Item-Sets. Deine anderen Sets bleiben unangetastet.</p>
+          <div id="buildSuggestion" class="suggestion"></div>
         </div>
         <div class="card">
           <h2>Runen</h2>
@@ -58,8 +63,11 @@
           <label class="check"><input type="checkbox" id="runesAuto"> In der Champ-Auswahl automatisch setzen</label>
           <p id="runeStatus" class="hint"></p>
           <p class="hint">Gesetzt wird immer auf die Seite „All You Need“. Deine anderen Runenseiten bleiben unangetastet.</p>
+          <div id="runeSuggestion" class="suggestion"></div>
         </div>
       </div>
+      <label class="check source-toggle"><input type="checkbox" id="openInChampSelect"> Dieses Fenster beim Pick in der Champ-Auswahl öffnen (ohne den Client in den Hintergrund zu schieben)</label>
+      <label class="check source-toggle"><input type="checkbox" id="suggestionsOn"> Vorschläge von lolalytics.com laden (ein Abruf pro Champ-Auswahl, einen Tag gespeichert). Eigene Builds und Runen haben immer Vorrang.</label>
     </section>
   </main>
   <footer>Strg+Shift+O Overlay an/aus · Strg+Shift+E Overlay verschieben · Strg+Shift+S dieses Fenster</footer>

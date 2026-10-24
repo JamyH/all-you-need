@@ -2,7 +2,7 @@
 
 # All You Need – A lightweight overlay
 
-**Version 1.1** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest)
+**Version 1.2** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest)
 
 A small, clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
@@ -21,6 +21,9 @@ game process.
 1. Grab the latest **`All-You-Need-Setup-x.y.z.exe`** (installer) or **`All-You-Need-x.y.z-portable.exe`**
    (no install) from the [Releases page](https://github.com/JamyH/all-you-need/releases/latest).
 2. Start it. Windows SmartScreen may warn because the app is not code-signed: click *More info → Run anyway*.
+   This is a reputation warning for new, unsigned files, not a virus detection – Microsoft Defender finds
+   nothing in it. You can compare the file's SHA-256 checksum with the one listed in the release notes
+   (PowerShell: `Get-FileHash .\All-You-Need-Setup-x.y.z.exe`), and the full source is in this repository.
 3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
@@ -44,6 +47,10 @@ That's it. The League folder, your resolution and your HUD scale are detected au
 - Last game and match history with trend charts (CS/min, KDA, vision)
 - Build order and rune page per champion; runes are applied automatically in champ select to a
   dedicated page called "All You Need" (your other pages are never touched)
+- Build and rune suggestions from [lolalytics.com](https://lolalytics.com) for your champion and role,
+  loaded once when you lock in; your own builds and runes always take priority (can be switched off)
+- Several rune pages to choose from (lolalytics plus Riot's recommended pages for your role): apply one
+  with a click or keep it as your own; the stats window opens on lock-in without stealing focus
 
 <img src="docs/stats-build.png" alt="Build and runes" width="720">
 
@@ -72,9 +79,11 @@ resolution and HUD scale to an issue.
 | Ranks, history, runes, champ select | League client API (LCU), credentials from the client's `lockfile` |
 | Item, champion and rune data, icons | Data Dragon (Riot's public CDN), cached locally |
 | Exact CS, cooldowns, XP, scoreboard | Small screen regions, analysed locally |
+| Build and rune suggestions | [lolalytics.com](https://lolalytics.com) build page (Emerald+), one request per champion and role, cached for a day; fallback for runes: Riot's own recommended page from the client |
 
-No Riot API key is needed. Apart from Data Dragon and a one-time download of the OCR language data,
-nothing leaves your PC.
+No Riot API key is needed. Apart from Data Dragon, the lolalytics build page and a one-time download
+of the OCR language data, nothing leaves your PC. Only the champion and role are part of the
+lolalytics request.
 
 ## Building from source
 
@@ -84,8 +93,12 @@ npm start          # run in development
 npm run dist       # build installer + portable exe into dist/
 ```
 
-Requires Node.js 20+. Settings live in `config.json` (created from `config.example.json` on first start;
-in the installed app under `%APPDATA%\All You Need`).
+Requires Node.js 20+. Settings live in `%APPDATA%\All You Need\config.json` (created from
+`config.example.json` on first start), shared by `npm start` and the installed app.
+
+To use the app straight from source without building, create a shortcut to
+`node_modules\electron\dist\electron.exe` with the project folder as argument. Changes to `renderer/`
+reload instantly; for everything else restart the app.
 
 | File | What it does |
 |---|---|

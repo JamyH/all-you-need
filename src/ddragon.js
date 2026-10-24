@@ -32,14 +32,19 @@ async function load(cacheDir, language) {
 }
 
 let runeNames = {};
+let runeStyles = {};
 function apply(cache) {
   version = cache.version;
   items = cache.items;
   runeNames = {};
+  runeStyles = {};
   for (const style of cache.runes || []) {
     runeNames[style.id] = { name: style.name, icon: `https://ddragon.leagueoflegends.com/cdn/img/${style.icon}` };
     for (const slot of style.slots) {
-      for (const r of slot.runes) runeNames[r.id] = { name: r.name, icon: `https://ddragon.leagueoflegends.com/cdn/img/${r.icon}` };
+      for (const r of slot.runes) {
+        runeNames[r.id] = { name: r.name, icon: `https://ddragon.leagueoflegends.com/cdn/img/${r.icon}` };
+        runeStyles[r.id] = style.id;
+      }
     }
   }
   champsById = {};
@@ -72,6 +77,9 @@ function champion(id) {
   return champsById[String(id)] || { id: String(id), name: `#${id}` };
 }
 
+// Data-Dragon-ID („Ahri“) -> Champion-Key (Zahl), den der Client erwartet
+const championKey = (id) => Object.keys(champsById).find((k) => champsById[k].id === id) || null;
+
 const championList = () => Object.values(champsById).sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
 // Kaufbare Items auf Summoner's Rift (Map 11), für den Build-Editor
@@ -95,8 +103,13 @@ function remainingCost(itemId, owned) {
   return it.gold.base + (it.from || []).reduce((sum, child) => sum + remainingCost(child, owned), 0);
 }
 
+// Direkte Teile eines Items, wie der Shop sie im Rezept zeigt (Item-IDs als Zahlen)
+const components = (itemId) => (items[String(itemId)]?.from || []).map(Number);
+
 // Name + Icon für Runenbaum oder Rune (Werte-Splitter haben keinen Eintrag -> null)
 const rune = (id) => runeNames[id] || null;
+// Runenbaum, zu dem eine Rune gehört
+const runeStyle = (id) => runeStyles[id] || null;
 
 const itemName = (itemId) => items[String(itemId)]?.name || `#${itemId}`;
 
@@ -108,6 +121,6 @@ function iconUrl(kind, file) {
 }
 
 module.exports = {
-  load, itemGold, champion, championList, championSpells, itemList, itemName, remainingCost, rune, iconUrl,
+  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, remainingCost, components, rune, runeStyle, iconUrl,
   getVersion: () => version,
 };

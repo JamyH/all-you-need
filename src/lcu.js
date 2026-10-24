@@ -24,12 +24,28 @@ const endOfGame = (lp) => lcu(lp, '/lol-end-of-game/v1/eog-stats-block');
 const matchHistory = (lp, count = 10) =>
   lcu(lp, `/lol-match-history/v1/products/lol/current-summoner/matches?begIndex=0&endIndex=${count - 1}`);
 
-// Champ-Auswahl: Champion-Key (Zahl) des eigenen Picks oder Hovers, 0 = noch keiner
-async function champSelectChampion(lp) {
+// Champ-Auswahl: Champion-Key (Zahl) des eigenen Picks oder Hovers (0 = noch keiner), zugeteilte Rolle
+// (top, jungle, middle, bottom, utility; leer ohne Rollen) und ob der Pick fest ist
+async function champSelect(lp) {
   const s = await lcu(lp, '/lol-champ-select/v1/session');
   const me = (s.myTeam || []).find((p) => p.cellId === s.localPlayerCellId);
-  return me ? me.championId || me.championPickIntent || 0 : 0;
+  if (!me) return { key: 0, position: '', locked: false };
+  const myPick = (s.actions || []).flat().find((a) => a.type === 'pick' && a.actorCellId === s.localPlayerCellId);
+  return {
+    key: me.championId || me.championPickIntent || 0,
+    position: me.assignedPosition || '',
+    // ohne Pick-Aktion (z. B. ARAM) zählt der zugeteilte Champion als fest
+    locked: !!me.championId && (!myPick || myPick.completed),
+  };
 }
+
+// Riots eigene empfohlene Runenseiten (wie „Empfohlen“ im Client, meist drei Varianten)
+async function recommendedRunePages(lp, championKey, position) {
+  const pages = await lcu(lp, `/lol-perks/v1/recommended-pages/champion/${championKey}/position/${position || 'none'}/map/11`);
+  return (pages || []).map((p) => ({ primaryStyleId: p.primaryPerkStyleId, subStyleId: p.secondaryPerkStyleId, selectedPerkIds: p.perks.map((x) => x.id) }));
+}
+// Erste davon: Ersatz, wenn lolalytics nicht antwortet
+const recommendedRunes = async (lp, championKey, position) => (await recommendedRunePages(lp, championKey, position))[0] || null;
 
 // Laufendes Spiel: Spieler beider Teams mit puuid und Champion-Key (Bots haben keine puuid)
 async function gamePlayers(lp) {
@@ -75,7 +91,32 @@ async function applyRunePage(lp, rune) {
   return id;
 }
 
+// Item-Set für den Shop im Spiel (Reiter mit eigenen Sets). Wir schreiben nur unser eigenes Set pro Champion
+// (erkennbar an der uid); alle anderen Sets bleiben, wie sie sind.
+// blocks: [{ title, items: [{ id, count }] }]
+async function applyItemSet(lp, championKey, title, blocks) {
+  const me = await currentSummoner(lp);
+  const url = `/lol-item-sets/v1/item-sets/${me.summonerId}/sets`;
+  const data = await lcu(lp, url);
+  const uid = `all-you-need-${championKey}`;
+  const own = {
+    uid,
+    title,
+    type: 'custom',
+    map: 'any',
+    mode: 'any',
+    startedFrom: 'blank',
+    sortrank: 0,
+    associatedChampions: [Number(championKey)],
+    associatedMaps: [11],
+    preferredItemSlots: [],
+    blocks: blocks.map((b) => ({ type: b.title, items: b.items.map((i) => ({ id: String(i.id), count: i.count || 1 })) })),
+  };
+  const itemSets = [...(data.itemSets || []).filter((s) => s.uid !== uid), own];
+  await lcu(lp, url, 'PUT', { accountId: data.accountId || me.accountId, itemSets, timestamp: Date.now() });
+}
+
 module.exports = {
-  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelectChampion, currentRunePage, applyRunePage, PAGE_NAME,
-  gamePlayers, soloRank,
+  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, recommendedRunes, recommendedRunePages, currentRunePage, applyRunePage, PAGE_NAME,
+  applyItemSet, gamePlayers, soloRank,
 };

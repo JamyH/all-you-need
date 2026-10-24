@@ -209,9 +209,10 @@ function livePlayers(data, ranks = new Map()) {
 
 // Spar-Ziel: erstes Item der Build-Liste, das noch nicht im Inventar ist, und was es noch kostet.
 // Reicht das aktuelle Gold, setzt affordable -> Panel zeigt RECALL.
-function applyBuild(summary, builds = {}) {
+// buildFor(championId) liefert die Item-Liste (eigener Build oder lolalytics-Vorschlag) oder nichts.
+function applyBuild(summary, buildFor) {
   if (!summary) return summary;
-  const build = builds[summary.championId];
+  const build = buildFor(summary.championId);
   if (!build || !build.length) return summary;
   const owned = new Map();
   for (const id of summary.myItemIds) owned.set(String(id), (owned.get(String(id)) || 0) + 1);
