@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://ddragon.leagueoflegends.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+  <div id="panel" class="panel">
+    <div class="edit-hint">Ziehen zum Verschieben · Strg+Shift+E beendet</div>
+    <div class="row head">
+      <span><span id="grip" class="grip" title="Ziehen zum Verschieben">⠿</span><span id="champ">–</span></span>
+      <span id="time" class="muted">0:00</span>
+    </div>
+    <div class="alerts">
+      <div id="recall" class="alert recall" hidden></div>
+      <div id="noMana" class="alert no-mana" hidden>NO MANA</div>
+    </div>
+    <div class="grid">
+      <div><label>KDA</label><b id="kda">–</b><small id="kdaRatio"></small></div>
+      <div><label>CS</label><b id="cs">–</b><small id="csm"></small></div>
+      <div><label>Gold</label><b id="gold">–</b></div>
+      <div><label>Vision</label><b id="ward">–</b></div>
+    </div>
+    <div id="mana" class="mana" hidden>
+      <div class="row"><label>Mana</label><b id="manaVal"></b></div>
+      <div class="manabar"><div id="manaFill"></div><i id="manaCombo"></i></div>
+    </div>
+    <div id="build" class="build" hidden>
+      <div class="row"><label id="buildLabel">Nächstes Item</label><b id="buildMissing"></b></div>
+      <div class="buildbar"><div id="buildFill"></div></div>
+    </div>
+    <div id="spells" class="spells"></div>
+    <div id="xp" class="xp" hidden>
+      <div class="row"><label id="xpLabel">Level</label><b id="xpPct"></b></div>
+      <div class="xpbar"><div id="xpFill"></div></div>
+      <small id="xpMinions"></small>
+    </div>
+    <div id="lane" class="lane"></div>
+    <div class="row"><label>Team-Itemwert</label><b id="teamDiff">–</b></div>
+  </div>
+  <div id="sb" class="sb" hidden>
+    <div id="sbTeam" class="sb-team"></div>
+    <div id="sbRows"></div>
+  </div>
+  <script src="overlay.js"></script>
+</body>
+</html>

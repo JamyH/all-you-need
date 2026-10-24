@@ -1,0 +1,118 @@
+:root {
+  --bg: #0f1117;
+  --card: #171a23;
+  --line: #262b38;
+  --text: #e8e6e3;
+  --muted: #8b8f98;
+  --gold: #c8aa6e;
+  --win: #3ccf91;
+  --loss: #ff5c6c;
+}
+
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font-size: 18px; color: var(--gold); }
+nav button {
+  background: var(--card); color: var(--text); border: 1px solid var(--line);
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 6px;
+}
+nav button.active { border-color: var(--gold); color: var(--gold); }
+main { padding: 16px 20px; }
+footer { padding: 10px 20px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+
+.msg { color: var(--muted); padding: 30px 0; text-align: center; }
+.summary { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; min-width: 110px; }
+.tile label { display: block; color: var(--muted); font-size: 12px; }
+.tile b { font-size: 18px; }
+
+table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th:first-child, td:first-child { text-align: left; }
+tr.me td { background: rgba(200, 170, 110, 0.08); }
+.team-title { margin: 8px 0 4px; font-weight: 600; }
+.win { color: var(--win); }
+.loss { color: var(--loss); }
+
+.champ { display: flex; align-items: center; gap: 8px; }
+.champ img { width: 28px; height: 28px; border-radius: 4px; }
+.items img { width: 22px; height: 22px; border-radius: 3px; margin-left: 2px; vertical-align: middle; }
+
+.game { display: grid; grid-template-columns: 6px 200px 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px 8px 0; margin-bottom: 8px; }
+.game .bar { align-self: stretch; border-radius: 8px 0 0 8px; }
+.game.w .bar { background: var(--win); }
+.game.l .bar { background: var(--loss); }
+.game small { display: block; color: var(--muted); font-size: 12px; }
+
+/* Live-Spiel */
+.live-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; color: var(--muted); }
+.live-head b { color: var(--text); font-size: 16px; }
+.team-card { margin-bottom: 16px; }
+.team-card h2 { display: flex; justify-content: space-between; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.team-card h2.mine { color: #5b8fd6; }
+.team-card h2.enemy { color: var(--loss); }
+.team-card h2 span { color: var(--muted); font-weight: 400; }
+tr.dead td { opacity: 0.5; }
+/* beide Team-Tabellen mit gleichen Spalten, damit die Werte untereinander stehen */
+.team-card table { table-layout: fixed; }
+.team-card th:nth-child(1) { width: 20%; }
+.team-card th:nth-child(2) { width: 16%; }
+.team-card th:nth-child(3) { width: 4%; }
+.team-card th:nth-child(4) { width: 7%; }
+.team-card th:nth-child(5), .team-card th:nth-child(6) { width: 6%; }
+.team-card th:nth-child(7) { width: 9%; }
+.team-card td { overflow: hidden; text-overflow: ellipsis; }
+.team-card td:last-child { overflow: visible; }
+td .sub { display: block; color: var(--muted); font-size: 11px; }
+.rank { font-variant-numeric: tabular-nums; }
+.rank .tier { font-weight: 600; }
+.wr-good { color: var(--win); }
+.wr-bad { color: var(--loss); }
+
+/* Build & Runen */
+input[type="text"], input:not([type]) {
+  background: var(--card); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 10px; font: inherit;
+}
+input:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+button {
+  background: var(--card); color: var(--text); border: 1px solid var(--line);
+  padding: 7px 12px; border-radius: 6px; cursor: pointer; font: inherit;
+}
+button:hover { border-color: var(--gold); }
+.build-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.build-head label { color: var(--muted); }
+.build-head input { width: 260px; }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.card h2 { margin: 0 0 10px; font-size: 15px; color: var(--gold); font-weight: 600; }
+.build-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.build-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; }
+.build-list li img { width: 28px; height: 28px; border-radius: 4px; }
+.build-list li .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.build-list li .gold { color: var(--gold); font-variant-numeric: tabular-nums; }
+.build-list li button { padding: 2px 8px; }
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; min-width: 0; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.hint { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.rune-view { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+.rune-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rune-row img { width: 28px; height: 28px; }
+.rune-row .style { font-weight: 600; margin-right: 6px; }
+
+/* Trend-Kurven */
+.trends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.trend { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.trend-head { display: flex; justify-content: space-between; align-items: baseline; }
+.trend-head label { color: var(--muted); font-size: 12px; }
+.trend-head b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.trend-head small { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.trend svg { display: block; width: 100%; height: 70px; margin-top: 6px; }
+
+@media (max-width: 720px) {
+  .cols, .trends { grid-template-columns: minmax(0, 1fr); }
+}

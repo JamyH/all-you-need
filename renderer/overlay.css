@@ -1,0 +1,141 @@
+/* Hextech-Look: dunkles Navy, feine Goldkanten, Türkis für „bereit“ */
+:root {
+  --bg: rgba(1, 10, 19, 0.72);
+  --gold: #c8aa6e;
+  --gold-dark: #785a28;
+  --gold-line: rgba(120, 90, 40, 0.6);
+  --text: #f0e6d2;
+  --muted: #a09b8c;
+  --good: #0ac8b9;
+  --bad: #e84057;
+  --cd: #cdbe91;
+}
+
+html, body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  font: 13px/1.35 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  user-select: none;
+}
+
+.panel {
+  position: absolute;
+  width: 248px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--gold-dark);
+  box-shadow: inset 0 0 0 1px rgba(200, 170, 110, 0.12);
+}
+
+.edit .panel { outline: 1px dashed var(--gold); }
+.edit-hint { display: none; font-size: 11px; color: var(--gold); margin-bottom: 6px; }
+.edit .edit-hint { display: block; }
+
+.grip { cursor: move; color: var(--gold-dark); padding: 0 6px 0 0; font-size: 15px; }
+.grip:hover, .dragging .grip { color: var(--gold); }
+
+.row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; }
+.head {
+  margin-top: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--gold-line);
+}
+#champ { font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+#time { font-size: 12px; font-variant-numeric: tabular-nums; }
+.muted, label, small { color: var(--muted); }
+label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.row label { font-size: 12px; letter-spacing: 0; text-transform: none; }
+small { margin-left: 4px; font-size: 11px; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
+.grid b { font-size: 16px; }
+#gold { color: var(--gold); }
+
+/* Mana: Leiste mit Markierung, wo die Combo-Kosten liegen */
+.mana { margin-top: 10px; }
+.mana .row { margin-top: 0; }
+.mana.low #manaVal { color: #e84057; }
+.manabar { position: relative; height: 4px; margin-top: 4px; background: rgba(240, 230, 210, 0.08); border: 1px solid rgba(120, 90, 40, 0.5); }
+.manabar div { height: 100%; width: 0; background: #1e6fa8; transition: width 0.3s; }
+.mana.low .manabar div { background: #6b1d2a; }
+.manabar i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gold); }
+
+/* Warnungen hängen über dem Panel, damit beim Einblenden nichts verrutscht; mehrere stapeln sich nach oben */
+.alerts {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: 100%;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.alert {
+  padding: 4px 6px;
+  text-align: center;
+  font-family: Cinzel, Georgia, serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: #f0e6d2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.no-mana { background: rgba(107, 29, 42, 0.85); border: 1px solid #8b2a3a; }
+.recall { background: rgba(70, 55, 20, 0.9); border: 1px solid var(--gold); color: var(--gold); }
+
+/* Spar-Ziel: nächstes Item aus dem Build */
+.build { margin-top: 10px; }
+.build .row { margin-top: 0; }
+.build .row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; margin-right: 8px; }
+.build .row b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.build.ready .row b { color: var(--gold); }
+.buildbar { height: 4px; margin-top: 4px; background: rgba(240, 230, 210, 0.08); border: 1px solid rgba(120, 90, 40, 0.5); }
+.buildbar div { height: 100%; width: 0; background: linear-gradient(90deg, #463714, var(--gold)); transition: width 0.3s; }
+
+.spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.spells:empty { display: none; }
+.spell { min-width: 0; padding: 5px 8px; border: 1px solid rgba(10, 200, 185, 0.45); background: rgba(10, 200, 185, 0.06); }
+.spell.cd { border-color: rgba(120, 90, 40, 0.7); background: rgba(30, 35, 40, 0.6); }
+.spell label { font-size: 10px; letter-spacing: 0.08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spell b { font-size: 15px; color: var(--cd); font-variant-numeric: tabular-nums; }
+.spell b.good { color: var(--good); }
+
+.xp { margin-top: 10px; }
+.xp .row { margin-top: 0; }
+.xp small { display: block; margin: 4px 0 0; }
+.xpbar { height: 4px; margin-top: 4px; background: rgba(240, 230, 210, 0.08); border: 1px solid rgba(120, 90, 40, 0.5); }
+.xpbar div { height: 100%; width: 0; background: linear-gradient(90deg, #463714, var(--gold)); transition: width 0.4s; }
+
+.lane { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--gold-line); }
+.lane .row:first-child { margin-top: 0; }
+.panel > .row:last-child { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gold-line); }
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+
+/* Tab-Scoreboard: Badges über dem Ward-/Trinket-Slot deines Teams, Team-Diff darüber */
+.sb-team, .sb-row {
+  position: absolute;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--gold-dark);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sb-team { transform: translate(-50%, -100%); font-size: 14px; }
+.sb-team label { display: inline; margin-right: 6px; }
+.sb-row {
+  /* rechtsbündig an der Ward-Slot-Kante: wächst nur nach links, nie über die Mittellinie */
+  transform: translate(-100%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 5px;
+  font-size: 13px;
+  font-weight: 700;
+}

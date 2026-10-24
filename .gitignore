@@ -1,0 +1,6 @@
+node_modules/
+# persönliche Einstellungen (Position, Builds, Runen, Pfade); Vorlage ist config.example.json
+config.json
+# Screenshots, Spieldaten und Logs aus dem Debug-Modus enthalten Riot-Namen
+debug/
+*.log

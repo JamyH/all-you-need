@@ -1,0 +1,110 @@
+{
+  "leaguePath": "C:\\Riot Games\\League of Legends",
+  "language": "de_DE",
+  "pollMs": 1000,
+  "panel": {
+    "x": 20,
+    "y": 200
+  },
+  "hotkeys": {
+    "toggleOverlay": "Ctrl+Shift+O",
+    "editMode": "Ctrl+Shift+E",
+    "openStats": "Ctrl+Shift+S"
+  },
+  "autoOpenStatsAfterGame": true,
+  "ocr": {
+    "enabled": true,
+    "intervalMs": 2500,
+    "region": {
+      "x": 3250,
+      "y": 4,
+      "width": 78,
+      "height": 30
+    },
+    "spells": {
+      "d": {
+        "x": 1762,
+        "y": 1326,
+        "width": 32,
+        "height": 32
+      },
+      "f": {
+        "x": 1807,
+        "y": 1326,
+        "width": 32,
+        "height": 32
+      }
+    },
+    "xpArc": [
+      [
+        1443,
+        1313
+      ],
+      [
+        1447,
+        1330
+      ],
+      [
+        1452,
+        1345
+      ],
+      [
+        1455,
+        1358
+      ],
+      [
+        1456,
+        1370
+      ],
+      [
+        1455,
+        1382
+      ],
+      [
+        1451,
+        1393
+      ],
+      [
+        1446,
+        1401
+      ]
+    ]
+  },
+  "minionXp": {
+    "melee": 60.45,
+    "caster": 29.76,
+    "siege": 93.6
+  },
+  "mana": {
+    "includeUlt": true
+  },
+  "scoreboard": {
+    "enabled": true,
+    "confirmMs": [
+      250,
+      400
+    ],
+    "anchor": {
+      "x": 1719,
+      "y": 406
+    },
+    "offsets": {
+      "rows": [
+        59,
+        160,
+        261,
+        362,
+        463
+      ],
+      "left": -771,
+      "right": 771,
+      "top": -170,
+      "badgeX": -11,
+      "badgeXRight": 706,
+      "badgeDy": -22
+    }
+  },
+  "builds": {},
+  "runes": {},
+  "runesAuto": true
+}

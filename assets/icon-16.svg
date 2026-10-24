@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Variante für 16 px: ohne Außenrand und Querstrich, sehr dicker Rahmen -->
+  <rect x="4" y="4" width="248" height="248" rx="56" fill="#061019"/>
+  <polygon points="128,30 213,79 213,177 128,226 43,177 43,79" fill="none" stroke="#C8AA6E" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M128 70 L180 186 H156 L128 120 L100 186 H76 Z" fill="#F0E6D2"/>
+</svg>

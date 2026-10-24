@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://ddragon.leagueoflegends.com; style-src 'self'">
+  <title>All You Need</title>
+  <link rel="stylesheet" href="stats.css">
+</head>
+<body>
+  <header>
+    <h1 id="who">All You Need</h1>
+    <nav>
+      <button data-tab="live">Live-Spiel</button>
+      <button data-tab="eog" class="active">Letztes Spiel</button>
+      <button data-tab="history">Verlauf</button>
+      <button data-tab="build">Build &amp; Runen</button>
+      <button id="reload">Neu laden</button>
+    </nav>
+  </header>
+  <main>
+    <section id="live" hidden></section>
+    <section id="eog"></section>
+    <section id="history" hidden></section>
+    <section id="build" hidden>
+      <div class="build-head">
+        <label for="champInput">Champion</label>
+        <input id="champInput" list="champList" autocomplete="off" placeholder="Champion wählen…">
+        <datalist id="champList"></datalist>
+      </div>
+      <div class="cols">
+        <div class="card">
+          <h2>Build-Reihenfolge</h2>
+          <ol id="buildList" class="build-list"></ol>
+          <div class="add-row">
+            <input id="itemInput" list="itemOptions" autocomplete="off" placeholder="Item suchen…" aria-label="Item suchen">
+            <datalist id="itemOptions"></datalist>
+            <button id="addItem">Hinzufügen</button>
+          </div>
+          <p class="hint">Im Spiel zeigt das Panel das erste Item der Liste, das du noch nicht hast, und wie viel Gold fehlt. Teile im Inventar werden angerechnet. Reicht dein Gold, erscheint RECALL.</p>
+        </div>
+        <div class="card">
+          <h2>Runen</h2>
+          <div id="runeView" class="rune-view"></div>
+          <div class="btn-row">
+            <button id="saveRunes">Aktuelle Runenseite speichern</button>
+            <button id="applyRunes">Jetzt setzen</button>
+          </div>
+          <label class="check"><input type="checkbox" id="runesAuto"> In der Champ-Auswahl automatisch setzen</label>
+          <p id="runeStatus" class="hint"></p>
+          <p class="hint">Gesetzt wird immer auf die Seite „All You Need“. Deine anderen Runenseiten bleiben unangetastet.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>Strg+Shift+O Overlay an/aus · Strg+Shift+E Overlay verschieben · Strg+Shift+S dieses Fenster</footer>
+  <script src="stats.js"></script>
+</body>
+</html>
