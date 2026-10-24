@@ -14,6 +14,8 @@ const BASE = {
     d: { dx: 42, dy: -114, width: 32, height: 32 },
     f: { dx: 87, dy: -114, width: 32, height: 32 },
   },
+  // Item-Slots 0–5 (Live-API „slot“): 3 Spalten × 2 Zeilen, dahinter Slot 6 = Trinket
+  items: { dx: 150, dy: -118, size: 35, pitchX: 43.5, pitchY: 41, trinket: { dx: 281, dy: -114, width: 31, height: 32 } },
   xpArc: [[1443, 1313], [1447, 1330], [1452, 1345], [1455, 1358], [1456, 1370], [1455, 1382], [1451, 1393], [1446, 1401]]
     .map(([x, y]) => [x - REF.width / 2, y - REF.height]),
   scoreboard: { rows: [59, 160, 261, 362, 463], top: -170, badgeX: -11, badgeXRight: 706, badgeDy: -22 },
@@ -38,6 +40,13 @@ function compute(width, height, globalScale = 0) {
       width: r(BASE.cs.width * res), height: r(BASE.cs.height * res),
     },
     spells: { d: spell(BASE.spells.d), f: spell(BASE.spells.f) },
+    items: [
+      ...[0, 1, 2, 3, 4, 5].map((i) => {
+        const it = BASE.items;
+        return spell({ dx: it.dx + (i % 3) * it.pitchX, dy: it.dy + Math.floor(i / 3) * it.pitchY, width: it.size, height: it.size });
+      }),
+      spell(BASE.items.trinket),
+    ],
     xpArc: BASE.xpArc.map(([dx, dy]) => bottom(dx, dy)),
     scoreboard: {
       scale: +res.toFixed(3),

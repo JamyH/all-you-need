@@ -36,6 +36,8 @@ That's it. The League folder, your resolution and your HUD scale are detected au
 - XP to the next level, including "X melee / Y caster minions"
 - Mana bar with your combo cost (Q+W+E+R at current ranks) and a **NO MANA** warning
 - Savings goal: next item from your build, gold still missing, **RECALL** once you can afford it
+- Skill hint: which ability to level next (lolalytics skill order) while a point is unspent
+- Item cooldowns (Zhonya's, Stopwatch, Guardian Angel …) read from your item slots
 - Item value difference to your lane opponent and the enemy team
 
 **Tab scoreboard**
@@ -78,7 +80,7 @@ resolution and HUD scale to an issue.
 | In-game values | Live Client Data API (`https://127.0.0.1:2999`, only during a game) |
 | Ranks, history, runes, champ select | League client API (LCU), credentials from the client's `lockfile` |
 | Item, champion and rune data, icons | Data Dragon (Riot's public CDN), cached locally |
-| Exact CS, cooldowns, XP, scoreboard | Small screen regions, analysed locally |
+| Exact CS, cooldowns, XP, scoreboard | Small screen regions, analysed locally (own digit recognition, Tesseract as fallback) |
 | Build and rune suggestions | [lolalytics.com](https://lolalytics.com) build page (Emerald+), one request per champion and role, cached for a day; fallback for runes: Riot's own recommended page from the client |
 
 No Riot API key is needed. Apart from Data Dragon, the lolalytics build page and a one-time download
@@ -105,6 +107,7 @@ reload instantly; for everything else restart the app.
 | `src/live.js` | Game data → panel values |
 | `src/layout.js` | Screen regions for any resolution and HUD scale |
 | `src/ocr.js`, `renderer/capture.js` | Screen reading and scoreboard search |
+| `src/digits.js`, `src/digits.json` | Digit recognition; templates learned with `tools/digit-samples.js` |
 | `src/lcu.js` | League client access |
 | `renderer/overlay.*`, `renderer/stats.*` | Panel and stats window |
 | `tools/` | Calibration and render helpers |

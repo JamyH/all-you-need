@@ -39,13 +39,16 @@ async function champSelect(lp) {
   };
 }
 
+// Map der aktuellen Warteschlange (11 = Summoner's Rift, 12 = ARAM/ARAM Mayhem); null ohne Lobby/Spiel
+const mapId = (lp) => lcu(lp, '/lol-gameflow/v1/session').then((s) => (s.map && s.map.id) || null, () => null);
+
 // Riots eigene empfohlene Runenseiten (wie „Empfohlen“ im Client, meist drei Varianten)
-async function recommendedRunePages(lp, championKey, position) {
-  const pages = await lcu(lp, `/lol-perks/v1/recommended-pages/champion/${championKey}/position/${position || 'none'}/map/11`);
+async function recommendedRunePages(lp, championKey, position, map = 11) {
+  const pages = await lcu(lp, `/lol-perks/v1/recommended-pages/champion/${championKey}/position/${position || 'none'}/map/${map}`);
   return (pages || []).map((p) => ({ primaryStyleId: p.primaryPerkStyleId, subStyleId: p.secondaryPerkStyleId, selectedPerkIds: p.perks.map((x) => x.id) }));
 }
 // Erste davon: Ersatz, wenn lolalytics nicht antwortet
-const recommendedRunes = async (lp, championKey, position) => (await recommendedRunePages(lp, championKey, position))[0] || null;
+const recommendedRunes = async (lp, championKey, position, map) => (await recommendedRunePages(lp, championKey, position, map))[0] || null;
 
 // Laufendes Spiel: Spieler beider Teams mit puuid und Champion-Key (Bots haben keine puuid)
 async function gamePlayers(lp) {
@@ -93,12 +96,12 @@ async function applyRunePage(lp, rune) {
 
 // Item-Set für den Shop im Spiel (Reiter mit eigenen Sets). Wir schreiben nur unser eigenes Set pro Champion
 // (erkennbar an der uid); alle anderen Sets bleiben, wie sie sind.
-// blocks: [{ title, items: [{ id, count }] }]
-async function applyItemSet(lp, championKey, title, blocks) {
+// blocks: [{ title, items: [{ id, count }] }]; map 11 = Summoner's Rift, 12 = ARAM (eigenes Set daneben)
+async function applyItemSet(lp, championKey, title, blocks, map = 11) {
   const me = await currentSummoner(lp);
   const url = `/lol-item-sets/v1/item-sets/${me.summonerId}/sets`;
   const data = await lcu(lp, url);
-  const uid = `all-you-need-${championKey}`;
+  const uid = `all-you-need-${championKey}${map === 12 ? '-aram' : ''}`;
   const own = {
     uid,
     title,
@@ -108,7 +111,7 @@ async function applyItemSet(lp, championKey, title, blocks) {
     startedFrom: 'blank',
     sortrank: 0,
     associatedChampions: [Number(championKey)],
-    associatedMaps: [11],
+    associatedMaps: [map],
     preferredItemSlots: [],
     blocks: blocks.map((b) => ({ type: b.title, items: b.items.map((i) => ({ id: String(i.id), count: i.count || 1 })) })),
   };
@@ -117,6 +120,6 @@ async function applyItemSet(lp, championKey, title, blocks) {
 }
 
 module.exports = {
-  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, recommendedRunes, recommendedRunePages, currentRunePage, applyRunePage, PAGE_NAME,
+  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, mapId, recommendedRunes, recommendedRunePages, currentRunePage, applyRunePage, PAGE_NAME,
   applyItemSet, gamePlayers, soloRank,
 };

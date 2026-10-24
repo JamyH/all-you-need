@@ -31,6 +31,11 @@ function spellName(spell) {
   const hit = Object.keys(SHORT_SPELLS).find((k) => raw.includes(`Summoner${k}`));
   return hit ? SHORT_SPELLS[hit] : spell.displayName;
 }
+// Data-Dragon-Bild zum Summoner: „GeneratedTip_SummonerSpell_SummonerFlash_DisplayName“ -> SummonerFlash.png
+function spellIcon(spell) {
+  const id = ((spell && spell.rawDisplayName) || '').match(/SummonerSpell_(\w+?)_DisplayName/);
+  return id ? ddragon.iconUrl('spell', id[1]) : '';
+}
 
 // Rohdaten -> das, was das Overlay anzeigt. Hier kannst du eigene Werte ergänzen.
 function summarize(data) {
@@ -53,6 +58,9 @@ function summarize(data) {
     gameTime: data.gameData.gameTime,
     gameMode: data.gameData.gameMode,
     champion: me.championName,
+    // ARAM und ARAM Mayhem laufen auf Map 12: kein Recall, eigene lolalytics-Seite
+    aram: data.gameData.mapNumber === 12,
+    isDead: !!me.isDead,
     level: me.level,
     gold: Math.floor(active.currentGold || 0),
     kda: `${s.kills}/${s.deaths}/${s.assists}`,
@@ -73,6 +81,10 @@ function summarize(data) {
     teamItemDiff: teamValue(myTeam) - teamValue(enemyTeam),
     championId: (me.rawChampionName || '').replace('game_character_displayname_', ''),
     myItemIds: Array.isArray(me.items) ? me.items.flatMap((it) => Array(it.count || 1).fill(it.itemID)) : [],
+    // Inventar nach Slot (0–5, 6 = Trinket); active = Item mit Aktiv-Fähigkeit, kein Verbrauchsgegenstand
+    myItems: Array.isArray(me.items)
+      ? me.items.map((it) => ({ slot: it.slot, id: it.itemID, name: it.displayName, active: !!it.canUse && !it.consumable }))
+      : [],
     abilityLevels: ['Q', 'W', 'E', 'R'].map((k) => active.abilities?.[k]?.abilityLevel || 0),
     resource: {
       type: active.championStats?.resourceType,
@@ -82,6 +94,10 @@ function summarize(data) {
     spellNames: {
       d: spellName(me.summonerSpells?.summonerSpellOne) || 'D',
       f: spellName(me.summonerSpells?.summonerSpellTwo) || 'F',
+    },
+    spellIcons: {
+      d: spellIcon(me.summonerSpells?.summonerSpellOne),
+      f: spellIcon(me.summonerSpells?.summonerSpellTwo),
     },
   };
 }
@@ -127,9 +143,23 @@ function applyScreen(summary, scr, minionXp) {
   summary.spells = Object.entries(scr.spells || {}).map(([slot, s]) => ({
     key: slot.toUpperCase(),
     name: summary.spellNames[slot],
+    icon: summary.spellIcons[slot],
     ready: s.ready,
     cd: s.ready || s.cd == null ? null : Math.max(0, Math.ceil(s.cd - (Date.now() - s.at) / 1000)),
   }));
+  // Item-Cooldowns (Slot 0–5): Aktiv-Items immer, andere nur, solange ein Cooldown auf dem Slot steht.
+  // Tasten wie im Spiel: Slots 1–3 und 5–7 (4 ist das Trinket)
+  summary.itemCds = summary.myItems
+    .filter((it) => it.slot < 6)
+    .map((it) => {
+      const s = (scr.items || {})[it.slot];
+      const cd = s && s.id === it.id ? s.cd : null;
+      return {
+        key: String(it.slot < 3 ? it.slot + 1 : it.slot + 2), name: it.name, icon: ddragon.iconUrl('item', it.id),
+        ready: cd == null, cd, active: it.active,
+      };
+    })
+    .filter((it) => it.active || !it.ready);
   const need = xpForNext(summary.level);
   if (scr.xp != null && need) {
     const missing = Math.round(need * (1 - scr.xp));
@@ -238,4 +268,28 @@ function applyBuild(summary, buildFor) {
   return summary;
 }
 
-module.exports = { fetchGame, summarize, applyScreen, applyMana, applyBuild, scoreboard, livePlayers };
+// Nächster Skillpunkt nach der Lolalytics-Reihenfolge, solange ein Punkt offen ist.
+// Die Reihenfolge wird bis zum aktuellen Level abgelaufen: die erste Fähigkeit, die dort öfter vorkommt,
+// als du sie gelevelt hast, ist dran. So passt der Hinweis auch, wenn du vorher abgewichen bist.
+const KEYS = ['Q', 'W', 'E', 'R'];
+function applySkills(summary, skillsFor) {
+  if (!summary) return summary;
+  const s = skillsFor(summary.championId);
+  if (!s || !s.skillOrder) return summary;
+  const have = Object.fromEntries(KEYS.map((k, i) => [k, summary.abilityLevels[i]]));
+  const spent = summary.abilityLevels.reduce((a, b) => a + b, 0);
+  const want = { Q: 0, W: 0, E: 0, R: 0 };
+  let next = null;
+  if (spent < summary.level) {
+    for (const k of s.skillOrder.slice(0, summary.level)) {
+      if (++want[k] > have[k]) {
+        next = k;
+        break;
+      }
+    }
+  }
+  summary.skill = { next, open: Math.max(0, summary.level - spent), priority: s.skillPriority };
+  return summary;
+}
+
+module.exports = { fetchGame, summarize, applyScreen, applyMana, applyBuild, applySkills, scoreboard, livePlayers };

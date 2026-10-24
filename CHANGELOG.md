@@ -2,6 +2,30 @@
 
 ## Unveröffentlicht
 
+Im Spiel
+- Skill-Hinweis: Solange ein Skillpunkt offen ist, zeigt ein Banner über dem Panel, welche Fähigkeit laut
+  lolalytics dran ist (z. B. „SKILL Q · Q › E › W“); passt sich an, wenn du vorher abgewichen bist
+- Item-Cooldowns: Items mit Aktiv-Fähigkeit stehen mit Restzeit unter den Summonern, andere Items
+  (z. B. Schutzengel) nur, solange ihr Cooldown läuft
+- Summoner und Items als Icon statt Name; im Cooldown ausgegraut
+
+ARAM und ARAM Mayhem
+- lolalytics-Vorschlag von der ARAM-Seite (Build, Runen, Skill-Reihenfolge), getrennt vom Rift-Vorschlag
+- Item-Set „All You Need – Champion ARAM“ erscheint im ARAM-Shop (eigenes Set neben dem Rift-Set)
+- Riots Runen-Empfehlung für die ARAM-Map
+- KAUFEN statt RECALL, und nur solange du tot bist; XP-Anzeige nur in Prozent
+
+App
+- Eigene Ziffern-Erkennung statt Tesseract für Summoner-, Item- und CS-Zahlen (rund 90× schneller);
+  Tesseract nur noch, wenn sie unsicher ist. Muster lernt `tools/digit-samples.js`, `ocr.collectDigits`
+  sammelt dafür CS-Ausschnitte
+- Alte lolalytics-Einträge ohne Skill-Reihenfolge werden beim nächsten Pick neu geholt
+
+Fixes
+- CS wurde oft nicht exakt erkannt („0+“), vor allem eine einzelne 0: der Bildschirm-Stream verwischt Gelb,
+  die Erkennung achtet jetzt auf Helligkeit
+- Summoner sprangen nach dem Tod kurz auf „bereit“ (grauer Bildschirm), obwohl der Cooldown lief
+
 ## 1.2.0 – 2026-10-24
 
 Champ-Auswahl

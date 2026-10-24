@@ -24,16 +24,25 @@ window.lol.onGame((g) => {
   // ohne OCR liefert Riot CS nur in 10er-Schritten
   if (!g.csExact) $('cs').textContent = `${g.cs}+`;
 
-  // Spar-Ziel aus dem Build; RECALL, sobald das Gold reicht
+  // Spar-Ziel aus dem Build; RECALL, sobald das Gold reicht. Im ARAM gibt es kein Recall:
+  // dort KAUFEN, solange du tot bist (nur dann kommst du an den Shop)
   const b = g.build && !g.build.done ? g.build : null;
   $('build').hidden = !b;
-  $('recall').hidden = !(b && b.affordable);
+  $('recall').hidden = !(b && b.affordable && (!g.aram || g.isDead));
   if (b) {
     $('build').classList.toggle('ready', b.affordable);
     $('buildLabel').textContent = b.name;
     $('buildMissing').textContent = b.affordable ? 'bezahlbar' : `noch ${b.missing.toLocaleString('de-DE')} g`;
     $('buildFill').style.width = `${b.progress}%`;
-    $('recall').textContent = 'RECALL';
+    $('recall').textContent = g.aram ? 'KAUFEN' : 'RECALL';
+  }
+
+  // Skillpunkt offen: welche Fähigkeit laut Lolalytics dran ist, dahinter die Max-Reihenfolge
+  const sk = g.skill && g.skill.next ? g.skill : null;
+  $('skill').hidden = !sk;
+  if (sk) {
+    $('skill').innerHTML = `SKILL <b>${sk.next}</b>${sk.open > 1 ? ` <small>+${sk.open - 1}</small>` : ''}` +
+      (sk.priority ? ` <small>${sk.priority.join(' › ')}</small>` : '');
   }
 
   const m = g.mana;
@@ -47,13 +56,24 @@ window.lol.onGame((g) => {
     if (m.combo) $('manaCombo').style.left = `${Math.min(100, (m.combo / m.max) * 100)}%`;
   }
 
-  $('spells').innerHTML = (g.spells || [])
+  // Summoner D/F, danach Item-Cooldowns (Taste 1–7 wie im Spiel)
+  $('spells').innerHTML = [...(g.spells || []), ...(g.itemCds || [])]
     .map((s) => {
       const value = s.ready ? 'bereit' : s.cd == null ? '…' : fmtTime(s.cd);
-      return `<div class="spell ${s.ready ? '' : 'cd'}"><label>${s.key} · ${esc(s.name)}</label>` +
-        `<b class="${s.ready ? 'good' : ''}">${value}</b></div>`;
+      const b = `<b class="${s.ready ? 'good' : ''}">${value}</b>`;
+      // Icon statt Name (Namen wie „Zhonyas Stundenglas“ passen nicht in die Kachel)
+      if (s.icon) {
+        return `<div class="spell item ${s.ready ? '' : 'cd'}"><img src="${esc(s.icon)}" alt="" title="${esc(s.name)}">` +
+          `<div><label>${s.key}</label>${b}</div></div>`;
+      }
+      return `<div class="spell ${s.ready ? '' : 'cd'}"><label>${s.key} · ${esc(s.name)}</label>${b}</div>`;
     })
     .join('');
+  // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann wieder den Namen zeigen
+  $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => {
+    img.nextElementSibling.querySelector('label').textContent += ` · ${img.title}`;
+    img.remove();
+  }));
 
   const xp = g.xp;
   $('xp').hidden = !xp;
@@ -61,6 +81,8 @@ window.lol.onGame((g) => {
     $('xpLabel').textContent = `Lvl ${g.level} → ${g.level + 1}`;
     $('xpPct').textContent = `${xp.percent} %`;
     $('xpFill').style.width = `${xp.percent}%`;
+    // Vasallen-XP gelten nur auf Summoner's Rift; im ARAM nur den Prozentwert zeigen
+    $('xpMinions').hidden = !!g.aram;
     $('xpMinions').textContent = `noch ${xp.missing} XP ≈ ${xp.melee} Melee / ${xp.caster} Caster · ${xp.waves} Wellen`;
   }
   $('gold').textContent = g.gold.toLocaleString('de-DE');

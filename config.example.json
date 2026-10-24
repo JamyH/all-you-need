@@ -14,7 +14,8 @@
   "autoOpenStatsAfterGame": true,
   "ocr": {
     "enabled": true,
-    "intervalMs": 2500
+    "intervalMs": 2500,
+    "collectDigits": false
   },
   "minionXp": {
     "melee": 60.45,

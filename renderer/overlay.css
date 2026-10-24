@@ -88,6 +88,9 @@ small { margin-left: 4px; font-size: 11px; }
 }
 .no-mana { background: rgba(107, 29, 42, 0.85); border: 1px solid #8b2a3a; }
 .recall { background: rgba(70, 55, 20, 0.9); border: 1px solid var(--gold); color: var(--gold); }
+.skill { background: rgba(10, 60, 70, 0.9); border: 1px solid rgba(10, 200, 185, 0.7); }
+.skill b { color: var(--good); font-size: 15px; }
+.skill small { margin-left: 6px; font-family: 'Source Sans 3', sans-serif; font-size: 11px; letter-spacing: 0.04em; opacity: 0.8; }
 
 /* Spar-Ziel: nächstes Item aus dem Build */
 .build { margin-top: 10px; }
@@ -105,10 +108,15 @@ small { margin-left: 4px; font-size: 11px; }
 .spell label { font-size: 10px; letter-spacing: 0.08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spell b { font-size: 15px; color: var(--cd); font-variant-numeric: tabular-nums; }
 .spell b.good { color: var(--good); }
+.spell.item { display: flex; align-items: center; gap: 7px; padding-left: 5px; }
+.spell.item img { width: 28px; height: 28px; flex: none; border: 1px solid rgba(120, 90, 40, 0.7); }
+.spell.item.cd img { filter: grayscale(1) brightness(0.6); }
+.spell.item > div { min-width: 0; }
 
 .xp { margin-top: 10px; }
 .xp .row { margin-top: 0; }
 .xp small { display: block; margin: 4px 0 0; }
+.xp small[hidden] { display: none; } /* ARAM: nur Prozent */
 .xpbar { height: 4px; margin-top: 4px; background: rgba(240, 230, 210, 0.08); border: 1px solid rgba(120, 90, 40, 0.5); }
 .xpbar div { height: 100%; width: 0; background: linear-gradient(90deg, #463714, var(--gold)); transition: width 0.4s; }
 

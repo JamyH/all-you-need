@@ -15,7 +15,9 @@ const SLUGS = { MonkeyKing: 'wukong' };
 const slug = (champId) => SLUGS[champId] || champId.toLowerCase();
 const lane = (position) => LANES[position] || null;
 
-function pageUrl(champId, position) {
+// mode: 'sr' (Summoner's Rift, je Rolle) oder 'aram' (eigene Seite, gilt auch für ARAM Mayhem)
+function pageUrl(champId, position, mode = 'sr') {
+  if (mode === 'aram') return `https://lolalytics.com/lol/${slug(champId)}/aram/build/`;
   const l = lane(position);
   return `https://lolalytics.com/lol/${slug(champId)}/build/${l ? `?lane=${l}` : ''}`;
 }
@@ -40,6 +42,35 @@ function byGames(text) {
   const re = /src="[^"]*\/item64\/(\d+)\.webp"[\s\S]*?>([\d.]+)%<\/span>[\s\S]*?>([\d,]+)<\/span>/g;
   const options = [...text.matchAll(re)].map((m) => ({ id: Number(m[1]), games: Number(m[3].replace(/,/g, '')) }));
   return options.sort((a, b) => b.games - a.games);
+}
+
+// Skill-Priorität (z. B. Q > E > W) und Skill-Reihenfolge für Level 1–18 als Buchstaben.
+// Lolalytics zeigt die Reihenfolge als Raster: je Fähigkeit eine Zeile, belegte Felder enthalten das Level (1–15).
+// Level 16–18 ergänzen wir: R, sobald möglich, sonst die nächste noch nicht volle Fähigkeit nach Priorität.
+function skills(html) {
+  const prio = section(html, 'Skill Priority', 'Summoner Spells');
+  const grid = section(html, 'Skill Order', 'Primary Runes');
+  if (!prio || !grid) return { skillPriority: null, skillOrder: null };
+  // nur src= zählen, srcset enthält dieselbe Adresse noch einmal
+  const skillPriority = [...prio.text.matchAll(/src="[^"]*\/skill68\/[^"]*_([qwe])\.webp"/g)].map((m) => m[1].toUpperCase());
+  const order = [];
+  for (const chunk of grid.text.split(/src="[^"]*\/skill68\//).slice(1)) {
+    const key = (chunk.match(/^[^"]*_([qwer])\.webp/) || [])[1];
+    if (!key) continue;
+    for (const m of chunk.matchAll(/leading-\[26px\][^>]*>(\d+)</g)) order[Number(m[1]) - 1] = key.toUpperCase();
+  }
+  if (skillPriority.length !== 3 || order.filter(Boolean).length < 10) return { skillPriority: null, skillOrder: null };
+  // Champs ohne normale Ulti auf 6/11/16 (Jayce, Udyr …) haben bis zu 6 Ränge pro Fähigkeit
+  const normalUlt = order[5] === 'R' && order[10] === 'R';
+  const max = normalUlt ? { Q: 5, W: 5, E: 5, R: 3 } : { Q: 6, W: 6, E: 6, R: 6 };
+  const candidates = normalUlt ? skillPriority : [...skillPriority, 'R'];
+  const count = (k, upTo) => order.slice(0, upTo).filter((x) => x === k).length;
+  for (let lvl = 1; lvl <= 18; lvl++) {
+    if (order[lvl - 1]) continue;
+    const rReady = normalUlt && [6, 11, 16].filter((l) => l <= lvl).length > count('R', lvl - 1);
+    order[lvl - 1] = rReady ? 'R' : candidates.find((k) => count(k, lvl - 1) < max[k]) || candidates[0];
+  }
+  return { skillPriority, skillOrder: order };
 }
 
 function parse(page) {
@@ -73,6 +104,7 @@ function parse(page) {
   }
 
   return {
+    ...skills(html),
     starting: [...new Set(images(start.text, 'item64').map((i) => i.id))],
     startCount,
     items,
@@ -93,24 +125,26 @@ function init(dir) {
 
 // Vorschlag aus dem Cache, ohne Abruf (für das Spar-Ziel im Spiel und das Stats-Fenster):
 // der zuletzt benutzte, also die Rolle aus der letzten Champ-Auswahl
-function cached(champId) {
-  const hits = Object.values(cache || {}).filter((e) => e.champId === champId);
+function cached(champId, mode = 'sr') {
+  const hits = Object.values(cache || {}).filter((e) => e.champId === champId && (e.mode || 'sr') === mode);
   return hits.sort((a, b) => (b.usedAt || b.fetchedAt) - (a.usedAt || a.fetchedAt))[0] || null;
 }
 
-async function load(champId, position) {
-  const key = `${champId}|${lane(position) || ''}`;
+async function load(champId, position, mode = 'sr') {
+  const aram = mode === 'aram';
+  const key = aram ? `${champId}|aram` : `${champId}|${lane(position) || ''}`;
   const hit = cache[key];
-  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) {
+  // Einträge von vor 1.3 haben noch keine Skill-Reihenfolge -> neu holen
+  if (hit && 'skillOrder' in hit && Date.now() - hit.fetchedAt < CACHE_MS) {
     hit.usedAt = Date.now();
     return hit;
   }
-  const url = pageUrl(champId, position);
+  const url = pageUrl(champId, position, mode);
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
   const data = parse(await res.text());
   if (!data) throw new Error('lolalytics.com: Seitenaufbau nicht erkannt');
-  cache[key] = { champId, lane: lane(position), url, fetchedAt: Date.now(), ...data };
+  cache[key] = { champId, mode: aram ? 'aram' : 'sr', lane: aram ? null : lane(position), url, fetchedAt: Date.now(), ...data };
   fs.writeFileSync(cacheFile, JSON.stringify(cache));
   return cache[key];
 }

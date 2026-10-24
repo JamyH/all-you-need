@@ -155,14 +155,20 @@ if (!app.isPackaged) {
 
 async function pollGame() {
   const data = await live.fetchGame();
+  if (data) gameMode = data.gameData.mapNumber === 12 ? 'aram' : 'sr';
   const summary = data
-    ? live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), buildFor)
+    ? live.applySkills(
+        live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), buildFor),
+        (champId) => (suggestionsOn() ? lolalytics.cached(champId, gameMode) : null),
+      )
     : null;
   if (summary && !gameRunning) refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
   gameRunning = !!summary;
   lastData = data;
   if (!summary) liveRanks = null; // Ränge gelten nur für das jeweilige Spiel
   if (summary && summary.championId) lastChampion = summary.championId;
+  lastItems = summary ? summary.myItems : [];
+  meDead = !!(summary && summary.isDead);
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (data && Date.now() - lastDump > 5000) {
     lastDump = Date.now();
@@ -185,7 +191,9 @@ async function pollGame() {
 // Bildschirm auslesen, nur während ein Spiel läuft. Jede Sekunde ein Mini-Ausschnitt-Paket aus dem Stream;
 // Texterkennung nur wenn nötig: CS alle ocr.intervalMs, Spell-Restzeit einmal pro Cooldown (+ Abgleich alle 15 s).
 let gameRunning = false;
-let screenState = { cs: null, xp: null, spells: {} };
+let screenState = { cs: null, xp: null, spells: {}, items: {} };
+let lastItems = []; // Inventar aus der Live-API, damit die Bildschirm-Abfrage nur belegte Item-Slots liest
+let meDead = false; // tot: Bildschirm grau, Cooldown-Erkennung der Summoner unzuverlässig
 
 // Regionen aus Auflösung und HUD-Größe (game.cfg) berechnen; neu bei jedem Spielstart,
 // falls die HUD-Skalierung inzwischen geändert wurde
@@ -227,14 +235,29 @@ async function pollScreen() {
     checkHudChange();
     const slots = Object.entries(L.spells);
     const readCs = Date.now() - lastCsRead >= config.ocr.intervalMs;
-    const regions = slots.map(([, r]) => r);
+    const items = lastItems.filter((it) => it.slot < 6);
+    const regions = [...slots.map(([, r]) => r), ...items.map((it) => L.items[it.slot])];
     if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
     const crops = await capture.grab(regions);
+
+    // Item-Cooldowns: jede Sekunde neu lesen (eigene Ziffern-Erkennung, kostet praktisch nichts)
+    screenState.items = {};
+    for (const [i, it] of items.entries()) {
+      const cd = ocr.readItemCd(crops[slots.length + i]);
+      if (cd != null) screenState.items[it.slot] = { id: it.id, cd };
+    }
+    crops.splice(slots.length, items.length); // danach folgen CS und XP wie bisher
 
     for (const [i, [slot]] of slots.entries()) {
       const prev = screenState.spells[slot];
       if (!ocr.spellOnCooldown(crops[i])) {
-        screenState.spells[slot] = { ready: true };
+        // Mitten im Countdown „bereit“ nicht sofort glauben: tot ist der Bildschirm grau, dann fehlt das Blau
+        // des Cooldowns, obwohl der Summoner nicht bereit ist. Tot -> ignorieren, sonst erst beim zweiten Mal
+        const left = prev && !prev.ready && prev.cd != null ? prev.cd - (Date.now() - prev.at) / 1000 : 0;
+        if (left > 3 && (meDead || !prev.readySeen)) prev.readySeen = !meDead;
+        else screenState.spells[slot] = { ready: true };
+      } else if (prev && prev.readySeen) {
+        prev.readySeen = false; // war nur ein Ausreißer, Countdown läuft weiter
       } else if (!prev || prev.ready || prev.cd == null || Date.now() - prev.at > 10000) {
         // Zahl lesen beim Start des Cooldowns und danach alle 10 s zum Abgleich
         const cd = await ocr.readSpellCd(crops[i]);
@@ -316,6 +339,10 @@ let lastChampion = null;
 let lastRuneKey = null;
 let lastSuggestionKey = null;
 let lastPosition = ''; // Rolle aus der letzten Champ-Auswahl, für Riots Runen-Empfehlung
+// 'sr' oder 'aram' (auch ARAM Mayhem): aus der Map der Champ-Auswahl bzw. des laufenden Spiels.
+// Bestimmt lolalytics-Seite, Item-Set-Map und Riots Runen-Empfehlung.
+let gameMode = 'sr';
+const mapId = () => (gameMode === 'aram' ? 12 : 11);
 
 // lolalytics-Vorschläge: an, solange nicht ausdrücklich abgeschaltet
 const suggestionsOn = () => !config.lolalytics || config.lolalytics.enabled !== false;
@@ -323,7 +350,7 @@ const ownBuild = (champId) => ((config.builds || {})[champId] || []).length > 0;
 // Spar-Ziel im Spiel: eigener Build, sonst der zuletzt geladene Vorschlag
 function buildFor(champId) {
   if (ownBuild(champId)) return config.builds[champId];
-  return (suggestionsOn() && lolalytics.cached(champId)?.items) || null;
+  return (suggestionsOn() && lolalytics.cached(champId, gameMode)?.items) || null;
 }
 
 const describeRunes = (r) =>
@@ -351,7 +378,7 @@ async function useSuggestion(champId, key, position) {
   let source = 'lolalytics.com';
   let rune = null;
   try {
-    rune = (await lolalytics.load(champId, position)).runes;
+    rune = (await lolalytics.load(champId, position, gameMode)).runes;
     notifyStats('suggestion', champId);
   } catch (e) {
     console.warn('lolalytics:', e.message);
@@ -359,7 +386,7 @@ async function useSuggestion(champId, key, position) {
   }
   const ownRunes = (config.runes || {})[champId];
   if (ownRunes || config.runesAuto === false) return;
-  if (!rune) rune = await lcu.recommendedRunes(config.leaguePath, key, position).catch(() => null);
+  if (!rune) rune = await lcu.recommendedRunes(config.leaguePath, key, position, mapId()).catch(() => null);
   if (!rune) return;
   await lcu.applyRunePage(config.leaguePath, rune);
   notifyStats('runes:status', `Runen für ${champId} von ${source} gesetzt (Seite „${lcu.PAGE_NAME}“).`);
@@ -377,7 +404,7 @@ const withParts = (ids) =>
   });
 async function importItemSet(champId) {
   const key = ddragon.championKey(champId);
-  const s = suggestionsOn() ? lolalytics.cached(champId) : null;
+  const s = suggestionsOn() ? lolalytics.cached(champId, gameMode) : null;
   const blocks = [];
   if (ownBuild(champId)) blocks.push({ title: 'Dein Build (All You Need)', items: withParts(config.builds[champId]) });
   if (s) {
@@ -389,7 +416,8 @@ async function importItemSet(champId) {
   }
   if (!key || !blocks.length) throw new Error(`Für ${champId} gibt es weder eigenen Build noch Vorschlag.`);
   const name = ddragon.champion(key).name;
-  await lcu.applyItemSet(config.leaguePath, key, `All You Need – ${name}${s && LANE_LABEL[s.lane] ? ` ${LANE_LABEL[s.lane]}` : ''}`, blocks);
+  const label = s && (s.mode === 'aram' ? 'ARAM' : LANE_LABEL[s.lane]);
+  await lcu.applyItemSet(config.leaguePath, key, `All You Need – ${name}${label ? ` ${label}` : ''}`, blocks, mapId());
   return `Item-Set „All You Need – ${name}“ ist im Client, im Spiel im Shop wählbar.`;
 }
 
@@ -400,6 +428,7 @@ async function pollClient() {
   // Champ-Auswahl: gespeicherte Runen des gewählten Champs automatisch setzen (einmal pro Champ)
   if (phase === 'ChampSelect') {
     try {
+      if (lastPhase !== 'ChampSelect') gameMode = (await lcu.mapId(config.leaguePath)) === 12 ? 'aram' : 'sr';
       const sel = await lcu.champSelect(config.leaguePath);
       const champId = sel.key ? ddragon.champion(sel.key).id : null;
       lastPosition = sel.position;
@@ -455,7 +484,8 @@ ipcMain.handle('live:data', () => {
 ipcMain.handle('calib:check', async () => {
   if (!gameRunning) throw new Error('Nur im laufenden Spiel möglich.');
   refreshLayout();
-  const regions = [L.cs, L.spells.d, L.spells.f, ocr.xpBox(L.xpArc)];
+  const slotItems = lastItems.filter((it) => it.slot < 6);
+  const regions = [L.cs, L.spells.d, L.spells.f, ocr.xpBox(L.xpArc), ...slotItems.map((it) => L.items[it.slot])];
   const crops = await capture.grab(regions);
   const toUrl = (c) => {
     const bgra = Buffer.from(c.data);
@@ -475,6 +505,10 @@ ipcMain.handle('calib:check', async () => {
       { label: 'D', img: toUrl(crops[1]), value: await spell(crops[1]) },
       { label: 'F', img: toUrl(crops[2]), value: await spell(crops[2]) },
       { label: 'XP', img: toUrl(crops[3]), value: `${Math.round(ocr.readXp(crops[3], L.xpArc) * 100)} %` },
+      ...slotItems.map((it, i) => {
+        const cd = ocr.readItemCd(crops[4 + i]);
+        return { label: it.name, img: toUrl(crops[4 + i]), value: cd == null ? 'kein Cooldown' : `Cooldown ${cd}` };
+      }),
     ],
   };
 });
@@ -504,14 +538,14 @@ ipcMain.handle('runes:auto', (_e, on) => saveConfig({ runesAuto: on }));
 
 // lolalytics-Vorschlag fürs Stats-Fenster: aus dem Cache; load = true holt ihn (Standard-Rolle des Champs)
 ipcMain.handle('suggestion:get', async (_e, champId, load) => {
-  const s = lolalytics.cached(champId) || (load ? await lolalytics.load(champId, '') : null);
+  const s = lolalytics.cached(champId, gameMode) || (load ? await lolalytics.load(champId, '', gameMode) : null);
   return s && {
     lane: s.lane, url: s.url, fetchedAt: s.fetchedAt, starting: s.starting, items: s.items,
     runes: describeRunes(s.runes),
   };
 });
 ipcMain.handle('suggestion:take', (_e, champId, what) => {
-  const s = lolalytics.cached(champId);
+  const s = lolalytics.cached(champId, gameMode);
   if (!s) throw new Error('Kein Vorschlag geladen.');
   if (what === 'build') saveConfig({ builds: { ...(config.builds || {}), [champId]: s.items } });
   if (what === 'runes' && s.runes) saveConfig({ runes: { ...(config.runes || {}), [champId]: s.runes } });
@@ -521,11 +555,11 @@ ipcMain.handle('suggestion:take', (_e, champId, what) => {
 const runeOptions = new Map();
 const LANE_TO_POSITION = { top: 'top', jungle: 'jungle', middle: 'middle', bottom: 'bottom', support: 'utility' };
 ipcMain.handle('runes:options', async (_e, champId) => {
-  const s = suggestionsOn() ? lolalytics.cached(champId) : null;
+  const s = suggestionsOn() ? lolalytics.cached(champId, gameMode) : null;
   const position = (champId === lastChampion && lastPosition) || LANE_TO_POSITION[s?.lane] || '';
   const options = [];
   if (s?.runes) options.push({ source: 'lolalytics.com', url: s.url, runes: s.runes });
-  const riot = await lcu.recommendedRunePages(config.leaguePath, ddragon.championKey(champId), position).catch(() => []);
+  const riot = await lcu.recommendedRunePages(config.leaguePath, ddragon.championKey(champId), position, mapId()).catch(() => []);
   riot.forEach((runes) => options.push({ source: 'Riot-Empfehlung', runes }));
   const seen = new Set();
   const unique = options.filter((o) => {
@@ -632,7 +666,9 @@ app.whenReady().then(async () => {
   setInterval(pollGame, config.pollMs);
   setInterval(pollClient, 3000);
   if (config.ocr && config.ocr.enabled) {
-    await Promise.all([ocr.init(app.getPath('userData')), capture.init()]);
+    // ocr.collectDigits: CS-Ausschnitte als Lernmaterial für die eigene Ziffern-Erkennung sammeln
+    const collect = config.ocr.collectDigits ? path.join(app.getPath('userData'), 'digit-samples') : null;
+    await Promise.all([ocr.init(app.getPath('userData'), { collect }), capture.init()]);
     setInterval(pollScreen, 1000);
     if (config.scoreboard && config.scoreboard.enabled) startTabHook();
   }

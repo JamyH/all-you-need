@@ -117,6 +117,7 @@ function iconUrl(kind, file) {
   if (!version) return '';
   if (kind === 'champion') return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${file}.png`;
   if (kind === 'item') return `https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${file}.png`;
+  if (kind === 'spell') return `https://ddragon.leagueoflegends.com/cdn/${version}/img/spell/${file}.png`;
   return '';
 }
 
