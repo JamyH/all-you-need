@@ -24,12 +24,14 @@ async function grab(regions) {
 }
 
 // Scoreboard-Ornament suchen (Raute oben, goldenes Mittelstück, schmale V-Kerbe darunter).
-// Gerechnet in halber Auflösung; region = null heißt ganzer Bildschirm.
-// Liefert den Anker (Mitte des Mittelstücks, volle Auflösung) oder null.
-async function findScoreboard(region) {
+// Das Bild wird so verkleinert, dass das Ornament immer so groß ist wie bei 1440p in halber Auflösung
+// (Faktor 2 × scale, scale = Bildschirmhöhe / 1440); alle Maße unten gelten in diesem Raster.
+// region = null heißt ganzer Bildschirm. Liefert den Anker (Mitte des Mittelstücks, volle Auflösung) oder null.
+async function findScoreboard(region, scale = 1) {
   const frame = await grabber.grabFrame();
   const r = region || { x: 0, y: 0, width: frame.width, height: frame.height };
-  const W = Math.floor(r.width / 2), H = Math.floor(r.height / 2);
+  const step = 2 * scale;
+  const W = Math.floor(r.width / step), H = Math.floor(r.height / step);
   const canvas = new OffscreenCanvas(W, H);
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.imageSmoothingEnabled = false;
@@ -64,7 +66,7 @@ async function findScoreboard(region) {
       // Mitte der Kerbe als Anker, damit er nicht je nach Treffer um ein paar Pixel springt
       let end = x;
       while (end + 1 < W && at(end + 1, y + 7) && at(end + 1, y + 8)) end++;
-      return { x: r.x + (x + end), y: r.y + y * 2 };
+      return { x: Math.round(r.x + ((x + end) / 2) * step), y: Math.round(r.y + y * step) };
     }
   }
   return null;
@@ -78,7 +80,7 @@ window.capture.onGrab((reqId, req) => {
     try {
       // Array = Ausschnitte holen, { scoreboard } = Scoreboard suchen (nicht "find": das hat jedes Array)
       const t = performance.now();
-      const result = Array.isArray(req) ? await grab(req) : await findScoreboard(req.scoreboard);
+      const result = Array.isArray(req) ? await grab(req) : await findScoreboard(req.scoreboard, req.scale);
       const ms = performance.now() - t;
       if (ms > 800) console.warn(`langsame Anfrage: ${Math.round(ms)} ms`, Array.isArray(req) ? 'grab' : 'scoreboard');
       window.capture.grabbed(reqId, result);

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, nativeImage, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const ddragon = require('./src/ddragon');
@@ -6,8 +6,14 @@ const live = require('./src/live');
 const lcu = require('./src/lcu');
 const ocr = require('./src/ocr');
 const capture = require('./src/capture');
+const setup = require('./src/setup');
+const layout = require('./src/layout');
 
-const CONFIG_FILE = path.join(__dirname, 'config.json');
+// Beim Entwickeln liegen Config und Debug-Dateien im Projektordner, in der installierten App
+// (schreibgeschützt) unter %APPDATA%\All You Need
+const DATA_DIR = app.isPackaged ? app.getPath('userData') : __dirname;
+fs.mkdirSync(DATA_DIR, { recursive: true });
+const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 // Erster Start: eigene config.json aus der Vorlage anlegen (config.json steht nicht im Repo)
 if (!fs.existsSync(CONFIG_FILE)) fs.copyFileSync(path.join(__dirname, 'config.example.json'), CONFIG_FILE);
 const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
@@ -17,6 +23,10 @@ const saveConfig = (patch) => {
   const onDisk = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
   fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...onDisk, ...patch }, null, 2));
 };
+
+// League-Ordner automatisch finden (Installationsliste des Riot Clients), falls der eingetragene nicht passt
+const detectedPath = setup.findLeaguePath(config.leaguePath);
+if (detectedPath !== config.leaguePath) saveConfig({ leaguePath: detectedPath });
 
 const APP_ICON = path.join(__dirname, 'assets', 'icon.ico');
 // eigener Eintrag in der Taskleiste statt „Electron“
@@ -75,7 +85,7 @@ function setEditMode(on) {
 }
 
 // Dev-Helfer: Änderungen in renderer/ laden sofort neu, Rohdaten und Fehler landen in debug/
-const DEBUG_DIR = path.join(__dirname, 'debug');
+const DEBUG_DIR = path.join(DATA_DIR, 'debug');
 const logError = (e) => {
   fs.mkdirSync(DEBUG_DIR, { recursive: true });
   fs.appendFileSync(path.join(DEBUG_DIR, 'error.log'), `${new Date().toISOString()} ${e && e.stack ? e.stack : e}\n`);
@@ -83,19 +93,22 @@ const logError = (e) => {
 process.on('unhandledRejection', logError);
 process.on('uncaughtException', logError);
 let lastDump = 0;
-fs.watch(path.join(__dirname, 'renderer'), () => {
-  clearTimeout(fs.watch.t);
-  fs.watch.t = setTimeout(() => {
-    if (overlay && !overlay.isDestroyed()) overlay.webContents.reload();
-    if (stats && !stats.isDestroyed()) stats.webContents.reload();
-  }, 200);
-});
+if (!app.isPackaged) {
+  fs.watch(path.join(__dirname, 'renderer'), () => {
+    clearTimeout(fs.watch.t);
+    fs.watch.t = setTimeout(() => {
+      if (overlay && !overlay.isDestroyed()) overlay.webContents.reload();
+      if (stats && !stats.isDestroyed()) stats.webContents.reload();
+    }, 200);
+  });
+}
 
 async function pollGame() {
   const data = await live.fetchGame();
   const summary = data
     ? live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), config.builds)
     : null;
+  if (summary && !gameRunning) refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
   gameRunning = !!summary;
   lastData = data;
   if (!summary) liveRanks = null; // Ränge gelten nur für das jeweilige Spiel
@@ -118,16 +131,33 @@ async function pollGame() {
 // Texterkennung nur wenn nötig: CS alle ocr.intervalMs, Spell-Restzeit einmal pro Cooldown (+ Abgleich alle 15 s).
 let gameRunning = false;
 let screenState = { cs: null, xp: null, spells: {} };
+
+// Regionen aus Auflösung und HUD-Größe (game.cfg) berechnen; neu bei jedem Spielstart,
+// falls die HUD-Skalierung inzwischen geändert wurde
+let L = null;
+function refreshLayout() {
+  const d = screen.getPrimaryDisplay();
+  const hud = setup.readHudScale(config.leaguePath);
+  L = layout.compute(Math.round(d.size.width * d.scaleFactor), Math.round(d.size.height * d.scaleFactor), hud || 0);
+  console.log('Layout', JSON.stringify(L.factors), 'HUD-Skalierung', hud);
+}
+const sbAnchor = () =>
+  config.scoreboard.anchor || { x: Math.round(screen.getPrimaryDisplay().size.width * screen.getPrimaryDisplay().scaleFactor / 2), y: Math.round(406 * L.factors.res) };
+// Ausschnitt um den letzten bekannten Scoreboard-Anker (wächst mit der Auflösung)
+const sbNear = (a) => {
+  const s = L.scoreboard.scale;
+  return { x: Math.max(0, Math.round(a.x - 200 * s)), y: Math.max(0, Math.round(a.y - 180 * s)), width: Math.round(400 * s), height: Math.round(220 * s) };
+};
 let ocrBusy = false;
 let lastCsRead = 0;
 async function pollScreen() {
   if (!gameRunning || ocrBusy) return;
   ocrBusy = true;
   try {
-    const slots = Object.entries(config.ocr.spells || {});
+    const slots = Object.entries(L.spells);
     const readCs = Date.now() - lastCsRead >= config.ocr.intervalMs;
     const regions = slots.map(([, r]) => r);
-    if (readCs) regions.push(config.ocr.region, ocr.xpBox(config.ocr.xpArc));
+    if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
     const crops = await capture.grab(regions);
 
     for (const [i, [slot]] of slots.entries()) {
@@ -144,7 +174,7 @@ async function pollScreen() {
     if (readCs) {
       lastCsRead = Date.now();
       screenState.cs = await ocr.readCs(crops[slots.length]);
-      screenState.xp = ocr.readXp(crops[slots.length + 1], config.ocr.xpArc);
+      screenState.xp = ocr.readXp(crops[slots.length + 1], L.xpArc);
     }
   } catch (e) {
     console.warn('OCR:', e.message);
@@ -162,24 +192,24 @@ let tabPressId = 0;
 
 function sendScoreboard(open, anchor) {
   sbOpen = open;
-  overlay.webContents.send('scoreboard-state', { open, anchor: anchor || config.scoreboard.anchor, offsets: config.scoreboard.offsets });
+  overlay.webContents.send('scoreboard-state', { open, anchor: anchor || sbAnchor(), offsets: L.scoreboard.offsets });
 }
 
 async function confirmScoreboard(pressId) {
   const sb = config.scoreboard;
-  const a = sb.anchor;
+  const a = sbAnchor();
+  const scale = L.scoreboard.scale;
   const stillThisPress = () => tabDown && pressId === tabPressId;
   try {
     for (const waitMs of sb.confirmMs) {
       await new Promise((r) => setTimeout(r, waitMs));
       if (!stillThisPress()) return;
       const found =
-        (await capture.findScoreboard({ x: Math.max(0, a.x - 200), y: Math.max(0, a.y - 180), width: 400, height: 220 })) ||
-        (await capture.findScoreboard(null));
+        (await capture.findScoreboard(sbNear(a), scale)) || (await capture.findScoreboard(null, scale));
       if (!stillThisPress()) return;
       if (found) {
         if (found.x !== a.x || found.y !== a.y) {
-          saveConfig({ scoreboard: { ...sb, anchor: found } });
+          saveConfig({ scoreboard: { ...config.scoreboard, anchor: found } });
           sendScoreboard(true, found);
         }
         return;
@@ -279,6 +309,34 @@ ipcMain.handle('live:data', () => {
   return live.livePlayers(lastData, liveRanks || new Map());
 });
 
+// „Bildschirm-Erkennung prüfen“: zeigt die ausgeschnittenen Bereiche und was daraus gelesen wird
+ipcMain.handle('calib:check', async () => {
+  if (!gameRunning) throw new Error('Nur im laufenden Spiel möglich.');
+  refreshLayout();
+  const regions = [L.cs, L.spells.d, L.spells.f, ocr.xpBox(L.xpArc)];
+  const crops = await capture.grab(regions);
+  const toUrl = (c) => {
+    const bgra = Buffer.from(c.data);
+    for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
+    return nativeImage.createFromBitmap(bgra, { width: c.width, height: c.height }).toDataURL();
+  };
+  const spell = async (c) => (ocr.spellOnCooldown(c) ? `Cooldown ${await ocr.readSpellCd(c)}` : 'bereit');
+  return {
+    screen: (() => {
+      const d = screen.getPrimaryDisplay();
+      return `${Math.round(d.size.width * d.scaleFactor)}×${Math.round(d.size.height * d.scaleFactor)}`;
+    })(),
+    hudScale: setup.readHudScale(config.leaguePath),
+    factors: L.factors,
+    items: [
+      { label: 'CS', img: toUrl(crops[0]), value: String(await ocr.readCs(crops[0])) },
+      { label: 'D', img: toUrl(crops[1]), value: await spell(crops[1]) },
+      { label: 'F', img: toUrl(crops[2]), value: await spell(crops[2]) },
+      { label: 'XP', img: toUrl(crops[3]), value: `${Math.round(ocr.readXp(crops[3], L.xpArc) * 100)} %` },
+    ],
+  };
+});
+
 ipcMain.handle('build:data', () => ({
   champions: ddragon.championList(),
   items: ddragon.itemList(),
@@ -314,6 +372,7 @@ ipcMain.handle('ddragon:version', () => ddragon.getVersion());
 
 app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
+  refreshLayout();
   createOverlay();
   openStats();
 

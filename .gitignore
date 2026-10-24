@@ -4,3 +4,4 @@ config.json
 # Screenshots, Spieldaten und Logs aus dem Debug-Modus enthalten Riot-Namen
 debug/
 *.log
+dist/

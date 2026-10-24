@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://ddragon.leagueoflegends.com; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://ddragon.leagueoflegends.com data:; style-src 'self'">
   <title>All You Need</title>
   <link rel="stylesheet" href="stats.css">
 </head>
@@ -18,7 +18,17 @@
     </nav>
   </header>
   <main>
-    <section id="live" hidden></section>
+    <section id="live" hidden>
+      <div id="liveList"></div>
+      <div class="card calib">
+        <div class="calib-head">
+          <h2>Bildschirm-Erkennung</h2>
+          <button id="calibBtn">Erkennung prüfen</button>
+        </div>
+        <p class="hint">Zeigt, welche Bildschirmbereiche das Overlay liest und was es erkennt. Stimmt ein Wert nicht, schick den Screenshot dieses Bereichs mit deiner Auflösung und HUD-Skalierung als GitHub-Issue.</p>
+        <div id="calibOut" class="calib-out"></div>
+      </div>
+    </section>
     <section id="eog"></section>
     <section id="history" hidden></section>
     <section id="build" hidden>

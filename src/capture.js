@@ -45,6 +45,7 @@ function request(payload) {
 
 const grab = (regions) => request(regions);
 // Scoreboard-Anker suchen; region = kleiner Ausschnitt um die letzte Position oder null für den ganzen Bildschirm
-const findScoreboard = (region) => request({ scoreboard: region });
+// scale = Bildschirmhöhe / 1440, damit die Suche bei jeder Auflösung mit denselben Maßen arbeitet
+const findScoreboard = (region, scale = 1) => request({ scoreboard: region, scale });
 
 module.exports = { init, grab, findScoreboard };

@@ -22,7 +22,7 @@ app.whenReady().then(async () => {
     : process.argv.includes('--recall') ? 'panel-recall.png'
     : process.argv.includes('--build') ? 'panel-build.png' : 'panel.png';
   const win = new BrowserWindow({
-    width: 320, height: 480, show: false, backgroundColor: '#2a3a2a',
+    width: 320, height: 560, show: false, backgroundColor: '#2a3a2a',
     webPreferences: { preload: path.join(root, 'preload.js') },
   });
   await win.loadFile(path.join(root, 'renderer', 'overlay.html'));

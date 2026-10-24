@@ -1,111 +1,114 @@
-<img src="assets/icon.png" alt="All You Need Icon" width="96" align="right">
+<img src="assets/icon.png" alt="All You Need icon" width="96" align="right">
 
 # All You Need – A lightweight overlay
 
-**Version 1.0** · Änderungen siehe [CHANGELOG](CHANGELOG.md)
+**Version 1.1** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest)
 
-Ein schlankes Desktop-Overlay für League of Legends unter Windows, gebaut mit Electron.
-Es zeigt nur Informationen, die du als Spieler ohnehin sehen kannst, und liest dafür ausschließlich
-offizielle lokale Schnittstellen und deinen eigenen Bildschirm. Es greift nicht in den Spielprozess ein.
-Die Oberfläche ist auf Deutsch.
+A small, clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
+your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
+covering your screen. It only uses information you can already see as a player and never touches the
+game process.
 
-> Nutzung auf eigenes Risiko. Dieses Projekt ist nicht von Riot Games geprüft oder freigegeben.
-> Riot kann die genutzten Schnittstellen jederzeit ändern.
+> The interface is currently in **German**. An English UI is planned.
 
-## Funktionen
+<p>
+  <img src="docs/panel.png" alt="In-game panel" height="360">
+  <img src="docs/stats-history.png" alt="Stats window with trends" height="360">
+</p>
 
-**Panel im Spiel**
-- KDA, CS (exakt per Bildschirm-Texterkennung), CS/min, Gold, Vision
-- Summoner-Cooldowns von D und F mit Countdown (Bildschirm-Texterkennung am Icon)
-- XP-Fortschritt bis zum nächsten Level, inklusive „noch X Melee / Y Caster“
-- Mana-Leiste mit Combo-Kosten (Q+W+E+R auf den aktuellen Rängen) und „NO MANA“-Warnung
-- Spar-Ziel: nächstes Item aus deinem Build, fehlendes Gold, „RECALL“, sobald es bezahlbar ist
-- Item-Wert-Differenz zum Lane-Gegner und zum gegnerischen Team
+## Download
 
-**Tab-Scoreboard**
-- Item-Wert-Differenz pro Zeile, direkt über dem Ward-Slot, plus Team-Differenz
-- Das Scoreboard wird über sein Mittel-Ornament gefunden, auch wenn du es verschiebst
+1. Grab the latest **`All-You-Need-Setup-x.y.z.exe`** (installer) or **`All-You-Need-x.y.z-portable.exe`**
+   (no install) from the [Releases page](https://github.com/JamyH/all-you-need/releases/latest).
+2. Start it. Windows SmartScreen may warn because the app is not code-signed: click *More info → Run anyway*.
+3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
-**Stats-Fenster**
-- Live-Spiel: alle 10 Spieler mit Rang, Winrate, Level, KDA, CS, Vision, Items, Item-Wert
-- Letztes Spiel und Verlauf mit Trend-Kurven (CS/min, KDA, Vision)
-- Build-Reihenfolge und Runenseite pro Champion; Runen werden in der Champ-Auswahl automatisch
-  auf eine eigene Seite „All You Need“ gesetzt (andere Seiten bleiben unangetastet)
+That's it. The League folder, your resolution and your HUD scale are detected automatically.
 
-## Voraussetzungen
+## Features
 
-- Windows 10/11, League of Legends im Modus **Randlos** oder **Fenster** (über echtem Vollbild kann kein Overlay liegen)
-- [Node.js](https://nodejs.org) 20 oder neuer
+**In-game panel**
+- KDA, exact CS (read from your HUD), CS/min, gold, vision
+- Summoner spell cooldowns (D/F) with countdown, re-synced with the HUD every 10 s
+- XP to the next level, including "X melee / Y caster minions"
+- Mana bar with your combo cost (Q+W+E+R at current ranks) and a **NO MANA** warning
+- Savings goal: next item from your build, gold still missing, **RECALL** once you can afford it
+- Item value difference to your lane opponent and the enemy team
 
-## Installation und Start
+**Tab scoreboard**
+- Item value difference per row (above the ward slot) plus team difference
+- Finds the scoreboard on its own, even if you moved it
 
-```
-npm install
-npm start
-```
+**Stats window**
+- Live game: all 10 players with rank, win rate, level, KDA, CS, vision, items, item value
+- Last game and match history with trend charts (CS/min, KDA, vision)
+- Build order and rune page per champion; runes are applied automatically in champ select to a
+  dedicated page called "All You Need" (your other pages are never touched)
 
-Beim ersten Start wird `config.json` aus `config.example.json` angelegt. Dort trägst du ein:
-
-- `leaguePath`: Installationsordner von League of Legends (Standard `C:\Riot Games\League of Legends`)
-- `language`: Sprache der Item- und Championnamen (`de_DE`, `en_US`, …)
+<img src="docs/stats-build.png" alt="Build and runes" width="720">
 
 ## Hotkeys
 
-| Taste | Funktion |
+| Key | Action |
 |---|---|
-| Strg+Shift+O | Overlay ein/aus |
-| Strg+Shift+E | Panel verschieben (alternativ am Griff ⠿ ziehen) |
-| Strg+Shift+S | Stats-Fenster |
-| Tab (im Spiel) | Scoreboard-Badges; die Taste wird nur mitgelesen, das Spiel bekommt sie normal |
+| Ctrl+Shift+O | Toggle overlay |
+| Ctrl+Shift+E | Move panel (or drag the ⠿ handle) |
+| Ctrl+Shift+S | Stats window |
+| Tab (in game) | Scoreboard badges – the key is only read, the game still receives it |
 
-## Bildschirm-Texterkennung kalibrieren
+## Resolution and HUD scale
 
-Die Positionen in `config.json` → `ocr` sind für **3440×1440** mit Standard-HUD-Größe eingestellt.
-Bei anderer Auflösung oder HUD-Skalierung:
+Screen regions are computed from your resolution and League's HUD scale (read from `Config/game.cfg`).
+Tested at 3440×1440 with HUD scale 0 and 100, and at a simulated 2580×1080. If something is read
+wrong, open the stats window → *Live-Spiel* → **Erkennung prüfen** during a game: it shows exactly
+which screen areas are read and what was recognized. Please attach that screenshot plus your
+resolution and HUD scale to an issue.
 
-1. Im Spiel `npx electron tools/screenshot.js` ausführen (Bild landet in `debug/screen.png`)
-2. In `config.json` die Bereiche anpassen: `ocr.region` (CS-Zahl oben rechts), `ocr.spells.d` / `.f`
-   (Summoner-Icons), `ocr.xpArc` (Punkte des XP-Bogens am Portrait, von oben nach unten)
-3. Mit `npx electron tools/ocr-test.js` prüfen
+## Where the data comes from
 
-Die Scoreboard-Erkennung sucht ihre Position selbst; nur die Abstände in `scoreboard.offsets`
-hängen von der HUD-Größe ab.
-
-## Woher die Daten kommen
-
-| Daten | Quelle |
+| Data | Source |
 |---|---|
-| Werte im Spiel | Live Client Data API (`https://127.0.0.1:2999`, nur während eines Spiels) |
-| Ränge, Verlauf, Runen, Champ-Auswahl | League-Client-API (LCU), Zugang aus der `lockfile` im League-Ordner |
-| Item-, Champion- und Runen-Daten, Icons | Data Dragon (Riots öffentliches CDN), lokal zwischengespeichert |
-| Exakte CS, Cooldowns, XP, Scoreboard | Bildschirmausschnitte, nur lokal ausgewertet |
+| In-game values | Live Client Data API (`https://127.0.0.1:2999`, only during a game) |
+| Ranks, history, runes, champ select | League client API (LCU), credentials from the client's `lockfile` |
+| Item, champion and rune data, icons | Data Dragon (Riot's public CDN), cached locally |
+| Exact CS, cooldowns, XP, scoreboard | Small screen regions, analysed locally |
 
-Es wird kein Riot-API-Key benötigt. Außer den Abrufen bei Data Dragon und dem einmaligen Download
-der Texterkennungs-Sprachdaten verlässt nichts deinen Rechner.
+No Riot API key is needed. Apart from Data Dragon and a one-time download of the OCR language data,
+nothing leaves your PC.
 
-## Selbst anpassen
+## Building from source
 
-| Datei | Inhalt |
+```
+npm install
+npm start          # run in development
+npm run dist       # build installer + portable exe into dist/
+```
+
+Requires Node.js 20+. Settings live in `config.json` (created from `config.example.json` on first start;
+in the installed app under `%APPDATA%\All You Need`).
+
+| File | What it does |
 |---|---|
-| `src/live.js` | Auswertung der Spieldaten, hier lassen sich neue Werte ergänzen |
-| `src/ocr.js`, `renderer/capture.js` | Bildschirm-Auswertung und Scoreboard-Suche |
-| `src/lcu.js` | Zugriffe auf den League-Client |
-| `renderer/overlay.*` | Panel und Scoreboard-Badges |
-| `renderer/stats.*` | Stats-Fenster |
-| `tools/` | Hilfsskripte zum Kalibrieren und für Render-Tests |
+| `src/live.js` | Game data → panel values |
+| `src/layout.js` | Screen regions for any resolution and HUD scale |
+| `src/ocr.js`, `renderer/capture.js` | Screen reading and scoreboard search |
+| `src/lcu.js` | League client access |
+| `renderer/overlay.*`, `renderer/stats.*` | Panel and stats window |
+| `tools/` | Calibration and render helpers |
 
-## Drittanbieter
+## Third-party
 
 - [Electron](https://www.electronjs.org) – MIT
 - [tesseract.js](https://github.com/naptha/tesseract.js) – Apache-2.0
 - [uiohook-napi](https://github.com/SnosMe/uiohook-napi) – MIT
-- Schriften Cinzel und Source Sans 3 über Google Fonts – SIL Open Font License
+- Fonts Cinzel and Source Sans 3 via Google Fonts – SIL Open Font License
 
-## Lizenz
+## License
 
-MIT, siehe [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Use at your own risk: this project is not reviewed or approved by Riot
+Games, and Riot may change the interfaces it relies on at any time.
 
-## Rechtlicher Hinweis
+## Legal
 
 All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games
 or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all

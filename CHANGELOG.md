@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 – 2026-10-24
+
+- Download: Windows-Installer und portable `.exe` auf der Releases-Seite, kein Node.js mehr nötig
+- Auflösungs-unabhängig: Bildschirmbereiche werden aus Auflösung und HUD-Skalierung (`game.cfg`) berechnet
+  (getestet mit 3440×1440 bei HUD 0 und 100 sowie simulierten 1080p)
+- Scoreboard-Suche funktioniert bei jeder Auflösung
+- League-Ordner wird automatisch gefunden (Installationsliste des Riot Clients)
+- „Erkennung prüfen“ im Stats-Fenster zeigt die gelesenen Bildschirmbereiche und Werte
+- Installierte App speichert Einstellungen unter `%APPDATA%\All You Need`
+- README auf Englisch mit Screenshots
+
 ## 1.0.0 – 2026-10-24
 
 Erste Version.

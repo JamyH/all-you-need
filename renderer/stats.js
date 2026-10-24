@@ -154,7 +154,7 @@ function rankHtml(p) {
 }
 
 async function renderLive() {
-  const el = $('live');
+  const el = $('liveList');
   const d = await window.lol.liveData();
   if (!d) {
     el.innerHTML = '<div class="msg">Gerade läuft kein Spiel. Sobald du im Spiel bist, stehen hier alle 10 Spieler mit Rang, Items und Werten.</div>';
@@ -180,7 +180,20 @@ async function renderLive() {
   el.innerHTML = html;
   return true;
 }
-setInterval(() => { if (!$('live').hidden) renderLive(); }, 2000);
+setInterval(() => { if (!$('live').hidden && !window.__docs) renderLive(); }, 2000);
+
+$('calibBtn').addEventListener('click', async () => {
+  const out = $('calibOut');
+  out.innerHTML = '<span class="hint">Prüfe…</span>';
+  try {
+    const c = await window.lol.calibCheck();
+    out.innerHTML = c.items.map((it) =>
+      `<div class="calib-item"><label>${esc(it.label)}</label><img src="${it.img}" alt="Bereich ${esc(it.label)}"><b>${esc(it.value)}</b></div>`).join('') +
+      `<div class="calib-meta">Bildschirm ${esc(c.screen)} · HUD-Skalierung ${c.hudScale == null ? 'unbekannt' : Math.round(c.hudScale * 100)} · Faktoren Auflösung ${c.factors.res}, untere Leiste ${c.factors.hud}</div>`;
+  } catch (e) {
+    out.innerHTML = `<span class="hint">${esc(e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))}</span>`;
+  }
+});
 
 // --- Build & Runen ---
 let buildData = null;

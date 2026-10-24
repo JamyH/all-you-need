@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('lol', {
   summoner: () => ipcRenderer.invoke('stats:summoner'),
   champion: (id) => ipcRenderer.invoke('ddragon:champion', id),
   ddVersion: () => ipcRenderer.invoke('ddragon:version'),
+  calibCheck: () => ipcRenderer.invoke('calib:check'),
   liveData: () => ipcRenderer.invoke('live:data'),
   buildData: () => ipcRenderer.invoke('build:data'),
   setBuild: (champId, ids) => ipcRenderer.invoke('build:set', champId, ids),

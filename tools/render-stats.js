@@ -36,9 +36,18 @@ app.whenReady().then(async () => {
     webPreferences: { preload: path.join(root, 'preload.js') } });
   await win.loadFile(path.join(root, 'renderer', 'stats.html'));
   await new Promise((r) => setTimeout(r, 3000));
+  // --docs: eigenen Riot-Namen für öffentliche Screenshots durch „Du“ ersetzen
+  const docs = process.argv.includes('--docs');
+  // Kopfzeile und die eigene Zeile im Live-Tab tragen den Namen; beides wird überschrieben
+  const anonymize = docs ? `(() => {
+    window.__docs = true;
+    document.getElementById('who').textContent = 'All You Need';
+    document.querySelectorAll('tr.me .sub').forEach((el) => (el.textContent = 'Du'));
+  })()` : '0';
   for (const tab of ['live', 'history', 'build']) {
     await win.webContents.executeJavaScript(`document.querySelector('nav button[data-tab="${tab}"]').click()`);
     await new Promise((r) => setTimeout(r, 800));
+    await win.webContents.executeJavaScript(anonymize);
     fs.writeFileSync(path.join(root, 'debug', `stats-${tab}.png`), (await win.webContents.capturePage()).toPNG());
   }
   app.quit();

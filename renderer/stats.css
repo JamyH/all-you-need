@@ -71,6 +71,16 @@ td .sub { display: block; color: var(--muted); font-size: 11px; }
 .wr-good { color: var(--win); }
 .wr-bad { color: var(--loss); }
 
+/* Bildschirm-Erkennung prüfen */
+.calib { margin-top: 8px; }
+.calib-head { display: flex; justify-content: space-between; align-items: center; }
+.calib-head h2 { margin: 0; }
+.calib-out { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+.calib-item { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.calib-item img { height: 64px; image-rendering: pixelated; border: 1px solid var(--line); background: #000; }
+.calib-item label { color: var(--muted); font-size: 12px; }
+.calib-meta { width: 100%; color: var(--muted); font-size: 12px; }
+
 /* Build & Runen */
 input[type="text"], input:not([type]) {
   background: var(--card); color: var(--text); border: 1px solid var(--line);
