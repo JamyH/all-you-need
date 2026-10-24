@@ -27,6 +27,7 @@ const capture = require('./src/capture');
 const setup = require('./src/setup');
 const layout = require('./src/layout');
 const lolalytics = require('./src/lolalytics');
+const history = require('./src/history');
 
 // Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
@@ -153,6 +154,18 @@ if (!app.isPackaged) {
   });
 }
 
+// Echtes Vollbild: kein Fenster kann über dem Spiel liegen, und die Bildschirmaufnahme bleibt meist schwarz.
+// Ins Spiel einklinken wäre bannbar, also nur ein Hinweis bei Spielstart.
+function warnFullscreen() {
+  if (setup.readWindowMode(config.leaguePath) !== 0 || !tray) return;
+  tray.displayBalloon({
+    iconType: 'custom',
+    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    title: 'League läuft im Vollbild',
+    content: 'Dort ist das Overlay nicht zu sehen. Im Spiel: Einstellungen → Video → Fenstermodus „Randlos“.',
+  });
+}
+
 async function pollGame() {
   const data = await live.fetchGame();
   if (data) gameMode = data.gameData.mapNumber === 12 ? 'aram' : 'sr';
@@ -162,7 +175,10 @@ async function pollGame() {
         (champId) => (suggestionsOn() ? lolalytics.cached(champId, gameMode) : null),
       )
     : null;
-  if (summary && !gameRunning) refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
+  if (summary && !gameRunning) {
+    refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
+    warnFullscreen();
+  }
   gameRunning = !!summary;
   lastData = data;
   if (!summary) liveRanks = null; // Ränge gelten nur für das jeweilige Spiel
@@ -421,10 +437,51 @@ async function importItemSet(champId) {
   return `Item-Set „All You Need – ${name}“ ist im Client, im Spiel im Shop wählbar.`;
 }
 
+// ARAM-Bank: dein Champ und die Bank-Champs mit ARAM-Siegrate (lolalytics-Tierliste, einmal am Tag),
+// beste zuerst. Das Stats-Fenster zeigt das als Tausch-Hilfe; getauscht wird weiter von Hand im Client.
+let benchInfo = null;
+function setBench(info) {
+  if (JSON.stringify(info) === JSON.stringify(benchInfo)) return;
+  benchInfo = info;
+  notifyStats('bench', info);
+}
+async function updateBench(sel) {
+  if (!suggestionsOn() || !sel.bench.length) return setBench(null);
+  const tier = await lolalytics.aramTier();
+  const row = (key, mine) => {
+    const c = ddragon.champion(key);
+    const t = tier.champs[key];
+    return { id: c.id, name: c.name, icon: ddragon.iconUrl('champion', c.id), wr: t ? t.wr : null, games: t ? t.games : null, mine };
+  };
+  const list = [...(sel.key ? [row(sel.key, true)] : []), ...sel.bench.map((k) => row(k, false))];
+  list.sort((a, b) => (b.wr ?? 0) - (a.wr ?? 0));
+  setBench({ list, url: tier.url, fetchedAt: tier.fetchedAt });
+}
+
+// Endbuilds der letzten Spiele in den eigenen Verlauf übernehmen (Client kennt nur 20)
+let historyImported = false;
+async function importHistory() {
+  try {
+    if (history.add(await lcu.matchHistory(config.leaguePath, 20))) notifyStats('history:items');
+    historyImported = true;
+  } catch (e) {
+    // Client noch nicht bereit, beim nächsten Abfragen erneut
+  }
+}
+
 async function pollClient() {
   const phase = await lcu.gameflowPhase(config.leaguePath);
-  if (phase === 'EndOfGame' && lastPhase !== 'EndOfGame' && config.autoOpenStatsAfterGame) openStats();
-  if (phase !== 'ChampSelect') lastRuneKey = lastSuggestionKey = null;
+  if (!historyImported && phase !== null) importHistory();
+  // das gerade beendete Spiel steht oft erst nach ein paar Sekunden im Verlauf
+  if (lastPhase === 'EndOfGame' && phase !== 'EndOfGame') importHistory();
+  if (phase === 'EndOfGame' && lastPhase !== 'EndOfGame') {
+    if (config.autoOpenStatsAfterGame) openStats();
+    setTimeout(importHistory, 10000);
+  }
+  if (phase !== 'ChampSelect') {
+    lastRuneKey = lastSuggestionKey = null;
+    setBench(null);
+  }
   // Champ-Auswahl: gespeicherte Runen des gewählten Champs automatisch setzen (einmal pro Champ)
   if (phase === 'ChampSelect') {
     try {
@@ -432,6 +489,7 @@ async function pollClient() {
       const sel = await lcu.champSelect(config.leaguePath);
       const champId = sel.key ? ddragon.champion(sel.key).id : null;
       lastPosition = sel.position;
+      if (gameMode === 'aram') updateBench(sel).catch((e) => console.warn('ARAM-Bank:', e.message));
       if (sel.key && sel.key !== lastRuneKey) {
         lastRuneKey = sel.key;
         lastChampion = champId;
@@ -544,6 +602,19 @@ ipcMain.handle('suggestion:get', async (_e, champId, load) => {
     runes: describeRunes(s.runes),
   };
 });
+ipcMain.handle('bench:get', () => benchInfo);
+// Eigene meistgebaute Items für den Champ im aktuellen Modus (SR oder ARAM)
+ipcMain.handle('history:items', (_e, champId) => {
+  const key = Number(ddragon.championKey(champId));
+  const top = history.topItems(key, mapId(), ddragon.finishedItem);
+  return { mode: gameMode, games: top.games, items: top.items.slice(0, 8).map((i) => ({ ...i, name: ddragon.itemName(i.id) })) };
+});
+ipcMain.handle('history:take', (_e, champId) => {
+  const top = history.topItems(Number(ddragon.championKey(champId)), mapId(), ddragon.finishedItem);
+  const ids = top.items.slice(0, 6).map((i) => i.id);
+  if (!ids.length) throw new Error('Noch keine eigenen Spiele mit diesem Champion.');
+  saveConfig({ builds: { ...(config.builds || {}), [champId]: ids } });
+});
 ipcMain.handle('suggestion:take', (_e, champId, what) => {
   const s = lolalytics.cached(champId, gameMode);
   if (!s) throw new Error('Kein Vorschlag geladen.');
@@ -596,7 +667,11 @@ ipcMain.handle('panel-moved', (_e, pos) => {
   saveConfig({ panel: pos });
 });
 ipcMain.handle('stats:eog', async () => lcu.endOfGame(config.leaguePath));
-ipcMain.handle('stats:history', async () => lcu.matchHistory(config.leaguePath, 20));
+ipcMain.handle('stats:history', async () => {
+  const h = await lcu.matchHistory(config.leaguePath, 20);
+  history.add(h);
+  return h;
+});
 ipcMain.handle('stats:summoner', async () => lcu.currentSummoner(config.leaguePath));
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));
 ipcMain.handle('ddragon:version', () => ddragon.getVersion());
@@ -653,6 +728,7 @@ function createTray() {
 app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
   lolalytics.init(app.getPath('userData'));
+  history.init(app.getPath('userData'));
   refreshLayout();
   createOverlay();
   createTray();

@@ -149,4 +149,38 @@ async function load(champId, position, mode = 'sr') {
   return cache[key];
 }
 
-module.exports = { init, load, cached, parse, pageUrl };
+// ARAM-Tierliste: Siegrate, Pickrate und Spiele aller Champions, nach Champion-Key ({ "32": { wr, pr, games } }).
+// Die Tabelle im HTML zeigt nur die ersten 20 Zeilen; alle Werte stehen im eingebetteten Qwik-Zustand
+// (<script type="qwik/json">). Dort verweisen Werte per Base-36-Index auf die Liste objs.
+const TIER_URL = 'https://lolalytics.com/lol/tierlist/aram/';
+function parseTier(page) {
+  const m = page.match(/<script type="qwik\/json">([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  const objs = JSON.parse(m[1]).objs || [];
+  const ref = (v) => objs[parseInt(v, 36)];
+  const isStat = (x) => x && typeof x === 'object' && !Array.isArray(x) && 'wr' in x && 'games' in x;
+  // das Objekt mit über 100 Zahlen-Schlüsseln (Champion-Keys), deren Werte auf Statistik-Objekte zeigen
+  const table = objs.find((x) => x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length > 100 &&
+    Object.keys(x).every((k) => /^\d+$/.test(k)) && isStat(ref(Object.values(x)[0])));
+  if (!table) return null;
+  const out = {};
+  for (const [key, v] of Object.entries(table)) {
+    const s = ref(v);
+    if (isStat(s) && typeof ref(s.wr) === 'number') out[key] = { wr: ref(s.wr), pr: ref(s.pr), games: ref(s.games) };
+  }
+  return Object.keys(out).length > 100 ? out : null;
+}
+
+async function aramTier() {
+  const hit = cache['tier|aram'];
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit;
+  const res = await fetch(TIER_URL, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
+  const champs = parseTier(await res.text());
+  if (!champs) throw new Error('lolalytics.com: Tierliste nicht erkannt');
+  cache['tier|aram'] = { url: TIER_URL, fetchedAt: Date.now(), champs };
+  fs.writeFileSync(cacheFile, JSON.stringify(cache));
+  return cache['tier|aram'];
+}
+
+module.exports = { init, load, cached, parse, pageUrl, parseTier, aramTier };

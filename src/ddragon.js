@@ -90,6 +90,15 @@ function itemList() {
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
 
+// Fertiges Item für die Build-Statistik: keine Teile, Tränke oder Schmuckstücke. Stiefel der Stufe 2
+// zählen mit, obwohl sie sich noch aufwerten lassen.
+function finishedItem(itemId) {
+  const it = items[String(itemId)];
+  if (!it || it.gold.total < 900) return false;
+  if ((it.tags || []).some((t) => t === 'Consumable' || t === 'Trinket')) return false;
+  return !it.into || it.into.length === 0 || (it.tags || []).includes('Boots');
+}
+
 // Was kostet das Item noch, wenn man die Teile im Inventar anrechnet? Wie im Shop:
 // besitzt man ein Teil des Rezepts, zählt es als bezahlt (owned: Map itemId -> Anzahl, wird verbraucht).
 function remainingCost(itemId, owned) {
@@ -122,6 +131,6 @@ function iconUrl(kind, file) {
 }
 
 module.exports = {
-  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, remainingCost, components, rune, runeStyle, iconUrl,
+  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, finishedItem, remainingCost, components, rune, runeStyle, iconUrl,
   getVersion: () => version,
 };

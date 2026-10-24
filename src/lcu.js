@@ -25,17 +25,19 @@ const matchHistory = (lp, count = 10) =>
   lcu(lp, `/lol-match-history/v1/products/lol/current-summoner/matches?begIndex=0&endIndex=${count - 1}`);
 
 // Champ-Auswahl: Champion-Key (Zahl) des eigenen Picks oder Hovers (0 = noch keiner), zugeteilte Rolle
-// (top, jungle, middle, bottom, utility; leer ohne Rollen) und ob der Pick fest ist
+// (top, jungle, middle, bottom, utility; leer ohne Rollen), ob der Pick fest ist und die ARAM-Bank (Keys)
 async function champSelect(lp) {
   const s = await lcu(lp, '/lol-champ-select/v1/session');
   const me = (s.myTeam || []).find((p) => p.cellId === s.localPlayerCellId);
-  if (!me) return { key: 0, position: '', locked: false };
+  const bench = s.benchEnabled ? (s.benchChampions || []).map((b) => b.championId) : [];
+  if (!me) return { key: 0, position: '', locked: false, bench };
   const myPick = (s.actions || []).flat().find((a) => a.type === 'pick' && a.actorCellId === s.localPlayerCellId);
   return {
     key: me.championId || me.championPickIntent || 0,
     position: me.assignedPosition || '',
     // ohne Pick-Aktion (z. B. ARAM) zählt der zugeteilte Champion als fest
     locked: !!me.championId && (!myPick || myPick.completed),
+    bench,
   };
 }
 

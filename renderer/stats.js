@@ -223,7 +223,26 @@ function selectChampion(id) {
   renderBuild();
   renderRunes();
   renderSuggestion();
+  renderOwnItems();
 }
+
+// Eigene meistgebaute Items aus den gemerkten Spielen, mit Anzahl und Siegquote
+async function renderOwnItems() {
+  const el = $('ownItems');
+  const forChamp = champId;
+  const d = forChamp ? await window.lol.ownItems(forChamp).catch(() => null) : null;
+  if (forChamp !== champId) return;
+  if (!d || !d.items.length) {
+    el.innerHTML = '';
+    return;
+  }
+  const mode = d.mode === 'aram' ? 'ARAM' : "Summoner's Rift";
+  el.innerHTML = `<p class="hint">Deine meistgebauten Items (${d.games} ${d.games === 1 ? 'Spiel' : 'Spiele'}, ${mode})</p>
+    <div class="icons">${d.items.map((i) => `<span class="own-item" title="${esc(i.name)}: ${i.count}× gebaut, ${Math.round((i.wins / i.count) * 100)} % Siege">
+      <img src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${i.id}.png" alt="${esc(i.name)}"><small>${i.count}×</small></span>`).join('')}</div>
+    <div class="btn-row"><button data-own="1">Als meinen Build übernehmen</button></div>`;
+}
+window.lol.onOwnItems(() => champId && renderOwnItems());
 
 function renderBuild() {
   const list = $('buildList');
@@ -319,6 +338,15 @@ document.querySelectorAll('.suggestion').forEach((el) => el.addEventListener('cl
     }
     return;
   }
+  if (e.target.closest('button[data-own]') && champId) {
+    try {
+      await window.lol.takeOwnItems(champId);
+    } catch (err) {
+      return buildStatus(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
+    }
+    buildData = await window.lol.buildData();
+    return renderBuild();
+  }
   const take = e.target.closest('button[data-take]');
   if (!take || !champId) return;
   await window.lol.takeSuggestion(champId, take.dataset.take);
@@ -344,6 +372,36 @@ $('importItemSet').addEventListener('click', async () => {
 });
 $('itemSetAuto').addEventListener('change', () => window.lol.setItemSetAuto($('itemSetAuto').checked));
 window.lol.onBuildStatus(buildStatus);
+
+// ARAM-Bank: dein Champ und die Bank nach ARAM-Siegrate; ab 2 Prozentpunkten Vorsprung „Tausch lohnt sich“.
+// Klick auf einen Champ zeigt seinen Build und seine Runen.
+const pct = (n) => `${n.toFixed(1).replace('.', ',')} %`;
+function renderBench(info) {
+  $('benchCard').hidden = !info;
+  if (!info) return;
+  const mine = info.list.find((c) => c.mine);
+  $('benchList').innerHTML = info.list.map((c) => {
+    const diff = mine && mine.wr != null && c.wr != null && !c.mine ? c.wr - mine.wr : null;
+    const better = diff != null && diff >= 2;
+    return `<div class="bench-row${c.mine ? ' mine' : ''}${better ? ' better' : ''}" data-champ="${esc(c.id)}">
+      <img src="${esc(c.icon)}" alt=""><span class="name">${esc(c.name)}${c.mine ? ' <small>(du)</small>' : ''}</span>
+      <b>${c.wr == null ? '–' : pct(c.wr)}</b>
+      <span class="diff">${better ? `Tausch lohnt sich (+${pct(diff)})` : diff != null ? `${diff >= 0 ? '+' : ''}${pct(diff)}` : ''}</span>
+    </div>`;
+  }).join('');
+  $('benchSource').innerHTML = `ARAM-Siegrate von <a href="#" data-url="${esc(info.url)}">lolalytics.com</a>, Stand ${new Date(info.fetchedAt).toLocaleDateString('de-DE')}. Tauschen musst du selbst im Client.`;
+}
+$('benchCard').addEventListener('click', (e) => {
+  const link = e.target.closest('a[data-url]');
+  if (link) {
+    e.preventDefault();
+    return window.lol.openSource(link.dataset.url);
+  }
+  const row = e.target.closest('[data-champ]');
+  if (row) selectChampion(row.dataset.champ);
+});
+window.lol.onBench(renderBench);
+window.lol.bench().then(renderBench);
 
 $('champInput').addEventListener('change', () => {
   const c = champByName.get($('champInput').value.trim().toLowerCase());

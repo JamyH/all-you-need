@@ -37,6 +37,11 @@
         <input id="champInput" list="champList" autocomplete="off" placeholder="Champion wählen…">
         <datalist id="champList"></datalist>
       </div>
+      <div id="benchCard" class="card bench" hidden>
+        <h2>ARAM-Bank</h2>
+        <div id="benchList"></div>
+        <p id="benchSource" class="hint"></p>
+      </div>
       <div class="cols">
         <div class="card">
           <h2>Build-Reihenfolge</h2>
@@ -51,6 +56,7 @@
           <label class="check"><input type="checkbox" id="itemSetAuto"> Beim Pick automatisch als Item-Set in den Client</label>
           <p id="buildStatus" class="hint"></p>
           <p class="hint">Das Set „All You Need – Champion“ findest du im Spiel im Shop bei deinen Item-Sets. Deine anderen Sets bleiben unangetastet.</p>
+          <div id="ownItems" class="suggestion"></div>
           <div id="buildSuggestion" class="suggestion"></div>
         </div>
         <div class="card">

@@ -8,12 +8,21 @@ Im Spiel
 - Item-Cooldowns: Items mit Aktiv-Fähigkeit stehen mit Restzeit unter den Summonern, andere Items
   (z. B. Schutzengel) nur, solange ihr Cooldown läuft
 - Summoner und Items als Icon statt Name; im Cooldown ausgegraut
+- Vollbild-Hinweis: läuft League im echten Vollbild, kommt bei Spielstart eine Meldung, auf „Randlos“
+  umzustellen (im Vollbild sieht man das Overlay nicht)
 
 ARAM und ARAM Mayhem
 - lolalytics-Vorschlag von der ARAM-Seite (Build, Runen, Skill-Reihenfolge), getrennt vom Rift-Vorschlag
 - Item-Set „All You Need – Champion ARAM“ erscheint im ARAM-Shop (eigenes Set neben dem Rift-Set)
 - Riots Runen-Empfehlung für die ARAM-Map
 - KAUFEN statt RECALL, und nur solange du tot bist; XP-Anzeige nur in Prozent
+- Bank-Helfer: in der Champ-Auswahl zeigt „Build & Runen“ deinen Champ und die Bank mit ARAM-Siegrate
+  (lolalytics), markiert, wenn sich ein Tausch lohnt; Klick zeigt Build und Runen des Champs
+
+Build & Runen
+- Deine meistgebauten Items pro Champion und Modus (Rift/ARAM), mit Anzahl und Siegquote; „Als meinen
+  Build übernehmen“. Die App merkt sich dafür die Endbuilds deiner Spiele selbst (der Client kennt nur die
+  letzten 20); Practice Tool und Custom Games zählen nicht
 
 App
 - Eigene Ziffern-Erkennung statt Tesseract für Summoner-, Item- und CS-Zahlen (rund 90× schneller);

@@ -33,4 +33,15 @@ function readHudScale(leaguePath) {
   }
 }
 
-module.exports = { findLeaguePath, readHudScale };
+// Fenstermodus aus Config/game.cfg: 0 = Vollbild, 1 = Fenster, 2 = Randlos
+function readWindowMode(leaguePath) {
+  try {
+    const cfg = fs.readFileSync(path.join(leaguePath, 'Config', 'game.cfg'), 'utf8');
+    const m = cfg.match(/^WindowMode=(\d)/m);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { findLeaguePath, readHudScale, readWindowMode };
