@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const n = (v) => Number(v || 0).toLocaleString('de-DE');
+const dec = (v, digits) => v.toFixed(digits).replace('.', ',');
 const dur = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 let ddVersion = null;
@@ -80,28 +81,61 @@ async function renderHistory() {
     el.innerHTML = '<div class="msg">Keine Spiele gefunden.</div>';
     return;
   }
-  let wins = 0;
+  for (const g of games) g.champ = await window.lol.champion(g.participants[0].championId);
+  histGames = games;
+  // Start mit dem Modus des letzten Spiels; eine eigene Wahl bleibt, solange es den Modus noch gibt
+  if (!histMode || (histMode !== 'all' && !games.some((g) => g.gameMode === histMode))) histMode = games[0].gameMode;
+  drawHistory();
+}
+
+// Modi getrennt: CS, KDA und Vision sind auf der Kluft und im ARAM nicht vergleichbar
+const MODES = { CLASSIC: 'Kluft', ARAM: 'ARAM', KIWI: 'ARAM Mayhem', CHERRY: 'Arena', URF: 'URF', ONEFORALL: 'Einer für alle' };
+const modeName = (m) => MODES[m] || m;
+let histGames = [];
+let histMode = null;
+$('history').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b) return;
+  histMode = b.dataset.mode;
+  drawHistory();
+});
+
+function drawHistory() {
+  const el = $('history');
+  const modes = [...new Set(histGames.map((g) => g.gameMode))];
+  const games = histMode === 'all' ? histGames : histGames.filter((g) => g.gameMode === histMode);
+  const seg = modes.length > 1
+    ? `<div class="seg" role="group" aria-label="Spielmodus">${['all', ...modes].map((m) =>
+      `<button data-mode="${esc(m)}" aria-pressed="${m === histMode}">${m === 'all' ? 'Alle' : esc(modeName(m))}</button>`).join('')}</div>`
+    : '';
+  let wins = 0, kdaSum = 0, csmSum = 0;
   let html = '';
   for (const g of games) {
     const p = g.participants[0];
     const s = p.stats;
-    const champ = await window.lol.champion(p.championId);
+    const champ = g.champ;
     const mins = Math.max(g.gameDuration / 60, 1);
+    kdaSum += (s.kills + s.assists) / Math.max(s.deaths, 1);
+    csmSum += (s.totalMinionsKilled + s.neutralMinionsKilled) / mins;
     const cs = s.totalMinionsKilled + s.neutralMinionsKilled;
     if (s.win) wins++;
     const when = new Date(g.gameCreation).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
     html += `<div class="game ${s.win ? 'w' : 'l'}">
       <div class="bar"></div>
-      <div class="champ">${champImg(champ)}<div>${esc(champ.name)}<small>${esc(QUEUES[g.queueId] || g.gameMode)} · ${when}</small></div></div>
-      <div><b>${s.kills}/${s.deaths}/${s.assists}</b><small>${((s.kills + s.assists) / Math.max(s.deaths, 1)).toFixed(2)} KDA</small></div>
-      <div><b>${cs}</b><small>${(cs / mins).toFixed(1)} CS/min</small></div>
+      <div class="champ">${champImg(champ)}<div>${esc(champ.name)}<small>${esc(QUEUES[g.queueId] || modeName(g.gameMode))} · ${when}</small></div></div>
+      <div><b>${s.kills}/${s.deaths}/${s.assists}</b><small>${dec((s.kills + s.assists) / Math.max(s.deaths, 1), 2)} KDA</small></div>
+      <div><b>${cs}</b><small>${dec(cs / mins, 1)} CS/min</small></div>
       <div><b>${n(s.totalDamageDealtToChampions)}</b><small>Schaden</small></div>
       <div><b>${dur(g.gameDuration)}</b><small>Dauer</small></div>
       <div>${itemsHtml([s.item0, s.item1, s.item2, s.item3, s.item4, s.item5, s.item6])}</div>
     </div>`;
   }
-  el.innerHTML = `<div class="summary"><div class="tile"><label>Letzte ${games.length}</label><b>${wins}S ${games.length - wins}N</b></div>
-    <div class="tile"><label>Winrate</label><b>${Math.round((wins / games.length) * 100)}%</b></div></div>` +
+  const avg = (sum, digits) => (sum / games.length).toFixed(digits).replace('.', ',');
+  el.innerHTML = seg + `<div class="summary">
+    <div class="tile"><label>Letzte ${games.length}${histMode === 'all' ? '' : ` · ${esc(modeName(histMode))}`}</label><b><span class="win">${wins}S</span> <span class="loss">${games.length - wins}N</span></b></div>
+    <div class="tile"><label>Siegquote</label><b>${Math.round((wins / games.length) * 100)} %</b></div>
+    <div class="tile"><label>Ø KDA</label><b>${avg(kdaSum, 2)}</b></div>
+    <div class="tile"><label>Ø CS/min</label><b>${avg(csmSum, 1)}</b></div></div>` +
     trendsHtml(games) + html;
 }
 
@@ -130,7 +164,7 @@ function trendCard({ label, color, digits, values }) {
   const last = values[values.length - 1];
   const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   return `<div class="trend">
-    <div class="trend-head"><label>${label}</label><span><b>${last.toFixed(digits)}</b><small>Ø ${avg.toFixed(digits)}</small></span></div>
+    <div class="trend-head"><label>${label}</label><span><b>${dec(last, digits)}</b><small>Ø ${dec(avg, digits)}</small></span></div>
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label} der letzten ${values.length} Spiele, zuletzt ${last.toFixed(digits)}, Durchschnitt ${avg.toFixed(digits)}">
       <line x1="${pad}" x2="${W - pad}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
       <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
