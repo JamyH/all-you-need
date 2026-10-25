@@ -15,8 +15,8 @@ Build & Runen
 Overlay
 - Neuer Look „Graphit flach“ (Redesign Richtung B): Panel, ⚙-Einstellungen, Warn-Pillen (SKILL/RECALL/KAUFEN/
   NO MANA mit Icon), Cooldown-Kacheln, Tab-Scoreboard- und Mayhem-Badges jetzt mit Inter-Schrift, abgerundeten
-  Kacheln und türkis/gold/korallenroten Akzentfarben statt Hextech-Gold-Rahmen. App-Fenster folgt als nächster
-  Schritt
+  Kacheln und türkis/gold/korallenroten Akzentfarben statt Hextech-Gold-Rahmen; das Stats-Fenster im selben
+  Stil (siehe App)
 - Kompakt-Modus (⚙ → Allgemein): schmaleres Panel mit drei Kacheln (CS, KDA, Gold), Summoner- und Item-Cooldowns
   als Ringe, die mit der Restzeit leerlaufen, und Lane-Gegner, CS-Diff und Team-Itemwert in einer Fußzeile
 - Einstellungen direkt im Spiel (⚙ im Panel-Kopf oder Tray „Overlay-Einstellungen“): jedes Modul einzeln
@@ -24,14 +24,18 @@ Overlay
   Team-Itemwert, Tab-Scoreboard, Mayhem-Augments), UI-Größe, Hintergrund- und Hover-Transparenz (Panel wird
   durchsichtiger, solange die Maus darüber steht) und Klick-durch (aus: Panel lässt sich überall greifen).
   Abgeschaltete Cooldowns, Augments und Scoreboard werden auch nicht mehr vom Bildschirm gelesen
+- Summoner-Kacheln nur noch mit Icon, Taste und Restzeit (keine Namen mehr)
 
 App
 - Stats-Fenster im Graphit-Stil ohne Windows-Rahmen: Seitenleiste mit Account, Navigation, Client-Status und
   ☰-Menü (dasselbe wie am Tray-Icon), Verschieben an Seitenleiste und Kopf, eigene Knöpfe oben rechts
 - Startet still im Hintergrund (Overlay + Tray); das Stats-Fenster öffnet sich nur auf Wunsch (Tray, Strg+Shift+S)
   oder nach Einstellung nach dem Spiel und beim Pick
-- Summoner im Panel nur noch mit Icon und Taste; Zerschmettern-Icon auch nach dem Aufwerten, Ladungszahl
-  verfälscht die Restzeit nicht mehr
+- Tastenkürzel (Strg+Shift+O/E/S) gehen jetzt auch im Spiel; League ließ die globalen Hotkeys dort nicht durch.
+  Strg+Shift+S holt das Stats-Fenster über das Spiel, ein zweiter Druck schickt es weg; ein Klick ins Spiel
+  lässt es dahinter verschwinden
+- Verlauf nach Spielmodus getrennt (Alle / Kluft / ARAM / ARAM Mayhem …, startet mit dem Modus des letzten
+  Spiels): Bilanz, Siegquote, Ø KDA, Ø CS/min, Trend-Kurven und Spielliste rechnen nur mit dem gewählten Modus
 - Tray-Menü „League komplett beenden …“: beendet nach Rückfrage Riot Client, League-Client und Spiel, z. B. wenn
   League nach einem Vanguard-Fehler hängt (statt Task-Manager)
 
@@ -51,6 +55,11 @@ Mayhem
   Glitzerns der Karten)
 
 Fixes
+- Zerschmettern: Nach dem Aufwerten fehlte das Icon und das Panel sprang jede Sekunde zwischen „F“ und
+  „F · Zerschmettern“; die Ladungszahl wurde in die Restzeit mitgelesen (aus „1“ und „45“ wurde 145 s).
+  Springt eine Summoner-Restzeit beim Abgleich nach oben, gilt sie jetzt als Fehllesung
+- Live-Spiel: Sieben Items liefen über den Kartenrand bzw. wurden abgeschnitten; Übungspuppen im Practice Tool
+  hatten ein kaputtes Bild und keinen Namen; Scrollleisten waren weiß
 - Spar-Ziel: Andere fertige Stiefel als im Build (z. B. Merkurs statt Stahlkappen) zählen als Stiefel; vorher
   wollte die App ein zweites Paar kaufen und zeigte dafür „bezahlbar“
 - Item-Cooldowns: Glanz, Stärke der Dreieinigkeit, Lichbane, Eisgeborener Handschuh und Essenzräuber flackerten
