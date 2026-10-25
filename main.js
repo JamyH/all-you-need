@@ -169,6 +169,15 @@ function raiseOverlay() {
 // beim Spielstart wieder (im Spiel sieht man es nicht, spart ~125 MB). Klick oder Taste im Fenster = benutzt.
 let statsUsed = false;
 let statsAutoClosing = false;
+// Windows holt ein Fenster aus einem Hintergrundprogramm mit focus() nicht nach vorne (Strg+Shift+S über dem
+// League-Client blinkte nur in der Taskleiste). Kurz „immer oben“ setzen, nach vorn holen, wieder zurücknehmen
+function raiseStats() {
+  stats.show();
+  stats.setAlwaysOnTop(true);
+  stats.moveTop();
+  stats.focus();
+  stats.setAlwaysOnTop(false);
+}
 function openStats(opts = {}) {
   const { tab, inactive } = opts;
   const auto = !!(inactive || opts.auto);
@@ -176,20 +185,20 @@ function openStats(opts = {}) {
     if (!auto) statsUsed = true;
     if (stats.isMinimized()) stats.restore();
     if (tab) stats.webContents.send('show-tab', tab);
-    return inactive ? stats.showInactive() : stats.focus();
+    return inactive ? stats.showInactive() : raiseStats();
   }
   statsUsed = !auto;
   stats = new BrowserWindow({
-    width: 1000,
+    width: 1180,
     height: 720,
     title: 'All You Need',
     icon: APP_ICON,
     autoHideMenuBar: true,
-    backgroundColor: '#0f1117',
+    backgroundColor: '#0f1115',
     show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
-  stats.once('ready-to-show', () => (inactive ? stats.showInactive() : stats.show()));
+  stats.once('ready-to-show', () => (inactive ? stats.showInactive() : raiseStats()));
   if (tab) stats.webContents.once('did-finish-load', () => stats.webContents.send('show-tab', tab));
   stats.loadFile('renderer/stats.html');
   // beim ersten Schließen einmal erklären, dass die App im Hintergrund weiterläuft

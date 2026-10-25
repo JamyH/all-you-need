@@ -106,11 +106,11 @@ async function renderHistory() {
 function trendsHtml(games) {
   const chrono = [...games].reverse();
   const series = [
-    { label: 'CS/min', color: '#c8aa6e', digits: 1,
+    { label: 'CS/min', color: '#f2c14e', digits: 1,
       values: chrono.map((g) => { const s = g.participants[0].stats; return (s.totalMinionsKilled + s.neutralMinionsKilled) / Math.max(g.gameDuration / 60, 1); }) },
-    { label: 'KDA', color: '#0ac8b9', digits: 2,
+    { label: 'KDA', color: '#5eead4', digits: 2,
       values: chrono.map((g) => { const s = g.participants[0].stats; return (s.kills + s.assists) / Math.max(s.deaths, 1); }) },
-    { label: 'Vision/min', color: '#5b8fd6', digits: 2,
+    { label: 'Vision/min', color: '#8ab4f8', digits: 2,
       values: chrono.map((g) => (g.participants[0].stats.visionScore || 0) / Math.max(g.gameDuration / 60, 1)) },
   ];
   return `<div class="trends">${series.map(trendCard).join('')}</div>`;
@@ -129,7 +129,7 @@ function trendCard({ label, color, digits, values }) {
   return `<div class="trend">
     <div class="trend-head"><label>${label}</label><span><b>${last.toFixed(digits)}</b><small>Ø ${avg.toFixed(digits)}</small></span></div>
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label} der letzten ${values.length} Spiele, zuletzt ${last.toFixed(digits)}, Durchschnitt ${avg.toFixed(digits)}">
-      <line x1="${pad}" x2="${W - pad}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" stroke="#8b8f98" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line>
+      <line x1="${pad}" x2="${W - pad}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
       <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
       <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="3" fill="${color}"></circle>
     </svg>
@@ -477,11 +477,16 @@ window.lol.onRunesStatus((msg) => runeStatus(msg));
 
 async function loadAll() {
   ddVersion = await window.lol.ddVersion();
+  const state = $('clientState');
   try {
     const me = await window.lol.summoner();
     $('who').textContent = me.gameName ? `${me.gameName}#${me.tagLine}` : me.displayName;
+    state.className = 'client-state on';
+    state.lastElementChild.textContent = 'Client verbunden';
   } catch {
-    $('who').textContent = 'All You Need (Client nicht verbunden)';
+    $('who').textContent = '–';
+    state.className = 'client-state off';
+    state.lastElementChild.textContent = 'Client nicht verbunden';
   }
   const [inGame] = await Promise.all([renderLive(), renderEog(), renderHistory(), loadBuild()]);
   // läuft gerade ein Spiel, direkt den Live-Tab zeigen
@@ -489,7 +494,15 @@ async function loadAll() {
   loadAll.done = true;
 }
 
+// Seitentitel und Untertitel je Reiter
+const PAGES = {
+  live: ['Live-Spiel', 'Alle 10 Spieler mit Rang, Items und Werten, sobald ein Spiel läuft'],
+  eog: ['Letztes Spiel', 'Auswertung direkt nach dem Spiel'],
+  history: ['Verlauf', 'Deine letzten Spiele'],
+  build: ['Build & Runen', 'Eigene Einstellungen haben immer Vorrang vor Vorschlägen'],
+};
 function showTab(tab) {
+  [$('pageTitle').textContent, $('pageSub').textContent] = PAGES[tab];
   document.querySelectorAll('nav button[data-tab]').forEach((x) => x.classList.toggle('active', x.dataset.tab === tab));
   document.querySelectorAll('main section').forEach((s) => (s.hidden = s.id !== tab));
   if (tab === 'live') renderLive();
