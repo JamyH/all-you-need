@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.3.0 – 2026-10-25
 
 Im Spiel
 - Skill-Hinweis: Solange ein Skillpunkt offen ist, zeigt ein Banner über dem Panel, welche Fähigkeit laut
