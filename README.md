@@ -59,9 +59,14 @@ often there is an allowed variant. Found something that is read wrong? Use the
 - Item value difference per row (above the ward slot) plus team difference
 - Finds the scoreboard on its own, even if you moved it
 
-**Stats window**
+**Stats window** (frameless, opens only when you want it: tray, Ctrl+Shift+S – also in game – or a second start)
 - Live game: all 10 players with rank, win rate, level, KDA, CS, vision, items, item value
-- Last game and match history with trend charts (CS/min, KDA, vision)
+- Last game and match history with trend charts (CS/min, KDA, vision), split by game mode (Rift, ARAM,
+  ARAM Mayhem …)
+- Matchup (before the game only): for each enemy pick in champ select, or any champion you choose, your win
+  rate against it from lolalytics (winning / losing lane) and who is ahead at levels 1–3 – first-blood rate
+  from real games plus a computed all-in from base stats and rank-1 basic abilities
+  ([Meraki Analytics](https://github.com/meraki-analytics/lolstaticdata) data; no passives or crowd control)
 - Build order and rune page per champion; runes are applied automatically in champ select to a
   dedicated page called "All You Need" (your other pages are never touched)
 - Build and rune suggestions from [lolalytics.com](https://lolalytics.com) for your champion and role,
