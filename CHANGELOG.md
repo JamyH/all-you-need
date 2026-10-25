@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.4.0 – 2026-10-25
 
 Build & Runen
 - Matchup-Karte (nur vor dem Spiel): je gegnerischem Pick aus der Champ-Auswahl, oder von Hand gewählt, die
