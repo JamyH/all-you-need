@@ -1,0 +1,44 @@
+name: 💡 Idea
+description: Share your own idea for All You Need – every idea is welcome, big or small.
+title: "Idea: "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea! Personal wishes are explicitly welcome – if it would help *you* in your games,
+        it probably helps others too. German or English, whatever you prefer.
+
+        One thing up front: the app only uses what Riot allows (official APIs and what is already visible on your
+        screen). Ideas like enemy cooldown timers or augment win rates can't be built – but write them down anyway,
+        often there is an allowed variant.
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What should the app do? A sentence or two is enough.
+      placeholder: e.g. "Show how many of my allies have their ultimate ready."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: When would it help you?
+      description: In which situation would you use it? (game mode, champ select, in game, after the game …)
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode
+      multiple: true
+      options:
+        - Summoner's Rift
+        - ARAM
+        - ARAM Mayhem
+        - Arena
+        - Champ select / client
+        - Doesn't matter
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, sketches or apps that already do something similar.

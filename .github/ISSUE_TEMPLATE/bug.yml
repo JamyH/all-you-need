@@ -1,0 +1,26 @@
+name: 🐞 Something read wrong / bug
+description: A value is wrong, something is missing or the app misbehaves.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did the app show instead?
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Resolution and HUD scale
+      description: e.g. 2560×1440, HUD scale 30, borderless
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the tray menu or the installer file name (e.g. 1.3.0)
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: For recognition problems, open the stats window → *Live-Spiel* → **Erkennung prüfen** during a game and attach the screenshot.

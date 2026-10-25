@@ -2,7 +2,7 @@
 
 # All You Need – A lightweight overlay
 
-**Version 1.2** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest)
+**Version 1.3** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
 
 A small, clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
@@ -27,6 +27,19 @@ game process.
 3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
+
+## Your ideas are welcome
+
+All You Need grows from what players actually miss in their games – so **please bring in your own ideas**,
+even very personal ones. Something that would help you in a specific situation, a small annoyance, a
+whole new feature: all of it is explicitly wanted.
+
+👉 **[Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)** (short form, German or English)
+
+The only limit is Riot's rules: the app uses official APIs and what is already visible on your screen,
+so things like enemy cooldown timers or augment win rates are off the table. Post those ideas anyway –
+often there is an allowed variant. Found something that is read wrong? Use the
+[bug form](https://github.com/JamyH/all-you-need/issues/new?template=bug.yml) instead.
 
 ## Features
 
