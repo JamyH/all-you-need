@@ -958,10 +958,10 @@ async function quitLeague() {
   });
 }
 
-function refreshTrayMenu() {
-  if (!tray) return;
+// Dasselbe Menü im Tray und hinter dem ☰-Knopf im Stats-Fenster
+function appMenu() {
   const keys = config.hotkeys;
-  tray.setContextMenu(Menu.buildFromTemplate([
+  return Menu.buildFromTemplate([
     { label: 'Stats-Fenster öffnen', accelerator: keys.openStats, click: openStats },
     { type: 'separator' },
     { label: 'Overlay anzeigen', type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
@@ -986,8 +986,14 @@ function refreshTrayMenu() {
     { type: 'separator' },
     { label: `All You Need ${app.getVersion()}`, enabled: false },
     { label: 'Beenden', click: () => app.quit() },
-  ]));
+  ]);
 }
+function refreshTrayMenu() {
+  if (tray) tray.setContextMenu(appMenu());
+}
+ipcMain.on('menu:popup', (_e, pos) => {
+  if (stats && !stats.isDestroyed()) appMenu().popup({ window: stats, x: pos.x, y: pos.y });
+});
 function createTray() {
   tray = new Tray(APP_ICON);
   tray.setToolTip(`All You Need ${app.getVersion()} läuft`);

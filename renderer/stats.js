@@ -464,6 +464,12 @@ $('applySpells').addEventListener('click', async () => {
 });
 window.lol.onSpellsStatus((msg) => spellStatus(msg));
 
+// ☰: dasselbe Menü wie am Tray-Icon, direkt unter dem Knopf
+$('menuBtn').addEventListener('click', () => {
+  const r = $('menuBtn').getBoundingClientRect();
+  window.lol.popupMenu({ x: Math.round(r.left), y: Math.round(r.bottom + 4) });
+});
+
 // Benutzt: dann bleibt das Fenster beim Spielstart offen (sonst schließt die App es, wenn sie es selbst geöffnet hat)
 for (const ev of ['mousedown', 'keydown', 'wheel']) window.addEventListener(ev, () => window.lol.statsUsed(), { once: true });
 window.lol.onBuildChampion((id) => selectChampion(id));

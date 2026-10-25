@@ -9,6 +9,7 @@ Build & Runen
   „Jetzt setzen“ und Schalter fürs automatische Setzen
 
 App
+- ☰-Knopf oben links im Stats-Fenster: dasselbe Menü wie am Tray-Icon (Overlay, Auto-Annehmen, League beenden …)
 - Tray-Menü „League komplett beenden …“: beendet nach Rückfrage Riot Client, League-Client und Spiel, z. B. wenn
   League nach einem Vanguard-Fehler hängt (statt Task-Manager)
 

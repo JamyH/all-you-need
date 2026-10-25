@@ -12,6 +12,12 @@
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
 header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font-size: 18px; color: var(--gold); }
+.title { display: flex; align-items: center; gap: 12px; }
+.menu-btn {
+  background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+  width: 32px; height: 32px; font-size: 16px; line-height: 1; cursor: pointer;
+}
+.menu-btn:hover { border-color: var(--gold); color: var(--gold); }
 nav button {
   background: var(--card); color: var(--text); border: 1px solid var(--line);
   padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 6px;
