@@ -175,8 +175,9 @@ let statsAutoClosing = false;
 let statsRaisedAt = 0;
 function raiseStats() {
   statsRaisedAt = Date.now();
-  stats.setAlwaysOnTop(true, 'floating');
   stats.show();
+  // 'floating' (und ohne Ebene) wirkt unter Windows nicht, getestet; 'pop-up-menu' liegt unter dem Overlay
+  stats.setAlwaysOnTop(true, 'pop-up-menu');
   stats.moveTop();
   stats.focus();
 }
