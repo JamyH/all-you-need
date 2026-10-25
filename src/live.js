@@ -148,7 +148,8 @@ function applyScreen(summary, scr, minionXp) {
     cd: s.ready || s.cd == null ? null : Math.max(0, Math.ceil(s.cd - (Date.now() - s.at) / 1000)),
   }));
   // Item-Cooldowns (Slot 0–5): Aktiv-Items immer, andere nur, solange ein Cooldown auf dem Slot steht.
-  // Tasten wie im Spiel: Slots 1–3 und 5–7 (4 ist das Trinket)
+  // Tasten wie im Spiel: Slots 1–3 und 5–7 (4 ist das Trinket).
+  // Zauberklingen-Items (Glanz, Dreieinigkeit …) laufen nach jedem Treffer 1,5 s ab: das wäre nur Flackern
   summary.itemCds = summary.myItems
     .filter((it) => it.slot < 6)
     .map((it) => {
@@ -159,7 +160,7 @@ function applyScreen(summary, scr, minionXp) {
         ready: cd == null, cd, active: it.active,
       };
     })
-    .filter((it) => it.active || !it.ready);
+    .filter((it) => it.active || (!it.ready && it.cd >= 5 && !SPELLBLADE.has(it.id % 10000)));
   const need = xpForNext(summary.level);
   if (scr.xp != null && need) {
     const missing = Math.round(need * (1 - scr.xp));
@@ -240,16 +241,26 @@ function livePlayers(data, ranks = new Map()) {
 // Spar-Ziel: erstes Item der Build-Liste, das noch nicht im Inventar ist, und was es noch kostet.
 // Reicht das aktuelle Gold, setzt affordable -> Panel zeigt RECALL.
 // buildFor(championId) liefert die Item-Liste (eigener Build oder lolalytics-Vorschlag) oder nichts.
+// Zauberklingen-Items: Glanz, Stärke der Dreieinigkeit, Lichbane, Eisgeborener Handschuh, Essenzräuber
+const SPELLBLADE = new Set([3057, 3078, 3100, 6662, 3508]);
+
 function applyBuild(summary, buildFor) {
   if (!summary) return summary;
   const build = buildFor(summary.championId);
   if (!build || !build.length) return summary;
   const owned = new Map();
   for (const id of summary.myItemIds) owned.set(String(id), (owned.get(String(id)) || 0) + 1);
+  // Andere fertige Stiefel als im Build zählen trotzdem als Stiefel (Merkurs statt Stahlkappen):
+  // man kauft kein zweites Paar
+  let otherBoots = summary.myItemIds.some((id) => ddragon.finishedBoots(id) && !build.includes(id));
 
   for (const target of build) {
     if ((owned.get(String(target)) || 0) > 0) {
       owned.set(String(target), owned.get(String(target)) - 1); // schon gekauft -> nächstes
+      continue;
+    }
+    if (otherBoots && ddragon.finishedBoots(target)) {
+      otherBoots = false;
       continue;
     }
     const total = ddragon.itemGold(target);

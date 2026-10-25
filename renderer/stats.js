@@ -209,6 +209,7 @@ async function loadBuild() {
     .map((i) => `<option value="${esc(i.name)}">${i.gold} g${i.completed ? '' : ' · Teil'}</option>`).join('');
   buildData.items.forEach((i) => itemByName.set(i.name.toLowerCase(), i));
   $('runesAuto').checked = buildData.runesAuto;
+  $('spellsAuto').checked = buildData.spellsAuto;
   $('suggestionsOn').checked = buildData.suggestions;
   $('openInChampSelect').checked = buildData.openInChampSelect;
   $('autoAccept').checked = buildData.autoAccept;
@@ -282,6 +283,7 @@ const LANE_NAMES = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot',
 async function renderSuggestion(load = false) {
   const b = $('buildSuggestion');
   b.innerHTML = '';
+  $('spellView').innerHTML = '<p class="hint">Empfehlung kommt beim Pick in der Champ-Auswahl.</p>';
   if (buildData.suggestions && champId) {
     try {
       const s = await window.lol.suggestion(champId, load);
@@ -293,6 +295,10 @@ async function renderSuggestion(load = false) {
           (${esc(LANE_NAMES[s.lane] || 'Standard-Rolle')}, Emerald+, Stand ${new Date(s.fetchedAt).toLocaleDateString('de-DE')})</p>
           <div class="icons">${s.starting.map(icon).join('')}<span class="sep">›</span>${s.items.map(icon).join('')}</div>
           <div class="btn-row"><button data-take="build">Als meinen Build übernehmen</button></div>`;
+        if (s.spells.length) {
+          $('spellView').innerHTML = `<div class="icons">${s.spells.map((x) => `<img src="${esc(x.icon)}" alt="${esc(x.name)}" title="${esc(x.name)}"><span class="label">${esc(x.name)}</span>`).join('')}</div>
+            <p class="hint">Meistgespielt laut lolalytics.com</p>`;
+        }
       }
     } catch (e) {
       b.innerHTML = `<p class="hint">lolalytics.com: ${esc(e.message)}</p>`;
@@ -447,6 +453,16 @@ $('applyRunes').addEventListener('click', async () => {
   }
 });
 $('runesAuto').addEventListener('change', () => window.lol.setRunesAuto($('runesAuto').checked));
+$('spellsAuto').addEventListener('change', () => window.lol.setSpellsAuto($('spellsAuto').checked));
+const spellStatus = (msg) => ($('spellStatus').textContent = msg);
+$('applySpells').addEventListener('click', async () => {
+  try {
+    spellStatus(await window.lol.applySpells());
+  } catch (e) {
+    spellStatus(`Fehler: ${e.message.includes('läuft nicht') ? 'League-Client läuft nicht.' : e.message}`);
+  }
+});
+window.lol.onSpellsStatus((msg) => spellStatus(msg));
 window.lol.onBuildChampion((id) => selectChampion(id));
 window.lol.onRunesStatus((msg) => runeStatus(msg));
 

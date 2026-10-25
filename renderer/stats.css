@@ -118,6 +118,7 @@ button:hover { border-color: var(--gold); }
 .suggestion .icons { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 6px 0; }
 .suggestion .icons img { width: 28px; height: 28px; border-radius: 4px; }
 .suggestion .icons .sep { color: var(--muted); margin: 0 4px; }
+.suggestion .icons .label { margin: 0 12px 0 4px; }
 .suggestion a { color: var(--gold); }
 .own-item { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
 .own-item small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }

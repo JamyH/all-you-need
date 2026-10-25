@@ -13,14 +13,15 @@ async function load(cacheDir, language) {
     version = versions[0];
     let cache = null;
     if (fs.existsSync(cacheFile)) cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-    if (!cache || cache.version !== version || cache.language !== language || !cache.runes) {
+    if (!cache || cache.version !== version || cache.language !== language || !cache.runes || !cache.summoners) {
       const base = `https://ddragon.leagueoflegends.com/cdn/${version}/data/${language}`;
-      const [itemJson, champJson, runes] = await Promise.all([
+      const [itemJson, champJson, runes, summonerJson] = await Promise.all([
         (await fetch(`${base}/item.json`)).json(),
         (await fetch(`${base}/champion.json`)).json(),
         (await fetch(`${base}/runesReforged.json`)).json(),
+        (await fetch(`${base}/summoner.json`)).json(),
       ]);
-      cache = { version, language, items: itemJson.data, champions: champJson.data, runes };
+      cache = { version, language, items: itemJson.data, champions: champJson.data, runes, summoners: summonerJson.data };
       fs.writeFileSync(cacheFile, JSON.stringify(cache));
     }
     apply(cache);
@@ -33,6 +34,7 @@ async function load(cacheDir, language) {
 
 let runeNames = {};
 let runeStyles = {};
+let summoners = {}; // Key (4 = Blitz) -> { name, icon }
 function apply(cache) {
   version = cache.version;
   items = cache.items;
@@ -49,6 +51,10 @@ function apply(cache) {
   }
   champsById = {};
   for (const c of Object.values(cache.champions)) champsById[c.key] = { id: c.id, name: c.name };
+  summoners = {};
+  for (const s of Object.values(cache.summoners || {})) {
+    summoners[s.key] = { name: s.name, icon: `https://ddragon.leagueoflegends.com/cdn/${cache.version}/img/spell/${s.image.full}` };
+  }
 }
 
 // Fähigkeitskosten pro Champion (Q, W, E, R je Rang), einmal geladen und gemerkt
@@ -99,6 +105,12 @@ function finishedItem(itemId) {
   return !it.into || it.into.length === 0 || (it.tags || []).includes('Boots');
 }
 
+// Fertige Stiefel (Stufe 2 oder höher, nicht die einfachen Stiefel)
+const finishedBoots = (itemId) => {
+  const it = items[String(itemId)];
+  return !!it && (it.tags || []).includes('Boots') && String(itemId) !== '1001' && it.gold.total > 300;
+};
+
 // Was kostet das Item noch, wenn man die Teile im Inventar anrechnet? Wie im Shop:
 // besitzt man ein Teil des Rezepts, zählt es als bezahlt (owned: Map itemId -> Anzahl, wird verbraucht).
 function remainingCost(itemId, owned) {
@@ -121,6 +133,8 @@ const rune = (id) => runeNames[id] || null;
 const runeStyle = (id) => runeStyles[id] || null;
 
 const itemName = (itemId) => items[String(itemId)]?.name || `#${itemId}`;
+// Summoner-Zauber nach Key (wie der Client ihn nennt, z. B. 4 = Blitz, 11 = Zerschmettern)
+const summoner = (key) => summoners[String(key)] || null;
 // Werte-Kategorien eines Items (Damage, AbilityHaste, ArmorPenetration …)
 const itemTags = (itemId) => items[String(itemId)]?.tags || [];
 
@@ -133,6 +147,6 @@ function iconUrl(kind, file) {
 }
 
 module.exports = {
-  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, itemTags, finishedItem, remainingCost, components, rune, runeStyle, iconUrl,
+  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, itemTags, summoner, finishedItem, finishedBoots, remainingCost, components, rune, runeStyle, iconUrl,
   getVersion: () => version,
 };

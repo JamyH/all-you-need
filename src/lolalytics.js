@@ -73,6 +73,27 @@ function skills(html) {
   return { skillPriority, skillOrder: order };
 }
 
+// Summoner: das meistgespielte Paar, nicht das mit der höchsten Siegrate, das die Seite oben zeigt (bei Kayn
+// Jungle z. B. Zerschmettern + Entzünden mit 6 % statt Blitz + Zerschmettern mit 94 %). Alle Paare stehen im
+// eingebetteten Qwik-Zustand als [„4_11“, Siegrate, Pickrate, Spiele]; fehlt der, gilt das gezeigte Paar.
+function spells(page, html) {
+  try {
+    const m = page.match(/<script type="qwik\/json">([\s\S]*?)<\/script>/);
+    const objs = m ? JSON.parse(m[1]).objs || [] : [];
+    const deref = (v) => (typeof v === 'string' && /^[0-9a-z]+$/.test(v) && objs[parseInt(v, 36)] !== undefined ? objs[parseInt(v, 36)] : v);
+    const root = objs.find((o) => o && typeof o === 'object' && !Array.isArray(o) && 'spells' in o && 'runes' in o && 'skill6' in o);
+    const list = root ? deref(root.spells) : null;
+    const rows = Array.isArray(list) ? list.map(deref).filter(Array.isArray).map((r) => r.map(deref)) : [];
+    const best = rows.filter((r) => /^\d+_\d+$/.test(r[0]) && typeof r[3] === 'number').sort((a, b) => b[3] - a[3])[0];
+    if (best) return best[0].split('_').map(Number);
+  } catch {
+    // Zustand nicht lesbar -> gezeigtes Paar
+  }
+  const shown = section(html, 'Summoner Spells', 'Skill Order');
+  const ids = shown ? images(shown.text, 'spell64').map((s) => s.id) : [];
+  return ids.length === 2 ? ids : null;
+}
+
 function parse(page) {
   const html = page.replace(/<!--[\s\S]*?-->/g, ''); // Framework-Kommentare stehen mitten in Zahlen („78.19<!---->%“)
   const runes = section(html, 'Primary Runes', 'Starting Items');
@@ -105,6 +126,7 @@ function parse(page) {
 
   return {
     ...skills(html),
+    spells: spells(page, html),
     starting: [...new Set(images(start.text, 'item64').map((i) => i.id))],
     startCount,
     items,
@@ -134,8 +156,8 @@ async function load(champId, position, mode = 'sr') {
   const aram = mode === 'aram';
   const key = aram ? `${champId}|aram` : `${champId}|${lane(position) || ''}`;
   const hit = cache[key];
-  // Einträge von vor 1.3 haben noch keine Skill-Reihenfolge -> neu holen
-  if (hit && 'skillOrder' in hit && Date.now() - hit.fetchedAt < CACHE_MS) {
+  // ältere Einträge ohne Summoner -> neu holen
+  if (hit && 'spells' in hit && Date.now() - hit.fetchedAt < CACHE_MS) {
     hit.usedAt = Date.now();
     return hit;
   }

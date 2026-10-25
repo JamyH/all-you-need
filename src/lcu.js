@@ -44,6 +44,7 @@ async function champSelect(lp) {
     position: me.assignedPosition || '',
     // ohne Pick-Aktion (z. B. ARAM) zählt der zugeteilte Champion als fest
     locked: !!me.championId && (!myPick || myPick.completed),
+    spells: [me.spell1Id, me.spell2Id], // D, F
     bench,
   };
 }
@@ -56,6 +57,14 @@ async function recommendedRunePages(lp, championKey, position, map = 11) {
   const pages = await lcu(lp, `/lol-perks/v1/recommended-pages/champion/${championKey}/position/${position || 'none'}/map/${map}`);
   return (pages || []).map((p) => ({ primaryStyleId: p.primaryPerkStyleId, subStyleId: p.secondaryPerkStyleId, selectedPerkIds: p.perks.map((x) => x.id) }));
 }
+// Riots Summoner-Empfehlung (steht bei den empfohlenen Runenseiten mit dabei)
+async function recommendedSpells(lp, championKey, position, map = 11) {
+  const pages = await lcu(lp, `/lol-perks/v1/recommended-pages/champion/${championKey}/position/${position || 'none'}/map/${map}`);
+  const ids = pages?.[0]?.summonerSpellIds;
+  return Array.isArray(ids) && ids.length === 2 ? ids : null;
+}
+// Summoner in der Champ-Auswahl setzen (spell1 = D, spell2 = F)
+const applySpells = (lp, spell1Id, spell2Id) => lcu(lp, '/lol-champ-select/v1/session/my-selection', 'PATCH', { spell1Id, spell2Id });
 // Erste davon: Ersatz, wenn lolalytics nicht antwortet
 const recommendedRunes = async (lp, championKey, position, map) => (await recommendedRunePages(lp, championKey, position, map))[0] || null;
 
@@ -129,6 +138,6 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 }
 
 module.exports = {
-  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, mapId, recommendedRunes, recommendedRunePages, currentRunePage, applyRunePage, PAGE_NAME,
+  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
   applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments,
 };

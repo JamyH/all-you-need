@@ -2,7 +2,22 @@
 
 ## Unveröffentlicht
 
+Build & Runen
+- Summoner-Empfehlung: Der Vorschlag zeigt das meistgespielte Summoner-Paar (lolalytics; nicht das Paar mit
+  der höchsten Siegrate und kaum Spielen), ersatzweise Riots Empfehlung. Beim festen Pick setzt die App es
+  automatisch; dein Blitz bleibt auf seiner Taste (D oder F). Eigene Karte „Summoner“ im Build-Tab mit
+  „Jetzt setzen“ und Schalter fürs automatische Setzen
+
+Mayhem
+- Augment-Karten werden nur noch neu gelesen, wenn sich die Schrift ändert (vorher jede Sekunde wegen des
+  Glitzerns der Karten)
+
 Fixes
+- Spar-Ziel: Andere fertige Stiefel als im Build (z. B. Merkurs statt Stahlkappen) zählen als Stiefel; vorher
+  wollte die App ein zweites Paar kaufen und zeigte dafür „bezahlbar“
+- Item-Cooldowns: Glanz, Stärke der Dreieinigkeit, Lichbane, Eisgeborener Handschuh und Essenzräuber flackerten
+  nach jedem Treffer kurz auf (1,5 s Zauberklinge); kurze Cooldowns unter 5 s von Items ohne Aktiv-Fähigkeit
+  werden nicht mehr gezeigt
 - Mayhem: Augment-Tiers fehlten bei Angeboten, die lebend kommen (z. B. Stufe 7 auf der Lane); die App
   schaute nur im Tod nach
 - Werte-Schmiede: Splitter mit einem falsch gelesenen Buchstaben („…splittar“) wurden nicht erkannt

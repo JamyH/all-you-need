@@ -259,9 +259,15 @@ const sbNear = (a) => {
 // hat, z. B. nach Neu-Würfeln) und bewerten. Augments nach arammayhem.com, Werte-Splitter nach dem eigenen Build.
 // Ergebnis landet im Overlay über den Karten.
 const augmentCache = [null, null, null]; // je Karte { sig, text }
+// Fingerabdruck nur der weißen Schrift: das Glitzern der Karten ändert die Farben laufend, die Schrift nicht.
+// So läuft die Texterkennung nur, wenn wirklich ein anderer Name dasteht (statt jede Sekunde)
 const cropSig = (c) => {
   let s = 0;
-  for (let i = 0; i < c.data.length; i += 16) s = (s * 31 + c.data[i]) >>> 0;
+  for (let i = 0; i < c.data.length; i += 8) {
+    const r = c.data[i], g = c.data[i + 1], b = c.data[i + 2];
+    const white = Math.min(r, g, b) > 170 && Math.max(r, g, b) - Math.min(r, g, b) < 40;
+    s = (s * 31 + (white ? 1 : 0)) >>> 0;
+  }
   return s;
 };
 // Build für die Splitter-Wertung: Lolalytics-Build des Champs plus die schon gekauften fertigen Items
@@ -482,6 +488,33 @@ async function useSuggestion(champId, key, position) {
   notifyStats('runes:status', `Runen für ${champId} von ${source} gesetzt (Seite „${lcu.PAGE_NAME}“).`);
 }
 
+// Summoner beim festen Pick setzen: das meistgespielte Paar laut lolalytics, sonst Riots Empfehlung.
+// Was schon richtig liegt, bleibt auf seiner Taste (Blitz auf D oder F, wie gewohnt); nur der Rest wird getauscht.
+function placeSpells(current, rec) {
+  const out = [null, null];
+  for (const s of rec) {
+    const i = current.indexOf(s);
+    if (i >= 0 && out[i] === null) out[i] = s;
+  }
+  const rest = rec.filter((s) => !out.includes(s));
+  return out.map((s) => (s === null ? rest.shift() : s));
+}
+async function applySpells(champId, key, position, current) {
+  let rec = null;
+  let source = 'lolalytics.com';
+  if (suggestionsOn()) rec = await lolalytics.load(champId, position, gameMode).then((s) => s.spells, () => null);
+  if (!rec) {
+    source = 'Riot-Empfehlung';
+    rec = await lcu.recommendedSpells(config.leaguePath, key, position, mapId()).catch(() => null);
+  }
+  if (!rec) return 'Summoner: keine Empfehlung gefunden.';
+  const [d, f] = placeSpells(current, rec);
+  const name = (k) => ddragon.summoner(k)?.name || k;
+  if (d === current[0] && f === current[1]) return `Summoner ${name(d)} (D) + ${name(f)} (F) passen schon (${source}).`;
+  await lcu.applySpells(config.leaguePath, d, f);
+  return `Summoner ${name(d)} (D) + ${name(f)} (F) von ${source} gesetzt.`;
+}
+
 // Item-Set „All You Need – Champ“ in den Client schreiben, im Spiel im Shop wählbar: eigener Build
 // und/oder der lolalytics-Vorschlag (Start, Kern, danach). Ohne beides passiert nichts.
 const LANE_LABEL = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', support: 'Support' };
@@ -612,6 +645,10 @@ async function pollClient() {
         lastSuggestionKey = suggestionKey;
         if (config.openInChampSelect !== false) openStats({ tab: 'build', inactive: true });
         if (suggestionsOn()) await useSuggestion(champId, sel.key, sel.position);
+        if (config.spellsAuto !== false) {
+          await applySpells(champId, sel.key, sel.position, sel.spells)
+            .then((msg) => notifyStats('spells:status', msg), (e) => notifyStats('spells:status', `Summoner: ${e.message}`));
+        }
         if (config.itemSetAuto !== false) {
           importItemSet(champId).then((msg) => notifyStats('build:status', msg), (e) => notifyStats('build:status', `Item-Set: ${e.message}`));
         }
@@ -685,6 +722,7 @@ ipcMain.handle('build:data', () => ({
   builds: config.builds || {},
   runes: Object.fromEntries(Object.entries(config.runes || {}).map(([c, r]) => [c, describeRunes(r)])),
   runesAuto: config.runesAuto !== false,
+  spellsAuto: config.spellsAuto !== false,
   suggestions: suggestionsOn(),
   openInChampSelect: config.openInChampSelect !== false,
   autoAccept: config.autoAccept === true,
@@ -702,12 +740,21 @@ ipcMain.handle('runes:saveCurrent', async (_e, champId) => {
 });
 ipcMain.handle('runes:apply', (_e, champId) => applyRunesFor(champId));
 ipcMain.handle('runes:auto', (_e, on) => saveConfig({ runesAuto: on }));
+ipcMain.handle('spells:auto', (_e, on) => saveConfig({ spellsAuto: on }));
+// „Jetzt setzen“ im Stats-Fenster: geht nur in der Champ-Auswahl mit gewähltem Champion
+ipcMain.handle('spells:apply', async () => {
+  if (lastPhase !== 'ChampSelect') return 'Summoner lassen sich nur in der Champ-Auswahl setzen.';
+  const sel = await lcu.champSelect(config.leaguePath);
+  if (!sel.key) return 'Erst einen Champion wählen.';
+  return applySpells(ddragon.champion(sel.key).id, sel.key, sel.position, sel.spells);
+});
 
 // lolalytics-Vorschlag fürs Stats-Fenster: aus dem Cache; load = true holt ihn (Standard-Rolle des Champs)
 ipcMain.handle('suggestion:get', async (_e, champId, load) => {
   const s = lolalytics.cached(champId, gameMode) || (load ? await lolalytics.load(champId, '', gameMode) : null);
   return s && {
     lane: s.lane, url: s.url, fetchedAt: s.fetchedAt, starting: s.starting, items: s.items,
+    spells: (s.spells || []).map(ddragon.summoner).filter(Boolean),
     runes: describeRunes(s.runes),
   };
 });
