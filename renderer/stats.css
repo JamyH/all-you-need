@@ -140,7 +140,8 @@ th:first-child, td:first-child { text-align: left; }
 tr.me td { background: var(--accent-soft); }
 .team-title { margin: 10px 0 4px; font-weight: 600; }
 .champ { display: flex; align-items: center; gap: 10px; }
-.champ img { width: 32px; height: 32px; border-radius: 8px; }
+.champ img, .champ-ph { flex: none; width: 32px; height: 32px; border-radius: 8px; }
+.champ-ph { background: repeating-linear-gradient(45deg, #2a2f37 0 4px, #22262d 4px 8px); }
 .champ small { color: var(--muted); }
 .items img { width: 24px; height: 24px; border-radius: 5px; margin-left: 3px; vertical-align: middle; }
 
@@ -176,14 +177,15 @@ tr.me td { background: var(--accent-soft); }
 tr.dead td { opacity: 0.5; }
 /* beide Team-Tabellen mit gleichen Spalten, damit die Werte untereinander stehen */
 .team-card table { table-layout: fixed; margin-bottom: 8px; }
-.team-card th:nth-child(1) { width: 20%; }
-.team-card th:nth-child(2) { width: 16%; }
-.team-card th:nth-child(3) { width: 4%; }
-.team-card th:nth-child(4) { width: 7%; }
+/* Items bekommen den Rest (7 Icons à 22 px + Abstand ≈ 175 px), damit nichts über den Kartenrand läuft */
+.team-card th:nth-child(1) { width: 21%; }
+.team-card th:nth-child(2) { width: 14%; }
+.team-card th:nth-child(3) { width: 5%; }
+.team-card th:nth-child(4) { width: 9%; }
 .team-card th:nth-child(5), .team-card th:nth-child(6) { width: 6%; }
-.team-card th:nth-child(7) { width: 9%; }
+.team-card th:nth-child(7) { width: 10%; }
 .team-card td { overflow: hidden; text-overflow: ellipsis; }
-.team-card td:last-child { overflow: visible; }
+.team-card .items img { width: 22px; height: 22px; margin-left: 2px; }
 .team-card tr:last-child td { border-bottom: 0; }
 td .sub { display: block; color: var(--muted); font-size: 11px; }
 .rank .tier { font-weight: 600; }

@@ -4,7 +4,10 @@ const n = (v) => Number(v || 0).toLocaleString('de-DE');
 const dur = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 let ddVersion = null;
-const champImg = (c) => `<img src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${c.id}.png">`;
+// ohne Champion (z. B. Übungspuppen im Practice Tool) ein Platzhalter statt eines kaputten Bildes
+const champImg = (c) => (c && c.id
+  ? `<img src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${c.id}.png">`
+  : '<span class="champ-ph" aria-hidden="true"></span>');
 const itemsHtml = (ids) =>
   `<span class="items">${ids.filter((i) => i > 0)
     .map((i) => `<img src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${i}.png">`).join('')}</span>`;
@@ -170,8 +173,9 @@ async function renderLive() {
       <table><tr><th>Spieler</th><th>Rang</th><th>Lvl</th><th>KDA</th><th>CS</th><th>Vision</th><th>Itemwert</th><th>Items</th></tr>`;
     for (const p of t.players) {
       const champ = { id: p.championId, name: p.champion };
+      const name = p.champion || (d.gameMode === 'PRACTICETOOL' ? 'Übungspuppe' : 'Bot');
       html += `<tr class="${p.isMe ? 'me' : ''} ${p.isDead ? 'dead' : ''}">
-        <td><span class="champ">${champImg(champ)}<span>${esc(p.champion)}<span class="sub">${p.isBot ? '' : esc(p.name)}${p.isDead ? `${p.isBot ? '' : ' · '}tot ${p.respawn}s` : ''}</span></span></span></td>
+        <td><span class="champ">${champImg(champ)}<span>${esc(name)}<span class="sub">${p.isBot ? '' : esc(p.name)}${p.isDead ? `${p.isBot ? '' : ' · '}tot ${p.respawn}s` : ''}</span></span></span></td>
         <td>${rankHtml(p)}</td><td>${p.level}</td><td>${p.kda}</td><td>${p.cs}</td><td>${p.vision}</td>
         <td>${n(p.itemValue)}</td><td>${itemsHtml(p.items)}</td></tr>`;
     }
