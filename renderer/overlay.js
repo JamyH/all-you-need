@@ -12,9 +12,34 @@ const compact = (n) => {
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+// Mayhem-Augment-Angebot und Werte-Schmiede: Tier über jeder Karte (keine Siegquoten, die verbietet Riot)
+function renderAugments(list) {
+  const box = $('aug');
+  box.hidden = !list;
+  if (!list) return box.replaceChildren();
+  box.replaceChildren(...list.map((a, i) => {
+    if (!a) return '';
+    const el = document.createElement('div');
+    el.style.left = `${a.x}px`;
+    el.style.top = `${a.y}px`;
+    if (a.unknown) {
+      el.className = 'aug-badge unknown';
+      el.textContent = 'nicht erkannt';
+      return el;
+    }
+    // Tier wie bei Blitz: Buchstabe groß, darunter der Grund. Augment-Tiers stammen von arammayhem.com
+    // (CC BY 4.0, Quellenangabe nötig), daher unter der mittleren Karte die Quelle
+    el.className = `aug-badge grade-${a.tier || 'none'}`;
+    const credit = a.credit && i === 1 ? '<small>Daten: arammayhem.com</small>' : '';
+    el.innerHTML = `<b>${a.tier ? `${esc(a.tier)} Tier` : '–'}</b><span>${esc(a.why)}</span>${credit}`;
+    return el;
+  }));
+}
+
 window.lol.onGame((g) => {
   lastGame = g;
   if (sbState.open) renderScoreboard();
+  renderAugments(g.augments);
   $('champ').textContent = `${g.champion} · Lvl ${g.level}`;
   $('time').textContent = fmtTime(g.gameTime);
   $('kda').textContent = g.kda;

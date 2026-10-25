@@ -281,7 +281,10 @@ function applySkills(summary, skillsFor) {
   const want = { Q: 0, W: 0, E: 0, R: 0 };
   let next = null;
   if (spent < summary.level) {
-    for (const k of s.skillOrder.slice(0, summary.level)) {
+    const order = s.skillOrder.slice(0, summary.level);
+    // ist die Ulti laut Reihenfolge schon dran, kommt sie zuerst (bei mehreren offenen Punkten)
+    if (order.filter((k) => k === 'R').length > have.R) next = 'R';
+    for (const k of next ? [] : order) {
       if (++want[k] > have[k]) {
         next = k;
         break;

@@ -82,10 +82,12 @@ resolution and HUD scale to an issue.
 | Item, champion and rune data, icons | Data Dragon (Riot's public CDN), cached locally |
 | Exact CS, cooldowns, XP, scoreboard | Small screen regions, analysed locally (own digit recognition, Tesseract as fallback) |
 | Build and rune suggestions | [lolalytics.com](https://lolalytics.com) build page (Emerald+), one request per champion and role, cached for a day; fallback for runes: Riot's own recommended page from the client |
+| ARAM Mayhem augment tiers | Data: [arammayhem.com](https://arammayhem.com/data/) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)): pick rates and combo tags, no win rates (Riot does not allow augment win rates); English names from [CommunityDragon](https://communitydragon.org); both cached for a day |
+| Stat Anvil shards | Rated locally against your build (item tags from Data Dragon) |
 
-No Riot API key is needed. Apart from Data Dragon, the lolalytics build page and a one-time download
-of the OCR language data, nothing leaves your PC. Only the champion and role are part of the
-lolalytics request.
+No Riot API key is needed. Apart from Data Dragon, the lolalytics build page, the arammayhem.com and
+CommunityDragon data (only in ARAM Mayhem) and a one-time download of the OCR language data, nothing
+leaves your PC. Only the champion and role are part of these requests.
 
 ## Building from source
 

@@ -121,6 +121,8 @@ const rune = (id) => runeNames[id] || null;
 const runeStyle = (id) => runeStyles[id] || null;
 
 const itemName = (itemId) => items[String(itemId)]?.name || `#${itemId}`;
+// Werte-Kategorien eines Items (Damage, AbilityHaste, ArmorPenetration …)
+const itemTags = (itemId) => items[String(itemId)]?.tags || [];
 
 function iconUrl(kind, file) {
   if (!version) return '';
@@ -131,6 +133,6 @@ function iconUrl(kind, file) {
 }
 
 module.exports = {
-  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, finishedItem, remainingCost, components, rune, runeStyle, iconUrl,
+  load, itemGold, champion, championKey, championList, championSpells, itemList, itemName, itemTags, finishedItem, remainingCost, components, rune, runeStyle, iconUrl,
   getVersion: () => version,
 };

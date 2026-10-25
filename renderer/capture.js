@@ -1,20 +1,44 @@
-// Unsichtbares Fenster: hält einen Bildschirm-Stream mit 4 fps offen und schneidet
+// Unsichtbares Fenster: hält während eines Spiels einen Bildschirm-Stream mit 4 fps offen und schneidet
 // auf Anfrage nur die kleinen Bereiche aus (statt jedes Mal ein Vollbild zu holen).
+let stream = null;
 let grabber = null;
+let generation = 0; // ein stop() während des Starts verwirft den gerade entstehenden Stream
 
 async function start(sourceId) {
-  const stream = await navigator.mediaDevices.getUserMedia({
+  stop();
+  const mine = generation;
+  const s = await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sourceId, maxFrameRate: 4 } },
   });
+  if (mine !== generation) return s.getTracks().forEach((t) => t.stop());
+  stream = s;
   grabber = new ImageCapture(stream.getVideoTracks()[0]);
 }
 
+// Außerhalb des Spiels kein Stream: der kostet sonst dauerhaft Leistung, z. B. beim Video schauen
+function stop() {
+  generation++;
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  stream = grabber = null;
+}
+
+// Zeichenflächen je Ausschnittgröße wiederverwenden statt jede Sekunde neue anzulegen
+const canvases = new Map();
+function canvasFor(width, height) {
+  const key = `${width}x${height}`;
+  if (!canvases.has(key)) {
+    const canvas = new OffscreenCanvas(width, height);
+    canvases.set(key, canvas.getContext('2d', { willReadFrequently: true }));
+  }
+  return canvases.get(key);
+}
+
 async function grab(regions) {
+  if (!grabber) throw new Error('Bildschirmaufnahme läuft nicht');
   const frame = await grabber.grabFrame();
   const out = regions.map((r) => {
-    const canvas = new OffscreenCanvas(r.width, r.height);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvasFor(r.width, r.height);
     ctx.drawImage(frame, r.x, r.y, r.width, r.height, 0, 0, r.width, r.height);
     const { data } = ctx.getImageData(0, 0, r.width, r.height);
     return { width: r.width, height: r.height, data };
@@ -28,6 +52,7 @@ async function grab(regions) {
 // (Faktor 2 × scale, scale = Bildschirmhöhe / 1440); alle Maße unten gelten in diesem Raster.
 // region = null heißt ganzer Bildschirm. Liefert den Anker (Mitte des Mittelstücks, volle Auflösung) oder null.
 async function findScoreboard(region, scale = 1) {
+  if (!grabber) throw new Error('Bildschirmaufnahme läuft nicht');
   const frame = await grabber.grabFrame();
   const r = region || { x: 0, y: 0, width: frame.width, height: frame.height };
   const step = 2 * scale;
@@ -73,6 +98,7 @@ async function findScoreboard(region, scale = 1) {
 }
 
 window.capture.onStart((id) => start(id).then(() => window.capture.ready(), (e) => window.capture.ready(e.message)));
+window.capture.onStop(stop);
 // Anfragen nacheinander abarbeiten: gleichzeitige grabFrame()-Aufrufe auf demselben Stream hängen sich auf
 let queue = Promise.resolve();
 window.capture.onGrab((reqId, req) => {

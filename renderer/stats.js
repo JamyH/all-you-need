@@ -211,6 +211,7 @@ async function loadBuild() {
   $('runesAuto').checked = buildData.runesAuto;
   $('suggestionsOn').checked = buildData.suggestions;
   $('openInChampSelect').checked = buildData.openInChampSelect;
+  $('autoAccept').checked = buildData.autoAccept;
   $('itemSetAuto').checked = buildData.itemSetAuto;
   selectChampion(champId || buildData.current);
 }
@@ -361,6 +362,8 @@ $('suggestionsOn').addEventListener('change', async () => {
 });
 window.lol.onSuggestion((id) => id === champId && renderSuggestion());
 $('openInChampSelect').addEventListener('change', () => window.lol.setOpenInChampSelect($('openInChampSelect').checked));
+$('autoAccept').addEventListener('change', () => window.lol.setAutoAccept($('autoAccept').checked));
+window.lol.onAutoAccept((on) => ($('autoAccept').checked = on));
 const buildStatus = (msg) => ($('buildStatus').textContent = msg);
 $('importItemSet').addEventListener('click', async () => {
   if (!champId) return;

@@ -12,6 +12,8 @@
     "openStats": "Ctrl+Shift+S"
   },
   "autoOpenStatsAfterGame": true,
+  "autoAccept": false,
+  "autoAcceptDelayMs": 2000,
   "ocr": {
     "enabled": true,
     "intervalMs": 2500,

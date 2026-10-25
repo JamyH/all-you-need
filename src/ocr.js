@@ -3,12 +3,11 @@
 // - XP-Fortschritt aus dem lila Bogen am Portrait
 // - Summoner-Cooldowns (Icon wird blau mit weißer Restzeit)
 // Alle Funktionen bekommen kleine RGBA-Ausschnitte { width, height, data } aus src/capture.js.
-// Ziffern liest zuerst die eigene Erkennung (src/digits.js); Tesseract nur, solange für eine Schrift
-// noch nicht alle zehn Muster gelernt sind.
+// Ziffern liest zuerst die eigene Erkennung (src/digits.js); Tesseract nur, wenn die unsicher ist.
+// Tesseract (rund 55 MB) wird erst beim ersten Bedarf geladen und nach dem Spiel wieder freigegeben.
 const { desktopCapturer, nativeImage, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const { createWorker, PSM } = require('tesseract.js');
 const digits = require('./digits');
 
 let T = {};
@@ -19,18 +18,78 @@ try {
 }
 const complete = (t) => !!t && Object.keys(t).length === 10;
 
-let worker = null;
+let worker = null; // Promise des Tesseract-Workers (nur Ziffern), null = nicht geladen
+let textWorker = null; // zweiter Worker für Text (Augment-Namen), ebenfalls erst bei Bedarf
+let tesseractCache = null;
 let collectDir = null;
 
 // collect: Ordner, in dem CS-Ausschnitte mit dem Tesseract-Wert landen (Lernmaterial für tools/digit-samples.js)
 async function init(cachePath, { collect } = {}) {
+  tesseractCache = cachePath;
   collectDir = collect || null;
   if (collectDir) fs.mkdirSync(collectDir, { recursive: true });
-  worker = await createWorker('eng', 1, { cachePath });
-  await worker.setParameters({
-    tessedit_char_whitelist: '0123456789',
-    tessedit_pageseg_mode: PSM.SINGLE_LINE,
-  });
+}
+
+function tesseract() {
+  if (!worker) {
+    worker = (async () => {
+      const { createWorker, PSM } = require('tesseract.js');
+      const w = await createWorker('eng', 1, { cachePath: tesseractCache });
+      await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: PSM.SINGLE_LINE });
+      return w;
+    })().catch((e) => {
+      console.warn('Tesseract:', e.message);
+      worker = null;
+      return null;
+    });
+  }
+  return worker;
+}
+
+function tesseractText() {
+  if (!textWorker) {
+    textWorker = (async () => {
+      const { createWorker, PSM } = require('tesseract.js');
+      const w = await createWorker('eng', 1, { cachePath: tesseractCache });
+      await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE });
+      return w;
+    })().catch((e) => {
+      console.warn('Tesseract (Text):', e.message);
+      textWorker = null;
+      return null;
+    });
+  }
+  return textWorker;
+}
+
+// Nach dem Spiel: Speicher freigeben, beim nächsten Bedarf wird neu geladen
+async function release() {
+  const ws = await Promise.all([worker, textWorker]);
+  worker = textWorker = null;
+  await Promise.all(ws.filter(Boolean).map((w) => w.terminate()));
+}
+
+// Augment-Angebot offen? Oberkante des hellen Kartenrahmens (Angebot ~90 % hell, sonst höchstens ~20 %)
+function augmentFrame(crop) {
+  const { data } = crop;
+  let n = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    // heller Kartenrahmen: Gold (beige), Prisma (lila-weiß), Silber; das Spielfeld dahinter ist dunkel
+    if (Math.min(r, g, b) > 120 && Math.max(r, g, b) > 170) n++;
+  }
+  return n / (data.length / 4) >= 0.5;
+}
+
+// Eine Textzeile lesen (Augment-Name: helle Schrift auf dunkler Karte), Umlaute gleicht augments.match aus
+async function readText(crop) {
+  const bgra = Buffer.from(crop.data);
+  for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
+  const img = nativeImage.createFromBitmap(bgra, { width: crop.width, height: crop.height });
+  const w = await tesseractText();
+  if (!w) return '';
+  const { data } = await w.recognize(img.toPNG());
+  return data.text.trim();
 }
 
 // Nur für die Kalibrier-Tools: ein Vollbild als nativeImage
@@ -60,7 +119,9 @@ async function recognize(crop, test) {
     px[i + 3] = 255;
   }
   const img = nativeImage.createFromBitmap(px, { width, height }).resize({ width: width * 4, quality: 'best' });
-  const { data: res } = await worker.recognize(img.toPNG());
+  const w = await tesseract();
+  if (!w) return null;
+  const { data: res } = await w.recognize(img.toPNG());
   const digits = res.text.replace(/\D/g, '');
   return digits ? Number(digits) : null;
 }
@@ -89,7 +150,7 @@ async function readCs(crop) {
       return own;
     }
   }
-  const v = worker ? await recognize(crop, isYellow) : null;
+  const v = await recognize(crop, isYellow);
   if (v != null) {
     collect(crop, v);
     return v;
@@ -116,7 +177,7 @@ async function readSpellCd(crop) {
     const own = digits.read(crop, isWhite, T.white);
     if (own != null) return own;
   }
-  return worker ? recognize(crop, isWhite) : null;
+  return recognize(crop, isWhite);
 }
 
 // Bereich, den der XP-Bogen braucht (für die Aufnahme-Anfrage)
@@ -159,6 +220,6 @@ function readXp(crop, arc) {
 }
 
 module.exports = {
-  init, captureScreen, fromNativeImage, readCs, spellOnCooldown, readSpellCd, readItemCd, xpBox, readXp,
+  init, release, augmentFrame, readText, captureScreen, fromNativeImage, readCs, spellOnCooldown, readSpellCd, readItemCd, xpBox, readXp,
   isWhite, isYellow, recognizeTesseract: recognize,
 };

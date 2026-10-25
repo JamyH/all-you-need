@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('lol', {
   setItemSetAuto: (on) => ipcRenderer.invoke('build:itemSetAuto', on),
   onBuildStatus: (cb) => ipcRenderer.on('build:status', (_e, msg) => cb(msg)),
   setOpenInChampSelect: (on) => ipcRenderer.invoke('build:openInChampSelect', on),
+  setAutoAccept: (on) => ipcRenderer.invoke('queue:autoAccept', on),
+  onAutoAccept: (cb) => ipcRenderer.on('autoAccept', (_e, on) => cb(on)),
   onRunesStatus: (cb) => ipcRenderer.on('runes:status', (_e, msg) => cb(msg)),
   bench: () => ipcRenderer.invoke('bench:get'),
   onBench: (cb) => ipcRenderer.on('bench', (_e, info) => cb(info)),

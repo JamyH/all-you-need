@@ -19,6 +19,9 @@ const BASE = {
   xpArc: [[1443, 1313], [1447, 1330], [1452, 1345], [1455, 1358], [1456, 1370], [1455, 1382], [1451, 1393], [1446, 1401]]
     .map(([x, y]) => [x - REF.width / 2, y - REF.height]),
   scoreboard: { rows: [59, 160, 261, 362, 463], top: -170, badgeX: -11, badgeXRight: 706, badgeDy: -22 },
+  // Mayhem-Augment-Angebot: drei Karten mittig, Abstand der Kartenmitten (dx), Name als weiße Zeile,
+  // Oberkante des beigen Kartenrahmens als Erkennungsmerkmal; Badges über den Karten (y absolut)
+  augments: { pitch: 490, name: { y: 565, height: 50, half: 180 }, frame: { y: 255, height: 25, half: 150 }, badgeY: 225 },
 };
 
 function compute(width, height, globalScale = 0) {
@@ -48,6 +51,16 @@ function compute(width, height, globalScale = 0) {
       spell(BASE.items.trinket),
     ],
     xpArc: BASE.xpArc.map(([dx, dy]) => bottom(dx, dy)),
+    augments: [-1, 0, 1].map((i) => {
+      const a = BASE.augments;
+      const x = cx + i * a.pitch * res;
+      return {
+        x: r(x),
+        badgeY: r(a.badgeY * res),
+        name: { x: r(x - a.name.half * res), y: r(a.name.y * res), width: r(2 * a.name.half * res), height: r(a.name.height * res) },
+        frame: { x: r(x - a.frame.half * res), y: r(a.frame.y * res), width: r(2 * a.frame.half * res), height: r(a.frame.height * res) },
+      };
+    }),
     scoreboard: {
       scale: +res.toFixed(3),
       offsets: {

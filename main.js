@@ -28,6 +28,9 @@ const setup = require('./src/setup');
 const layout = require('./src/layout');
 const lolalytics = require('./src/lolalytics');
 const history = require('./src/history');
+const augments = require('./src/augments');
+const arammayhem = require('./src/arammayhem');
+const anvil = require('./src/anvil');
 
 // Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
@@ -178,15 +181,24 @@ async function pollGame() {
   if (summary && !gameRunning) {
     refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
     warnFullscreen();
+    if (screenReading) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
+  }
+  if (!summary && gameRunning) {
+    capture.stop();
+    ocr.release().catch(() => {});
   }
   gameRunning = !!summary;
   lastData = data;
   if (!summary) liveRanks = null; // Ränge gelten nur für das jeweilige Spiel
   if (summary && summary.championId) lastChampion = summary.championId;
+  // Mayhem: Augment-Tiers für den Champ bereitlegen, bevor das erste Angebot kommt
+  if (summary && data.gameData.gameMode === 'KIWI') arammayhem.prepare(lastChampion);
   lastItems = summary ? summary.myItems : [];
   meDead = !!(summary && summary.isDead);
   if (summary) summary.scoreboard = live.scoreboard(data);
-  if (data && Date.now() - lastDump > 5000) {
+  if (summary) summary.augments = screenState.augments || null;
+  // Debug-Abzug nur in der Entwicklerversion (100 KB alle 5 s wären für Nutzer nur Schreiblast)
+  if (data && !app.isPackaged && Date.now() - lastDump > 5000) {
     lastDump = Date.now();
     try {
       fs.mkdirSync(DEBUG_DIR, { recursive: true });
@@ -207,6 +219,7 @@ async function pollGame() {
 // Bildschirm auslesen, nur während ein Spiel läuft. Jede Sekunde ein Mini-Ausschnitt-Paket aus dem Stream;
 // Texterkennung nur wenn nötig: CS alle ocr.intervalMs, Spell-Restzeit einmal pro Cooldown (+ Abgleich alle 15 s).
 let gameRunning = false;
+let screenReading = false; // Bildschirm-Erkennung eingeschaltet (config.ocr.enabled) und bereit
 let screenState = { cs: null, xp: null, spells: {}, items: {} };
 let lastItems = []; // Inventar aus der Live-API, damit die Bildschirm-Abfrage nur belegte Item-Slots liest
 let meDead = false; // tot: Bildschirm grau, Cooldown-Erkennung der Summoner unzuverlässig
@@ -242,6 +255,57 @@ const sbNear = (a) => {
   const s = L.scoreboard.scale;
   return { x: Math.max(0, Math.round(a.x - 200 * s)), y: Math.max(0, Math.round(a.y - 180 * s)), width: Math.round(400 * s), height: Math.round(220 * s) };
 };
+// Augment-Angebot und Werte-Schmiede: drei Karten erkennen, Namen lesen (nur wenn sich der Ausschnitt geändert
+// hat, z. B. nach Neu-Würfeln) und bewerten. Augments nach arammayhem.com, Werte-Splitter nach dem eigenen Build.
+// Ergebnis landet im Overlay über den Karten.
+const augmentCache = [null, null, null]; // je Karte { sig, text }
+const cropSig = (c) => {
+  let s = 0;
+  for (let i = 0; i < c.data.length; i += 16) s = (s * 31 + c.data[i]) >>> 0;
+  return s;
+};
+// Build für die Splitter-Wertung: Lolalytics-Build des Champs plus die schon gekauften fertigen Items
+function buildItemTags() {
+  const planned = (lastChampion && lolalytics.cached(lastChampion, 'aram')?.items) || [];
+  const owned = lastItems.map((it) => it.id).filter(ddragon.finishedItem);
+  return [...new Set([...planned, ...owned])].map(ddragon.itemTags);
+}
+async function readAugmentOffer(augCrops) {
+  const frames = augCrops.slice(0, 3), names = augCrops.slice(3);
+  if (!frames.every(ocr.augmentFrame)) {
+    screenState.augments = null;
+    return;
+  }
+  const texts = await Promise.all(names.map(async (crop, i) => {
+    const sig = cropSig(crop);
+    if (!augmentCache[i] || augmentCache[i].sig !== sig) {
+      const text = await ocr.readText(crop);
+      augmentCache[i] = { sig, text };
+      if (!app.isPackaged) fs.appendFileSync(path.join(DATA_DIR, 'augments-debug.log'), `${new Date().toISOString()} Karte ${i}: "${text}"
+`);
+    }
+    return augmentCache[i].text;
+  }));
+  const pos = (i) => ({ x: L.augments[i].x, y: L.augments[i].badgeY });
+  const shards = texts.map(anvil.match);
+  if (shards.some(Boolean)) {
+    const key = lastChampion && ddragon.championKey(lastChampion);
+    const info = key ? ddragon.champion(key).info : null;
+    const rated = anvil.rateOffer(shards, buildItemTags(), !!info && info.magic > info.attack);
+    screenState.augments = rated.map((r, i) => (r ? { ...pos(i), ...r } : { ...pos(i), unknown: true }));
+    return;
+  }
+  const champName = lastChampion ? ddragon.champion(ddragon.championKey(lastChampion)).name : '';
+  screenState.augments = texts.map((text, i) => {
+    // beim Umdrehen der Karten (Neu-Würfeln) steht kurz kein lesbarer Name da: dann kein Badge
+    if ((text.match(/\p{L}/gu) || []).length < 4) return null;
+    const id = augments.match(text);
+    if (!id) return { ...pos(i), unknown: true };
+    const t = arammayhem.tier(id, lastChampion, champName);
+    return { ...pos(i), tier: t ? t.tier : null, why: t ? t.why : 'keine Daten', credit: true };
+  });
+}
+
 let ocrBusy = false;
 let lastCsRead = 0;
 async function pollScreen() {
@@ -254,7 +318,13 @@ async function pollScreen() {
     const items = lastItems.filter((it) => it.slot < 6);
     const regions = [...slots.map(([, r]) => r), ...items.map((it) => L.items[it.slot])];
     if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
+    // Mayhem: Augments werden nur im Tod (oder ganz am Anfang) gewählt, nur dann nach dem Angebot schauen
+    const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI' && (meDead || lastData.gameData.gameTime < 90);
+    if (watchAugments) regions.push(...L.augments.map((a) => a.frame), ...L.augments.map((a) => a.name));
     const crops = await capture.grab(regions);
+    const augCrops = watchAugments ? crops.splice(crops.length - 6, 6) : null;
+    if (augCrops) await readAugmentOffer(augCrops);
+    else screenState.augments = null;
 
     // Item-Cooldowns: jede Sekunde neu lesen (eigene Ziffern-Erkennung, kostet praktisch nichts)
     screenState.items = {};
@@ -277,8 +347,11 @@ async function pollScreen() {
       } else if (!prev || prev.ready || prev.cd == null || Date.now() - prev.at > 10000) {
         // Zahl lesen beim Start des Cooldowns und danach alle 10 s zum Abgleich
         const cd = await ocr.readSpellCd(crops[i]);
-        if (cd != null) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
-        else if (!prev || prev.ready) screenState.spells[slot] = { ready: true };
+        // Kein Summoner startet mit weniger als 10 s. Solche Werte sind Fehllesungen, z. B. die weiße Kugel
+        // im Flash-Icon, das wegen seines Blaus immer nach Cooldown aussieht
+        const fresh = !prev || prev.ready;
+        if (cd != null && !(fresh && cd < 10)) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
+        else if (fresh) screenState.spells[slot] = { ready: true };
       }
     }
     if (readCs) {
@@ -462,10 +535,44 @@ async function updateBench(sel) {
 let historyImported = false;
 async function importHistory() {
   try {
-    if (history.add(await lcu.matchHistory(config.leaguePath, 20))) notifyStats('history:items');
+    const h = await lcu.matchHistory(config.leaguePath, 20);
+    if (history.add(h)) notifyStats('history:items');
     historyImported = true;
+    await refreshAugmentNames();
   } catch (e) {
     // Client noch nicht bereit, beim nächsten Abfragen erneut
+  }
+}
+
+// Deutsche Augment-Namen aus dem Client, einmal pro App-Start (neue Augments kommen mit Patches)
+let augmentNamesFresh = false;
+async function refreshAugmentNames() {
+  if (augmentNamesFresh) return;
+  augments.setNames(await lcu.cherryAugments(config.leaguePath));
+  augmentNamesFresh = augments.hasNames();
+}
+
+// Auto-Accept: „Spiel gefunden“ nach kurzer Verzögerung annehmen (Zeit, um selbst abzulehnen).
+// Läuft jede Sekunde, fragt aber nur in der Queue nach; ein Ready-Check dauert rund 10 s.
+let acceptAt = 0; // geplanter Zeitpunkt fürs Annehmen, 0 = nichts geplant
+async function pollReadyCheck() {
+  if (config.autoAccept !== true || !['Matchmaking', 'ReadyCheck'].includes(lastPhase)) {
+    acceptAt = 0;
+    return;
+  }
+  const rc = await lcu.readyCheck(config.leaguePath);
+  if (!rc || rc.state !== 'InProgress' || rc.playerResponse !== 'None') {
+    acceptAt = 0; // kein Check, schon angenommen oder selbst abgelehnt
+    return;
+  }
+  if (!acceptAt) acceptAt = Date.now() + (config.autoAcceptDelayMs ?? 2000);
+  if (Date.now() < acceptAt) return;
+  acceptAt = 0;
+  try {
+    await lcu.acceptReadyCheck(config.leaguePath);
+    console.log('Auto-Accept: Spiel angenommen');
+  } catch (e) {
+    console.warn('Auto-Accept:', e.message);
   }
 }
 
@@ -579,6 +686,7 @@ ipcMain.handle('build:data', () => ({
   runesAuto: config.runesAuto !== false,
   suggestions: suggestionsOn(),
   openInChampSelect: config.openInChampSelect !== false,
+  autoAccept: config.autoAccept === true,
   itemSetAuto: config.itemSetAuto !== false,
   current: lastChampion,
 }));
@@ -653,6 +761,10 @@ ipcMain.handle('runes:useOption', async (_e, champId, i, save) => {
 ipcMain.handle('build:itemSet', (_e, champId) => importItemSet(champId));
 ipcMain.handle('build:itemSetAuto', (_e, on) => saveConfig({ itemSetAuto: on }));
 ipcMain.handle('build:openInChampSelect', (_e, on) => saveConfig({ openInChampSelect: on }));
+ipcMain.handle('queue:autoAccept', (_e, on) => {
+  saveConfig({ autoAccept: on });
+  refreshTrayMenu(); // Häkchen im Tray-Menü mitziehen
+});
 ipcMain.handle('suggestion:enabled', (_e, on) => saveConfig({ lolalytics: { ...(config.lolalytics || {}), enabled: on } }));
 // Quellen-Link im Standardbrowser öffnen, nur lolalytics-Seiten
 ipcMain.handle('suggestion:open', (_e, url) => {
@@ -698,6 +810,15 @@ function refreshTrayMenu() {
     { label: 'Overlay anzeigen', type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
     { label: 'Panel verschieben', type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
     {
+      label: 'Spiel automatisch annehmen',
+      type: 'checkbox',
+      checked: config.autoAccept === true,
+      click: (item) => {
+        saveConfig({ autoAccept: item.checked });
+        notifyStats('autoAccept', item.checked);
+      },
+    },
+    {
       label: 'Mit Windows starten',
       type: 'checkbox',
       checked: app.getLoginItemSettings(LOGIN_ITEM).openAtLogin,
@@ -729,6 +850,8 @@ app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
   lolalytics.init(app.getPath('userData'));
   history.init(app.getPath('userData'));
+  augments.init(app.getPath('userData'));
+  arammayhem.init(app.getPath('userData'));
   refreshLayout();
   createOverlay();
   createTray();
@@ -741,10 +864,13 @@ app.whenReady().then(async () => {
 
   setInterval(pollGame, config.pollMs);
   setInterval(pollClient, 3000);
+  setInterval(pollReadyCheck, 1000);
   if (config.ocr && config.ocr.enabled) {
     // ocr.collectDigits: CS-Ausschnitte als Lernmaterial für die eigene Ziffern-Erkennung sammeln
     const collect = config.ocr.collectDigits ? path.join(app.getPath('userData'), 'digit-samples') : null;
     await Promise.all([ocr.init(app.getPath('userData'), { collect }), capture.init()]);
+    screenReading = true;
+    if (gameRunning) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
     setInterval(pollScreen, 1000);
     if (config.scoreboard && config.scoreboard.enabled) startTabHook();
   }

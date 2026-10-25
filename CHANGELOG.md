@@ -18,6 +18,11 @@ ARAM und ARAM Mayhem
 - KAUFEN statt RECALL, und nur solange du tot bist; XP-Anzeige nur in Prozent
 - Bank-Helfer: in der Champ-Auswahl zeigt „Build & Runen“ deinen Champ und die Bank mit ARAM-Siegrate
   (lolalytics), markiert, wenn sich ein Tausch lohnt; Klick zeigt Build und Runen des Champs
+- Augment-Tiers im Mayhem: Beim Augment-Angebot steht über jeder Karte ein Tier (S bis D) mit Grund,
+  z. B. „S Tier · 10,5 % der Kayn-Spieler“ oder „God-Combo mit Kayn“. Daten: arammayhem.com (Pickraten
+  und Combo-Einschätzungen, keine Siegquoten, die erlaubt Riot für Augments nicht)
+- Werte-Schmiede: Bei den Werte-Splittern zeigt das Tier, wie gut der Wert zu deinem Build passt
+  (lolalytics-Build plus deine gekauften Items)
 
 Build & Runen
 - Deine meistgebauten Items pro Champion und Modus (Rift/ARAM), mit Anzahl und Siegquote; „Als meinen
@@ -25,15 +30,22 @@ Build & Runen
   letzten 20); Practice Tool und Custom Games zählen nicht
 
 App
+- Auto-Accept: „Spiel automatisch annehmen“ im Tray-Menü (standardmäßig aus) nimmt „Spiel gefunden“ nach
+  2 Sekunden an; wer vorher selbst ablehnt, bleibt abgelehnt
 - Eigene Ziffern-Erkennung statt Tesseract für Summoner-, Item- und CS-Zahlen (rund 90× schneller);
   Tesseract nur noch, wenn sie unsicher ist. Muster lernt `tools/digit-samples.js`, `ocr.collectDigits`
   sammelt dafür CS-Ausschnitte
 - Alte lolalytics-Einträge ohne Skill-Reihenfolge werden beim nächsten Pick neu geholt
+- Weniger Last außerhalb des Spiels: die Bildschirmaufnahme läuft nur noch während eines Spiels, Tesseract
+  wird erst bei Bedarf geladen und nach dem Spiel freigegeben (rund 100 MB weniger Arbeitsspeicher ohne Spiel)
+- Kein Debug-Abzug mehr alle 5 Sekunden in der veröffentlichten Version (sparte 100 KB Schreiblast je Abzug)
 
 Fixes
 - CS wurde oft nicht exakt erkannt („0+“), vor allem eine einzelne 0: der Bildschirm-Stream verwischt Gelb,
   die Erkennung achtet jetzt auf Helligkeit
 - Summoner sprangen nach dem Tod kurz auf „bereit“ (grauer Bildschirm), obwohl der Cooldown lief
+- Flash zeigte ab und zu kurze Fantasie-Cooldowns (0:03 bis 0:09), obwohl er bereit war
+- Skill-Banner: Ist die Ulti dran, wird sie zuerst angezeigt, auch wenn noch ein älterer Punkt offen ist
 
 ## 1.2.0 – 2026-10-24
 

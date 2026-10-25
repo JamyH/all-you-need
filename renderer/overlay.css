@@ -147,3 +147,25 @@ small { margin-left: 4px; font-size: 11px; }
   font-size: 13px;
   font-weight: 700;
 }
+
+/* Mayhem: Tier-Badges über Augment- und Werte-Schmiede-Karten */
+.aug-badge {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 120px;
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--gold-dark);
+  text-align: center;
+}
+.aug-badge b { font: 700 22px/1.1 "Cinzel", serif; }
+.aug-badge span { font-size: 13px; }
+.aug-badge small { color: var(--muted); font-size: 12px; }
+.aug-badge.grade-S b { color: #f4c874; }
+.aug-badge.grade-A b { color: var(--good); }
+.aug-badge.grade-B b { color: var(--text); }
+.aug-badge.grade-C b, .aug-badge.grade-D b { color: var(--bad); }
+.aug-badge.grade-none b, .aug-badge.unknown { color: var(--muted); }

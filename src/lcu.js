@@ -21,6 +21,13 @@ function lcu(leaguePath, endpoint, method = 'GET', body = undefined) {
 const gameflowPhase = (lp) => lcu(lp, '/lol-gameflow/v1/gameflow-phase').catch(() => null);
 const currentSummoner = (lp) => lcu(lp, '/lol-summoner/v1/current-summoner');
 const endOfGame = (lp) => lcu(lp, '/lol-end-of-game/v1/eog-stats-block');
+// Ready-Check nach „Spiel gefunden“: { state: 'InProgress' | …, playerResponse: 'None' | 'Accepted' | 'Declined' }.
+// Ohne laufenden Check antwortet der Client mit 404 -> null
+const readyCheck = (lp) => lcu(lp, '/lol-matchmaking/v1/ready-check').catch(() => null);
+const acceptReadyCheck = (lp) => lcu(lp, '/lol-matchmaking/v1/ready-check/accept', 'POST');
+// Details eines Spiels mit allen 10 Spielern (bei Mayhem inkl. playerAugment1–6)
+// Spieldaten des Clients: Augments (Arena und Mayhem) mit Namen in Client-Sprache, Seltenheit, Icon
+const cherryAugments = (lp) => lcu(lp, '/lol-game-data/assets/v1/cherry-augments.json');
 const matchHistory = (lp, count = 10) =>
   lcu(lp, `/lol-match-history/v1/products/lol/current-summoner/matches?begIndex=0&endIndex=${count - 1}`);
 
@@ -123,5 +130,5 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 
 module.exports = {
   gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, mapId, recommendedRunes, recommendedRunePages, currentRunePage, applyRunePage, PAGE_NAME,
-  applyItemSet, gamePlayers, soloRank,
+  applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments,
 };
