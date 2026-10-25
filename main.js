@@ -169,10 +169,12 @@ function raiseOverlay() {
 // beim Spielstart wieder (im Spiel sieht man es nicht, spart ~125 MB). Klick oder Taste im Fenster = benutzt.
 let statsUsed = false;
 let statsAutoClosing = false;
-// Windows holt ein Fenster aus einem Hintergrundprogramm mit focus() nicht nach vorne, und über dem Spiel
-// (randlos, liegt selbst ganz oben) kommt ein normales Fenster gar nicht. Daher „immer oben“, bis du woanders
-// hinklickst (blur in openStats), dann wieder normal
+// Windows holt ein Fenster aus einem Hintergrundprogramm mit focus() nicht nach vorne; über dem Spiel landete es
+// dahinter. Daher „immer oben“, bis du woanders hinklickst (blur), dann wieder normal. Den Fokus gibt Windows beim
+// Öffnen oft kurz und nimmt ihn gleich zurück: ein blur in der ersten Sekunde zählt deshalb nicht
+let statsRaisedAt = 0;
 function raiseStats() {
+  statsRaisedAt = Date.now();
   stats.setAlwaysOnTop(true, 'floating');
   stats.show();
   stats.moveTop();
@@ -209,7 +211,9 @@ function openStats(opts = {}) {
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
   stats.once('ready-to-show', () => (inactive ? stats.showInactive() : raiseStats()));
-  stats.on('blur', () => stats.setAlwaysOnTop(false));
+  stats.on('blur', () => {
+    if (Date.now() - statsRaisedAt > 1000) stats.setAlwaysOnTop(false);
+  });
   if (tab) stats.webContents.once('did-finish-load', () => stats.webContents.send('show-tab', tab));
   stats.loadFile('renderer/stats.html');
   // beim ersten Schließen einmal erklären, dass die App im Hintergrund weiterläuft
