@@ -326,7 +326,7 @@ async function pollGame() {
     closeUnusedStats();
     warnFullscreen();
     if (screenReading) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
-    if (screenReading) startTabWatch();
+    startTabWatch(); // Tastenkürzel immer; Tab-Scoreboard nur mit Bildschirm-Erkennung (Prüfung dort)
   }
   if (!summary && gameRunning) {
     stopTabWatch();
@@ -564,12 +564,14 @@ async function confirmScoreboard(pressId) {
   }
 }
 
-// Läuft nur während eines Spiels (Start/Ende in pollGame)
+// Läuft nur während eines Spiels (Start/Ende in pollGame). Liest Tab fürs Scoreboard und die Tastenkürzel, die
+// League im Spiel als globale Hotkeys schluckt
 function startTabWatch() {
-  if (!config.scoreboard || !config.scoreboard.enabled) return;
+  const scoreboardOn = !!(config.scoreboard && config.scoreboard.enabled);
   keys.start(
     () => {
-      if (!moduleOn('scoreboard')) return; // im ⚙ abgeschaltet: auch keine Scoreboard-Suche
+      // im ⚙ abgeschaltet oder ohne Bildschirm-Erkennung: keine Scoreboard-Suche
+      if (!scoreboardOn || !screenReading || !moduleOn('scoreboard')) return;
       tabDown = true;
       tabPressId++;
       sendScoreboard(true);
@@ -579,6 +581,7 @@ function startTabWatch() {
       tabDown = false;
       if (sbOpen) sendScoreboard(false);
     },
+    hotkeyActions(),
   );
 }
 function stopTabWatch() {
@@ -1097,6 +1100,21 @@ function createTray() {
   }
 }
 
+// Tastenkürzel: außerhalb des Spiels als globale Hotkeys, im Spiel zusätzlich über die Tastenabfrage (keys.js).
+// Falls beide Wege dieselbe Taste sehen, zählt sie nur einmal
+const lastHotkey = {};
+const hotkeyOnce = (name, run) => () => {
+  if (Date.now() - (lastHotkey[name] || 0) < 400) return;
+  lastHotkey[name] = Date.now();
+  run();
+};
+const HOTKEYS = {
+  toggleOverlay: hotkeyOnce('toggleOverlay', () => toggleOverlay()),
+  editMode: hotkeyOnce('editMode', () => setEditMode(!editMode)),
+  openStats: hotkeyOnce('openStats', () => openStats()),
+};
+const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ accelerator: config.hotkeys[name], run }));
+
 app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
   lolalytics.init(app.getPath('userData'));
@@ -1108,10 +1126,9 @@ app.whenReady().then(async () => {
   createTray();
   // kein Fenster beim Start: die App läuft im Hintergrund (Overlay + Tray), das Stats-Fenster nur auf Wunsch
 
-  const hk = config.hotkeys;
-  globalShortcut.register(hk.toggleOverlay, toggleOverlay);
-  globalShortcut.register(hk.editMode, () => setEditMode(!editMode));
-  globalShortcut.register(hk.openStats, openStats);
+  for (const [name, run] of Object.entries(HOTKEYS)) {
+    if (!globalShortcut.register(config.hotkeys[name], run)) console.warn(`Tastenkürzel ${config.hotkeys[name]} ist belegt`);
+  }
 
   setInterval(pollGame, config.pollMs);
   setInterval(pollClient, 3000);
