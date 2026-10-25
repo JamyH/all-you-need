@@ -474,7 +474,11 @@ async function pollScreen() {
         // Kein Summoner startet mit weniger als 10 s. Solche Werte sind Fehllesungen, z. B. die weiße Kugel
         // im Flash-Icon, das wegen seines Blaus immer nach Cooldown aussieht
         const fresh = !prev || prev.ready;
-        if (cd != null && !(fresh && cd < 10)) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
+        // Beim Abgleich kann die Restzeit nur sinken. Springt sie hoch, war es eine Fehllesung: weiter
+        // runterzählen und erst beim nächsten Abgleich wieder lesen
+        const left = fresh || prev.cd == null ? null : prev.cd - (Date.now() - prev.at) / 1000;
+        if (left != null && cd != null && cd > left + 3) screenState.spells[slot] = { ready: false, cd: Math.max(0, Math.round(left)), at: Date.now() };
+        else if (cd != null && !(fresh && cd < 10)) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
         else if (fresh) screenState.spells[slot] = { ready: true };
       }
     }

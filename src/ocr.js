@@ -126,12 +126,14 @@ function fromNativeImage(img, region) {
   return { width, height, data };
 }
 
-// Pixel, die test(r,g,b) erfüllen, werden schwarz auf weiß; 4x vergrößert für Tesseract
-async function recognize(crop, test) {
+// Pixel, die test(r,g,b) erfüllen, werden schwarz auf weiß; 4x vergrößert für Tesseract.
+// skip(x, y): Pixel, die nicht mitgelesen werden (z. B. die Ladungszahl in der Ecke)
+async function recognize(crop, test, skip = () => false) {
   const { width, height, data } = crop;
   const px = Buffer.alloc(width * height * 4);
   for (let i = 0; i < px.length; i += 4) {
-    const v = test(data[i], data[i + 1], data[i + 2]) ? 0 : 255;
+    const p = i / 4;
+    const v = test(data[i], data[i + 1], data[i + 2]) && !skip(p % width, Math.floor(p / width)) ? 0 : 255;
     px[i] = px[i + 1] = px[i + 2] = v;
     px[i + 3] = 255;
   }
@@ -191,12 +193,14 @@ function spellOnCooldown(crop) {
 // Nur eigene Erkennung: läuft jede Sekunde für bis zu sechs Slots, Tesseract wäre dafür zu teuer.
 const readItemCd = (crop) => (complete(T.white) ? digits.read(crop, isWhite, T.white, { central: true }) : null);
 
+// Summoner mit Ladungen (Zerschmettern) zeigen die Ladungszahl weiß unten rechts: wie bei den Items nur die
+// Restzeit in der Mitte lesen, sonst wird aus „1“ und „45“ eine 145
 async function readSpellCd(crop) {
   if (complete(T.white)) {
-    const own = digits.read(crop, isWhite, T.white);
+    const own = digits.read(crop, isWhite, T.white, { central: true });
     if (own != null) return own;
   }
-  return recognize(crop, isWhite);
+  return recognize(crop, isWhite, (x, y) => x > crop.width * 0.65 && y > crop.height * 0.7);
 }
 
 // Bereich, den der XP-Bogen braucht (für die Aufnahme-Anfrage)
