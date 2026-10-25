@@ -131,7 +131,7 @@ reload instantly; for everything else restart the app.
 
 - [Electron](https://www.electronjs.org) – MIT
 - [tesseract.js](https://github.com/naptha/tesseract.js) – Apache-2.0
-- [uiohook-napi](https://github.com/SnosMe/uiohook-napi) – MIT
+- [koffi](https://koffi.dev/) – MIT
 - Fonts Cinzel and Source Sans 3 via Google Fonts – SIL Open Font License
 
 ## License

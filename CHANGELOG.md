@@ -8,6 +8,14 @@ Build & Runen
   automatisch; dein Blitz bleibt auf seiner Taste (D oder F). Eigene Karte „Summoner“ im Build-Tab mit
   „Jetzt setzen“ und Schalter fürs automatische Setzen
 
+Leistung
+- Overlay: Mausbewegungen werden nur noch in der Nähe des Griffs ans Overlay weitergeleitet. Vorher bekam
+  das Overlay im Spiel jede Mausbewegung; das kostete etwa 21 % eines CPU-Kerns im Hauptprozess plus 6 % im
+  Overlay, jetzt unter 1 %
+- Tab-Scoreboard: Die App fragt im Spiel nur noch ab, ob Tab gedrückt ist, statt alle Eingaben über einen
+  globalen Tastatur- und Maus-Hook mitzulesen. Der bekam jede Mausbewegung mit (bei Gaming-Mäusen bis zu 1000
+  pro Sekunde) und kostete dafür 2–4 % eines CPU-Kerns; jetzt praktisch nichts
+
 Mayhem
 - Augment-Karten werden nur noch neu gelesen, wenn sich die Schrift ändert (vorher jede Sekunde wegen des
   Glitzerns der Karten)

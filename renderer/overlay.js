@@ -169,7 +169,14 @@ window.lol.onScoreboard((s) => {
 window.lol.onPanelPos((p) => {
   panel.style.left = `${p.x}px`;
   panel.style.top = `${p.y}px`;
+  reportGrip();
 });
+// Lage des Griffs an main melden: nur in seiner Nähe werden Mausbewegungen ans Overlay weitergeleitet
+function reportGrip() {
+  const r = $('grip').getBoundingClientRect();
+  window.lol.gripRect({ x: r.x, y: r.y, width: r.width, height: r.height });
+}
+new ResizeObserver(reportGrip).observe(panel);
 window.lol.onEditMode((on) => document.body.classList.toggle('edit', on));
 
 let drag = null;
@@ -192,4 +199,5 @@ window.addEventListener('mouseup', () => {
   document.body.classList.remove('dragging');
   window.lol.gripHover(false);
   window.lol.panelMoved({ x: panel.offsetLeft, y: panel.offsetTop });
+  reportGrip();
 });

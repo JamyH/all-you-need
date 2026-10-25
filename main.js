@@ -31,6 +31,7 @@ const history = require('./src/history');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
 const anvil = require('./src/anvil');
+const keys = require('./src/keys');
 
 // Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
@@ -82,10 +83,36 @@ function createOverlay() {
   overlay.setAlwaysOnTop(true, 'screen-saver');
   // Overlay taucht in Bildschirmaufnahmen nicht auf, damit es die OCR nicht verdeckt
   overlay.setContentProtection(true);
-  overlay.setIgnoreMouseEvents(true, { forward: true });
+  setPassThrough(false);
   overlay.loadFile('renderer/overlay.html');
   overlay.webContents.on('did-finish-load', () => overlay.webContents.send('panel-pos', config.panel));
 }
+
+// Klicks gehen durchs Overlay zum Spiel. Mausbewegungen ans Overlay weiterleiten (forward) braucht nur der
+// Griff zum Verschieben (Hover). Electron hängt dafür einen globalen Maus-Hook ein und schickt jede Bewegung
+// ans Overlay: gemessen ~21 % eines Kerns im Hauptprozess plus ~6 % im Overlay. Daher nur einschalten, solange
+// die Maus in der Nähe des Griffs ist; das prüft ein billiger Blick auf die Mausposition alle 150 ms.
+let forwarding = null; // true/false = Stand der Weiterleitung, null = Overlay fängt die Maus gerade selbst
+let gripRect = null; // Griff im Overlay (CSS-Pixel), meldet das Overlay
+let gripCaptured = false;
+const GRIP_MARGIN = 40;
+function setPassThrough(forward) {
+  if (forwarding === forward) return;
+  forwarding = forward;
+  overlay.setIgnoreMouseEvents(true, forward ? { forward: true } : undefined);
+}
+function captureMouse() {
+  forwarding = null;
+  overlay.setIgnoreMouseEvents(false);
+}
+setInterval(() => {
+  if (!overlay || editMode || gripCaptured || !gripRect || !overlay.isVisible()) return;
+  const p = screen.getCursorScreenPoint();
+  const b = overlay.getBounds();
+  const x = p.x - b.x, y = p.y - b.y;
+  const r = gripRect;
+  setPassThrough(x >= r.x - GRIP_MARGIN && x <= r.x + r.width + GRIP_MARGIN && y >= r.y - GRIP_MARGIN && y <= r.y + r.height + GRIP_MARGIN);
+}, 150);
 
 // Windows nimmt dem Fenster „immer im Vordergrund“ manchmal weg (z. B. nach Alt+Tab), dann liegt es
 // hinter dem Spiel. Daher bei jedem Spiel-Abruf neu setzen; moveTop aktiviert das Fenster nicht.
@@ -131,7 +158,8 @@ function openStats(opts = {}) {
 
 function setEditMode(on) {
   editMode = on;
-  overlay.setIgnoreMouseEvents(!on, { forward: true });
+  if (on) captureMouse();
+  else setPassThrough(false);
   overlay.setFocusable(on);
   overlay.webContents.send('edit-mode', on);
   if (on) overlay.showInactive();
@@ -169,6 +197,31 @@ function warnFullscreen() {
   });
 }
 
+// Dev-Lastmessung im Spiel: alle 30 s CPU und Speicher je Prozess (Haupt, Overlay, Capture, GPU …) nach
+// debug/perf.log. Nur in der Entwicklerversion.
+let perfAt = 0;
+let perfCpu = null;
+function perfSample() {
+  if (app.isPackaged || Date.now() - perfAt < 30000) return;
+  const first = !perfCpu;
+  const cpu = process.cpuUsage(perfCpu || undefined);
+  const secs = (Date.now() - perfAt) / 1000;
+  perfAt = Date.now();
+  perfCpu = process.cpuUsage();
+  const procs = app.getAppMetrics().map((m) => ({
+    type: m.type, name: m.name || m.serviceName || '', cpu: Math.round(m.cpu.percentCPUUsage * 10) / 10,
+    mb: Math.round(m.memory.workingSetSize / 1024),
+  }));
+  const row = { t: new Date().toISOString(), procs, ...(first ? {} : { mainJs: Math.round(((cpu.user + cpu.system) / 1e4 / secs) * 10) / 10 }),
+    heapMb: Math.round(process.memoryUsage().heapUsed / 1048576) };
+  try {
+    fs.mkdirSync(DEBUG_DIR, { recursive: true });
+    fs.appendFileSync(path.join(DEBUG_DIR, 'perf.log'), JSON.stringify(row) + '\n');
+  } catch {
+    // Messung ist nur Beiwerk
+  }
+}
+
 async function pollGame() {
   const data = await live.fetchGame();
   if (data) gameMode = data.gameData.mapNumber === 12 ? 'aram' : 'sr';
@@ -182,12 +235,15 @@ async function pollGame() {
     refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
     warnFullscreen();
     if (screenReading) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
+    if (screenReading) startTabWatch();
   }
   if (!summary && gameRunning) {
+    stopTabWatch();
     capture.stop();
     ocr.release().catch(() => {});
   }
   gameRunning = !!summary;
+  if (gameRunning) perfSample();
   lastData = data;
   if (!summary) liveRanks = null; // Ränge gelten nur für das jeweilige Spiel
   if (summary && summary.championId) lastChampion = summary.championId;
@@ -412,22 +468,26 @@ async function confirmScoreboard(pressId) {
   }
 }
 
-function startTabHook() {
-  const { uIOhook, UiohookKey } = require('uiohook-napi');
-  uIOhook.on('keydown', (e) => {
-    if (e.keycode !== UiohookKey.Tab || tabDown || !gameRunning) return; // Tastenwiederholung ignorieren
-    tabDown = true;
-    tabPressId++;
-    sendScoreboard(true);
-    confirmScoreboard(tabPressId);
-  });
-  uIOhook.on('keyup', (e) => {
-    if (e.keycode !== UiohookKey.Tab) return;
-    tabDown = false;
-    if (sbOpen) sendScoreboard(false);
-  });
-  uIOhook.start();
-  app.on('will-quit', () => uIOhook.stop());
+// Läuft nur während eines Spiels (Start/Ende in pollGame)
+function startTabWatch() {
+  if (!config.scoreboard || !config.scoreboard.enabled) return;
+  keys.start(
+    () => {
+      tabDown = true;
+      tabPressId++;
+      sendScoreboard(true);
+      confirmScoreboard(tabPressId);
+    },
+    () => {
+      tabDown = false;
+      if (sbOpen) sendScoreboard(false);
+    },
+  );
+}
+function stopTabWatch() {
+  keys.stop();
+  tabDown = false;
+  if (sbOpen) sendScoreboard(false);
 }
 
 // Zuletzt gespielter / gewählter Champion (Data-Dragon-ID), Vorauswahl im Build-Editor
@@ -821,7 +881,13 @@ ipcMain.handle('suggestion:open', (_e, url) => {
 
 // Maus über dem Griff: Fenster fängt Klicks ab, sonst gehen sie durch zum Spiel
 ipcMain.on('grip-hover', (_e, over) => {
-  if (!editMode) overlay.setIgnoreMouseEvents(!over, { forward: true });
+  gripCaptured = over;
+  if (editMode) return;
+  if (over) captureMouse();
+  else setPassThrough(true);
+});
+ipcMain.on('grip-rect', (_e, r) => {
+  gripRect = r;
 });
 ipcMain.handle('panel-moved', (_e, pos) => {
   saveConfig({ panel: pos });
@@ -905,10 +971,10 @@ app.whenReady().then(async () => {
   createTray();
   openStats();
 
-  const keys = config.hotkeys;
-  globalShortcut.register(keys.toggleOverlay, toggleOverlay);
-  globalShortcut.register(keys.editMode, () => setEditMode(!editMode));
-  globalShortcut.register(keys.openStats, openStats);
+  const hk = config.hotkeys;
+  globalShortcut.register(hk.toggleOverlay, toggleOverlay);
+  globalShortcut.register(hk.editMode, () => setEditMode(!editMode));
+  globalShortcut.register(hk.openStats, openStats);
 
   setInterval(pollGame, config.pollMs);
   setInterval(pollClient, 3000);
@@ -918,9 +984,11 @@ app.whenReady().then(async () => {
     const collect = config.ocr.collectDigits ? path.join(app.getPath('userData'), 'digit-samples') : null;
     await Promise.all([ocr.init(app.getPath('userData'), { collect }), capture.init()]);
     screenReading = true;
-    if (gameRunning) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
+    if (gameRunning) {
+      capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
+      startTabWatch();
+    }
     setInterval(pollScreen, 1000);
-    if (config.scoreboard && config.scoreboard.enabled) startTabHook();
   }
 });
 

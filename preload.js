@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('lol', {
   onPanelPos: (cb) => ipcRenderer.on('panel-pos', (_e, p) => cb(p)),
   panelMoved: (pos) => ipcRenderer.invoke('panel-moved', pos),
   gripHover: (over) => ipcRenderer.send('grip-hover', over),
+  gripRect: (r) => ipcRenderer.send('grip-rect', r),
   endOfGame: () => ipcRenderer.invoke('stats:eog'),
   history: () => ipcRenderer.invoke('stats:history'),
   summoner: () => ipcRenderer.invoke('stats:summoner'),

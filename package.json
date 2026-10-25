@@ -13,8 +13,8 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
-    "tesseract.js": "^5.1.1",
-    "uiohook-napi": "^1.5.4"
+    "koffi": "^3.3.4",
+    "tesseract.js": "^5.1.1"
   },
   "license": "MIT",
   "productName": "All You Need",
@@ -40,7 +40,8 @@
     "asarUnpack": [
       "node_modules/tesseract.js/**",
       "node_modules/tesseract.js-core/**",
-      "node_modules/uiohook-napi/**"
+      "node_modules/koffi/**",
+      "node_modules/@koromix/**"
     ],
     "npmRebuild": false,
     "win": {
