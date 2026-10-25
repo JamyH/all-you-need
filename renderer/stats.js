@@ -511,3 +511,7 @@ document.querySelectorAll('nav button[data-tab]').forEach((b) => b.addEventListe
 window.lol.onShowTab(showTab); // Champ-Auswahl öffnet direkt „Build & Runen“
 $('reload').addEventListener('click', loadAll);
 loadAll();
+
+// Fensterknöpfe (Fenster ohne Windows-Rahmen)
+$('winMin').addEventListener('click', () => window.lol.statsWindow('min'));
+$('winClose').addEventListener('click', () => window.lol.statsWindow('close'));

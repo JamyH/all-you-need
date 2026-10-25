@@ -197,6 +197,10 @@ function openStats(opts = {}) {
   stats = new BrowserWindow({
     width: 1180,
     height: 720,
+    minWidth: 760,
+    minHeight: 520,
+    // ohne Windows-Rahmen wie das Overlay; Verschieben über Seitenleiste und Kopf, eigene Knöpfe oben rechts
+    frame: false,
     title: 'All You Need',
     icon: APP_ICON,
     autoHideMenuBar: true,
@@ -227,6 +231,12 @@ function closeUnusedStats() {
   statsAutoClosing = true;
   stats.close();
 }
+// Fensterknöpfe des rahmenlosen Stats-Fensters
+ipcMain.on('stats:window', (_e, action) => {
+  if (!stats || stats.isDestroyed()) return;
+  if (action === 'min') stats.minimize();
+  else stats.close();
+});
 ipcMain.on('stats:used', () => {
   statsUsed = true;
 });
@@ -1091,7 +1101,7 @@ app.whenReady().then(async () => {
   refreshLayout();
   createOverlay();
   createTray();
-  openStats({ auto: true });
+  // kein Fenster beim Start: die App läuft im Hintergrund (Overlay + Tray), das Stats-Fenster nur auf Wunsch
 
   const hk = config.hotkeys;
   globalShortcut.register(hk.toggleOverlay, toggleOverlay);

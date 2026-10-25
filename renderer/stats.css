@@ -22,12 +22,22 @@
 html, body { height: 100%; }
 body {
   margin: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--line-2); /* rahmenloses Fenster: feine Kante statt Windows-Rahmen */
   display: flex;
   background: var(--bg);
   color: var(--text);
   font: 13px/1.4 Inter, "Segoe UI", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
+
+/* Rahmenlos: an Seitenleiste und Seitenkopf lässt sich das Fenster ziehen, Bedienelemente bleiben klickbar */
+.side, .page-head { -webkit-app-region: drag; }
+button, input, a, .account, .page-head p { -webkit-app-region: no-drag; }
+.win-ctl { position: fixed; top: 1px; right: 1px; z-index: 10; display: flex; }
+.win-ctl button { width: 46px; height: 34px; padding: 0; justify-content: center; border: 0; border-radius: 0; color: var(--muted); }
+.win-ctl button:hover { background: var(--tile-hi); color: var(--text); }
+.win-ctl button.close:hover { background: #c42b1c; color: #ffffff; }
 
 /* Seitenleiste */
 .side {
@@ -69,7 +79,7 @@ nav button.active { background: var(--accent-soft); color: var(--accent); font-w
 
 /* Inhalt */
 .content { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
-.page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 28px 32px 0; }
+.page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 36px 32px 0; }
 .page-head > div { flex: 1 1 240px; }
 h1 { margin: 0; font-size: 22px; font-weight: 700; }
 .page-head p { margin: 2px 0 0; color: var(--muted); }

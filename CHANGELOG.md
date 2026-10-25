@@ -22,7 +22,12 @@ Overlay
   Abgeschaltete Cooldowns, Augments und Scoreboard werden auch nicht mehr vom Bildschirm gelesen
 
 App
-- ☰-Knopf oben links im Stats-Fenster: dasselbe Menü wie am Tray-Icon (Overlay, Auto-Annehmen, League beenden …)
+- Stats-Fenster im Graphit-Stil ohne Windows-Rahmen: Seitenleiste mit Account, Navigation, Client-Status und
+  ☰-Menü (dasselbe wie am Tray-Icon), Verschieben an Seitenleiste und Kopf, eigene Knöpfe oben rechts
+- Startet still im Hintergrund (Overlay + Tray); das Stats-Fenster öffnet sich nur auf Wunsch (Tray, Strg+Shift+S)
+  oder nach Einstellung nach dem Spiel und beim Pick
+- Summoner im Panel nur noch mit Icon und Taste; Zerschmettern-Icon auch nach dem Aufwerten, Ladungszahl
+  verfälscht die Restzeit nicht mehr
 - Tray-Menü „League komplett beenden …“: beendet nach Rückfrage Riot Client, League-Client und Spiel, z. B. wenn
   League nach einem Vanguard-Fehler hängt (statt Task-Manager)
 
