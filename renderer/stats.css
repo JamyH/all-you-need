@@ -177,13 +177,11 @@ tr.me td { background: var(--accent-soft); }
 tr.dead td { opacity: 0.5; }
 /* beide Team-Tabellen mit gleichen Spalten, damit die Werte untereinander stehen */
 .team-card table { table-layout: fixed; margin-bottom: 8px; }
-/* Items bekommen den Rest (7 Icons à 22 px + Abstand ≈ 175 px), damit nichts über den Kartenrand läuft */
-.team-card th:nth-child(1) { width: 21%; }
+/* Items fest so breit wie 7 Icons à 22 px (+ Abstand, Innenabstand), damit nichts abgeschnitten wird oder über
+   den Kartenrand läuft; Prozentbreiten zählen ohne Innenabstand, daher hier feste Pixel. Der Rest teilt sich auf */
+.team-card th:nth-child(1) { width: 24%; }
 .team-card th:nth-child(2) { width: 14%; }
-.team-card th:nth-child(3) { width: 5%; }
-.team-card th:nth-child(4) { width: 9%; }
-.team-card th:nth-child(5), .team-card th:nth-child(6) { width: 6%; }
-.team-card th:nth-child(7) { width: 10%; }
+.team-card th:nth-child(8) { width: 190px; }
 .team-card td { overflow: hidden; text-overflow: ellipsis; }
 .team-card .items img { width: 22px; height: 22px; margin-left: 2px; }
 .team-card tr:last-child td { border-bottom: 0; }
