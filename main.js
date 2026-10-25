@@ -169,19 +169,25 @@ function raiseOverlay() {
 // beim Spielstart wieder (im Spiel sieht man es nicht, spart ~125 MB). Klick oder Taste im Fenster = benutzt.
 let statsUsed = false;
 let statsAutoClosing = false;
-// Windows holt ein Fenster aus einem Hintergrundprogramm mit focus() nicht nach vorne (Strg+Shift+S über dem
-// League-Client blinkte nur in der Taskleiste). Kurz „immer oben“ setzen, nach vorn holen, wieder zurücknehmen
+// Windows holt ein Fenster aus einem Hintergrundprogramm mit focus() nicht nach vorne, und über dem Spiel
+// (randlos, liegt selbst ganz oben) kommt ein normales Fenster gar nicht. Daher „immer oben“, bis du woanders
+// hinklickst (blur in openStats), dann wieder normal
 function raiseStats() {
+  stats.setAlwaysOnTop(true, 'floating');
   stats.show();
-  stats.setAlwaysOnTop(true);
   stats.moveTop();
   stats.focus();
-  stats.setAlwaysOnTop(false);
 }
 function openStats(opts = {}) {
   const { tab, inactive } = opts;
   const auto = !!(inactive || opts.auto);
   if (stats && !stats.isDestroyed()) {
+    // Strg+Shift+S schaltet um: liegt das Fenster schon oben, verschwindet es wieder (sonst bliebe es über dem
+    // Spiel, falls Windows ihm keinen Fokus gab und daher nie ein blur kommt)
+    if (!auto && !tab && stats.isVisible() && !stats.isMinimized() && stats.isAlwaysOnTop()) {
+      stats.setAlwaysOnTop(false);
+      return stats.minimize();
+    }
     if (!auto) statsUsed = true;
     if (stats.isMinimized()) stats.restore();
     if (tab) stats.webContents.send('show-tab', tab);
@@ -199,6 +205,7 @@ function openStats(opts = {}) {
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
   stats.once('ready-to-show', () => (inactive ? stats.showInactive() : raiseStats()));
+  stats.on('blur', () => stats.setAlwaysOnTop(false));
   if (tab) stats.webContents.once('did-finish-load', () => stats.webContents.send('show-tab', tab));
   stats.loadFile('renderer/stats.html');
   // beim ersten Schließen einmal erklären, dass die App im Hintergrund weiterläuft
