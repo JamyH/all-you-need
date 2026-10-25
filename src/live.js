@@ -31,10 +31,13 @@ function spellName(spell) {
   const hit = Object.keys(SHORT_SPELLS).find((k) => raw.includes(`Summoner${k}`));
   return hit ? SHORT_SPELLS[hit] : spell.displayName;
 }
-// Data-Dragon-Bild zum Summoner: „GeneratedTip_SummonerSpell_SummonerFlash_DisplayName“ -> SummonerFlash.png
+// Data-Dragon-Bild zum Summoner: „GeneratedTip_SummonerSpell_SummonerFlash_DisplayName“ -> SummonerFlash.png.
+// Zerschmettern heißt nach dem Aufwerten des Jungle-Items anders (z. B. …SmiteAvatarOffensive); dafür hat
+// Data Dragon kein Bild, also immer SummonerSmite
 function spellIcon(spell) {
   const id = ((spell && spell.rawDisplayName) || '').match(/SummonerSpell_(\w+?)_DisplayName/);
-  return id ? ddragon.iconUrl('spell', id[1]) : '';
+  if (!id) return '';
+  return ddragon.iconUrl('spell', /Smite/i.test(id[1]) ? 'SummonerSmite' : id[1]);
 }
 
 // Rohdaten -> das, was das Overlay anzeigt. Hier kannst du eigene Werte ergänzen.

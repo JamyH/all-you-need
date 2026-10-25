@@ -59,19 +59,16 @@ function ringHtml(s) {
   const share = cdShare(s);
   const arc = s.ready ? '' : `<circle class="arc" cx="19" cy="19" r="16" stroke-dasharray="${(share * RING).toFixed(1)} ${RING}"/>`;
   const inner = s.ready ? ICON_CHECK : `<span>${s.cd == null ? '…' : fmtTime(s.cd)}</span>`;
-  return `<div class="ring ${s.ready ? 'ready' : ''}" title="${esc(s.name)}"><div class="dial">` +
+  return `<div class="ring ${s.ready ? 'ready' : ''}"><div class="dial">` +
     `<svg class="bg" viewBox="0 0 38 38" aria-hidden="true"><circle class="trk" cx="19" cy="19" r="16"/>${arc}</svg>${inner}</div>` +
     `<label>${s.key}</label></div>`;
 }
 function tileHtml(s) {
   const value = s.ready ? 'bereit' : s.cd == null ? '…' : fmtTime(s.cd);
   const b = `<b class="${s.ready ? 'good' : ''}">${value}</b>`;
-  // Icon statt Name (Namen wie „Zhonyas Stundenglas“ passen nicht in die Kachel)
-  if (s.icon) {
-    return `<div class="spell item ${s.ready ? '' : 'cd'}"><img src="${esc(s.icon)}" alt="" title="${esc(s.name)}">` +
-      `<div><label>${s.key}</label>${b}</div></div>`;
-  }
-  return `<div class="spell ${s.ready ? '' : 'cd'}"><label>${s.key} · ${esc(s.name)}</label>${b}</div>`;
+  // Icon und Taste, keine Namen (passen nicht in die Kachel); ohne Bild nur die Taste
+  const img = s.icon ? `<img src="${esc(s.icon)}" alt="">` : '';
+  return `<div class="spell item ${s.ready ? '' : 'cd'}">${img}<div><label>${s.key}</label>${b}</div></div>`;
 }
 const footHtml = (label, n, fmt) => `<span>${esc(label)} <b class="${cls(n)}">${fmt(n)}</b></span>`;
 
@@ -130,11 +127,8 @@ function renderGame(g) {
   $('spells').innerHTML = [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : [])]
     .map(small ? ringHtml : tileHtml)
     .join('');
-  // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann wieder den Namen zeigen
-  $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => {
-    img.nextElementSibling.querySelector('label').textContent += ` · ${img.title}`;
-    img.remove();
-  }));
+  // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann nur die Taste
+  $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => img.remove()));
 
   const xp = g.xp;
   $('xp').hidden = !xp;
