@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -32,6 +32,7 @@ const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
 const anvil = require('./src/anvil');
 const keys = require('./src/keys');
+const riot = require('./src/riot');
 
 // Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
@@ -933,6 +934,30 @@ const LOGIN_ITEM = {
   ...(app.isPackaged ? {} : { path: process.execPath }),
   args: [...(app.isPackaged ? [] : [app.getAppPath()]), ...(DATA_DIR_ARG ? [DATA_DIR_ARG] : [])],
 };
+// League hängt nach einem Vanguard-Fehler: Riot Client, League-Client und Spiel auf einen Klick beenden
+async function quitLeague() {
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    title: 'League komplett beenden',
+    message: 'Riot Client, League-Client und ein laufendes Spiel werden sofort beendet.',
+    detail: 'Gedacht für den Fall, dass League nach einem Vanguard-Fehler hängt. Ein laufendes Spiel verlässt du damit; danach League normal neu starten.',
+    buttons: ['Beenden', 'Abbrechen'],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (response !== 0) return;
+  const { before, left } = await riot.quitAll();
+  tray.displayBalloon({
+    iconType: 'custom',
+    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    title: 'League komplett beenden',
+    content: !before.length ? 'League lief gar nicht.'
+      : left.length ? `Noch nicht beendet: ${left.join(', ')}. Dann bitte im Task-Manager.`
+        : 'League und Riot Client sind beendet. Du kannst League jetzt neu starten.',
+  });
+}
+
 function refreshTrayMenu() {
   if (!tray) return;
   const keys = config.hotkeys;
@@ -956,6 +981,8 @@ function refreshTrayMenu() {
       checked: app.getLoginItemSettings(LOGIN_ITEM).openAtLogin,
       click: (item) => app.setLoginItemSettings({ ...LOGIN_ITEM, openAtLogin: item.checked }),
     },
+    { type: 'separator' },
+    { label: 'League komplett beenden …', click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
     { type: 'separator' },
     { label: `All You Need ${app.getVersion()}`, enabled: false },
     { label: 'Beenden', click: () => app.quit() },

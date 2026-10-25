@@ -8,6 +8,10 @@ Build & Runen
   automatisch; dein Blitz bleibt auf seiner Taste (D oder F). Eigene Karte „Summoner“ im Build-Tab mit
   „Jetzt setzen“ und Schalter fürs automatische Setzen
 
+App
+- Tray-Menü „League komplett beenden …“: beendet nach Rückfrage Riot Client, League-Client und Spiel, z. B. wenn
+  League nach einem Vanguard-Fehler hängt (statt Task-Manager)
+
 Leistung
 - Weniger Arbeitsspeicher (im Spiel ~815 → ~670 MB): Das Stats-Fenster schließt sich beim Spielstart, wenn die App
   es selbst geöffnet hat und du es nicht benutzt hast (Strg+Shift+S holt es zurück). Die Texterkennung wird nach
