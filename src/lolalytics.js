@@ -171,6 +171,42 @@ async function load(champId, position, mode = 'sr') {
   return cache[key];
 }
 
+// Matchup-Seite (Champion gegen Lane-Gegner, nur Summoner's Rift): Siegrate, Abweichung zum Durchschnittsgegner,
+// bereinigte Abweichung (Stärke beider Champs herausgerechnet), Spiele und First-Blood-Anteil als frühes Signal.
+// Die Werte stehen im Fließtext („Irelia wins against Darius 51.22% of the time which is 4.02% different …“)
+// und in der Ziel-Tabelle („First Blood 52.59 56.81 47.41 45.02“: eigener Anteil, Siegrate damit, Gegner …)
+const num = (s) => Number(String(s).replace(/,/g, ''));
+function parseMatchup(page) {
+  const text = page.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').replace(/\s+/g, ' ');
+  const wr = text.match(/wins against .{1,40}? (-?[\d.]+)% of the time which is (-?[\d.]+)% different/);
+  if (!wr) return null;
+  const norm = text.match(/After normalising both champions win rates .{1,60}? (-?[\d.]+)% different/);
+  const games = text.match(/% Win Rate ([\d,]+) Games/);
+  const fb = text.match(/First Blood ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)/);
+  return {
+    winRate: num(wr[1]),
+    delta: num(wr[2]),
+    normalized: norm ? num(norm[1]) : null,
+    games: games ? num(games[1]) : null,
+    firstBlood: fb ? num(fb[1]) : null,
+  };
+}
+
+async function matchup(champId, vsId, position) {
+  const l = lane(position) || 'top';
+  const key = `vs|${champId}|${vsId}|${l}`;
+  const hit = cache[key];
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit;
+  const url = `https://lolalytics.com/lol/${slug(champId)}/vs/${slug(vsId)}/build/?lane=${l}&vslane=${l}`;
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
+  const data = parseMatchup(await res.text());
+  if (!data) throw new Error('lolalytics.com: zu wenige Spiele oder Seitenaufbau nicht erkannt');
+  cache[key] = { champId, vsId, lane: l, url, fetchedAt: Date.now(), ...data };
+  fs.writeFileSync(cacheFile, JSON.stringify(cache));
+  return cache[key];
+}
+
 // ARAM-Tierliste: Siegrate, Pickrate und Spiele aller Champions, nach Champion-Key ({ "32": { wr, pr, games } }).
 // Die Tabelle im HTML zeigt nur die ersten 20 Zeilen; alle Werte stehen im eingebetteten Qwik-Zustand
 // (<script type="qwik/json">). Dort verweisen Werte per Base-36-Index auf die Liste objs.
@@ -205,4 +241,4 @@ async function aramTier() {
   return cache['tier|aram'];
 }
 
-module.exports = { init, load, cached, parse, pageUrl, parseTier, aramTier };
+module.exports = { init, load, cached, parse, pageUrl, parseTier, aramTier, parseMatchup, matchup };

@@ -3,6 +3,10 @@
 ## Unveröffentlicht
 
 Build & Runen
+- Matchup-Karte (nur vor dem Spiel): je gegnerischem Pick aus der Champ-Auswahl, oder von Hand gewählt, die
+  Siegquote gegen ihn (lolalytics) mit Einordnung von „gewinnend“ bis „verlierend“ und eine Einschätzung, wer
+  auf Level 1–3 vorne liegt: First-Blood-Anteil aus echten Spielen plus Duell mit normalen Angriffen aus den
+  Grundwerten (ohne Fähigkeiten)
 - Summoner-Empfehlung: Der Vorschlag zeigt das meistgespielte Summoner-Paar (lolalytics; nicht das Paar mit
   der höchsten Siegrate und kaum Spielen), ersatzweise Riots Empfehlung. Beim festen Pick setzt die App es
   automatisch; dein Blitz bleibt auf seiner Taste (D oder F). Eigene Karte „Summoner“ im Build-Tab mit

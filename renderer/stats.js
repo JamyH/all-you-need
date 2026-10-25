@@ -264,7 +264,72 @@ function selectChampion(id) {
   renderRunes();
   renderSuggestion();
   renderOwnItems();
+  renderMatchup();
 }
+
+// --- Matchup: Lane gewinnend oder verlierend und wer auf Level 1–3 vorne liegt (nur vor dem Spiel) ---
+const matchup = { enemies: [], position: '', manual: null };
+const signedPct = (v) => `${v >= 0 ? '+' : '−'}${dec(Math.abs(v), 1)} %`;
+function laneVerdict(d) {
+  const v = d.normalized ?? d.delta;
+  if (v >= 2) return ['gewinnend', 'win'];
+  if (v >= 0.75) return ['leicht gewinnend', 'win'];
+  if (v > -0.75) return ['ausgeglichen', ''];
+  return v > -2 ? ['leicht verlierend', 'loss'] : ['verlierend', 'loss'];
+}
+// First Blood 55 % zählt wie ein Duell auf Level 2 mit 10 % Vorsprung; beides zusammen ergibt die Einschätzung
+function earlyVerdict(d) {
+  const fb = d.firstBlood != null ? (d.firstBlood - 50) / 2.5 : 0;
+  const duel = d.duel ? (d.duel[1].ratio - 1) * 10 : 0;
+  const s = fb + duel;
+  return s >= 0.6 ? ['eher du', 'win'] : s <= -0.6 ? ['eher der Gegner', 'loss'] : ['offen', ''];
+}
+function matchupHtml(vs, d) {
+  const name = (buildData.champions.find((c) => c.id === vs) || { name: vs }).name;
+  const duel = d.duel ? `Duell L1–3: ${d.duel.map((x) =>
+    `<span class="${x.ratio >= 1 ? 'win' : 'loss'}">${x.ratio >= 1 ? '+' : '−'}${x.hpLeft} %</span>`).join(' · ')}` : '';
+  const ev = earlyVerdict(d);
+  const early = `<div><label>Level 1–3</label><b class="${ev[1]}">${ev[0]}</b>` +
+    `<small>${d.firstBlood != null ? `First Blood ${dec(d.firstBlood, 1)} % · ` : ''}${duel}</small></div>`;
+  const head = `<span class="champ">${champImg({ id: vs })}<b>${esc(name)}</b></span>`;
+  if (d.error) return `${head}<div><label>Lane</label><b>–</b><small>${esc(d.error)}</small></div>${early}`;
+  const lv = laneVerdict(d);
+  return `${head}<div><label>Lane</label><b class="${lv[1]}">${dec(d.winRate, 1)} % · ${lv[0]}</b>` +
+    `<small>${signedPct(d.delta)} ggü. Ø-Gegner${d.normalized != null ? ` · bereinigt ${signedPct(d.normalized)}` : ''}` +
+    `${d.games ? ` · ${n(d.games)} Spiele` : ''}</small></div>${early}`;
+}
+async function renderMatchup() {
+  const box = $('matchupList');
+  const list = [...new Set([...(matchup.manual ? [matchup.manual] : []), ...matchup.enemies])].filter((id) => id !== champId);
+  if (!champId || !list.length) {
+    box.innerHTML = '<p class="hint">In der Champ-Auswahl stehen hier die gegnerischen Picks. Oder oben einen Gegner wählen.</p>';
+    return;
+  }
+  const forChamp = champId;
+  box.innerHTML = list.map((id) => `<div class="mu-row" data-vs="${esc(id)}"><span class="hint">Lade Matchup…</span></div>`).join('');
+  await Promise.all(list.map(async (id) => {
+    const d = await window.lol.matchup(forChamp, id, matchup.position).catch((e) => ({ error: e.message }));
+    const row = box.querySelector(`[data-vs="${CSS.escape(id)}"]`);
+    if (row && forChamp === champId) row.innerHTML = matchupHtml(id, d);
+  }));
+}
+$('vsInput').addEventListener('change', () => {
+  const c = champByName.get($('vsInput').value.trim().toLowerCase());
+  if (!c) return;
+  matchup.manual = c.id;
+  renderMatchup();
+});
+window.lol.onMatchupEnemies((s) => {
+  matchup.enemies = s.enemies;
+  matchup.position = s.position;
+  renderMatchup();
+});
+window.lol.matchupState().then((s) => {
+  if (!s) return;
+  matchup.enemies = s.enemies;
+  matchup.position = s.position;
+  renderMatchup();
+});
 
 // Eigene meistgebaute Items aus den gemerkten Spielen, mit Anzahl und Siegquote
 async function renderOwnItems() {

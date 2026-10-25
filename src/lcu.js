@@ -46,6 +46,8 @@ async function champSelect(lp) {
     locked: !!me.championId && (!myPick || myPick.completed),
     spells: [me.spell1Id, me.spell2Id], // D, F
     bench,
+    // Picks des Gegnerteams (Keys), sobald sichtbar; deren Rollen kennt der Client nicht
+    enemies: (s.theirTeam || []).map((p) => p.championId).filter(Boolean),
   };
 }
 

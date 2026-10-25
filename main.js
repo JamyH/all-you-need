@@ -27,6 +27,7 @@ const capture = require('./src/capture');
 const setup = require('./src/setup');
 const layout = require('./src/layout');
 const lolalytics = require('./src/lolalytics');
+const early = require('./src/early');
 const history = require('./src/history');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
@@ -594,6 +595,8 @@ function stopTabWatch() {
 let lastChampion = null;
 let lastRuneKey = null;
 let lastSuggestionKey = null;
+let lastMatchupKey = null;
+let matchupState = null; // { champId, position, enemies } aus der Champ-Auswahl, fürs Stats-Fenster
 let lastPosition = ''; // Rolle aus der letzten Champ-Auswahl, für Riots Runen-Empfehlung
 // 'sr' oder 'aram' (auch ARAM Mayhem): aus der Map der Champ-Auswahl bzw. des laufenden Spiels.
 // Bestimmt lolalytics-Seite, Item-Set-Map und Riots Runen-Empfehlung.
@@ -780,7 +783,7 @@ async function pollClient() {
     setTimeout(importHistory, 10000);
   }
   if (phase !== 'ChampSelect') {
-    lastRuneKey = lastSuggestionKey = null;
+    lastRuneKey = lastSuggestionKey = lastMatchupKey = null;
     setBench(null);
   }
   // Champ-Auswahl: gespeicherte Runen des gewählten Champs automatisch setzen (einmal pro Champ)
@@ -791,6 +794,14 @@ async function pollClient() {
       const champId = sel.key ? ddragon.champion(sel.key).id : null;
       lastPosition = sel.position;
       if (gameMode === 'aram') updateBench(sel).catch((e) => console.warn('ARAM-Bank:', e.message));
+      // Matchup-Karte im Stats-Fenster: gegnerische Picks, sobald sich etwas ändert (nur Summoner's Rift)
+      const enemies = gameMode === 'sr' ? sel.enemies.map((k) => ddragon.champion(k).id) : [];
+      const matchupKey = `${champId}|${sel.position}|${enemies.join(',')}`;
+      if (matchupKey !== lastMatchupKey) {
+        lastMatchupKey = matchupKey;
+        matchupState = { champId, position: sel.position, enemies };
+        notifyStats('matchup:enemies', matchupState);
+      }
       if (sel.key && sel.key !== lastRuneKey) {
         lastRuneKey = sel.key;
         lastChampion = champId;
@@ -907,6 +918,19 @@ ipcMain.handle('spells:apply', async () => {
   const sel = await lcu.champSelect(config.leaguePath);
   if (!sel.key) return 'Erst einen Champion wählen.';
   return applySpells(ddragon.champion(sel.key).id, sel.key, sel.position, sel.spells);
+});
+
+// Matchup gegen einen Lane-Gegner: lolalytics (Siegrate, First Blood) plus Level-1–3-Duell aus den Grundwerten.
+// Nur vor dem Spiel im Stats-Fenster: Siegraten im Spiel erlaubt Riot nicht
+ipcMain.handle('matchup:state', () => matchupState);
+ipcMain.handle('matchup:get', async (_e, champId, vsId, position) => {
+  const stats = (id) => ddragon.champion(ddragon.championKey(id)).stats;
+  const duel = early.levels(stats(champId), stats(vsId));
+  try {
+    return { ...(await lolalytics.matchup(champId, vsId, position || lastPosition)), duel };
+  } catch (e) {
+    return { error: e.message, duel };
+  }
 });
 
 // lolalytics-Vorschlag fürs Stats-Fenster: aus dem Cache; load = true holt ihn (Standard-Rolle des Champs)
