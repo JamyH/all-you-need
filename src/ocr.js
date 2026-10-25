@@ -62,11 +62,26 @@ function tesseractText() {
   return textWorker;
 }
 
+// Ein Worker belegt ~40 MB, Neuladen dauert ~0,2 s. Die eigene Ziffern-Erkennung braucht Tesseract nur selten,
+// Augment-Namen nur bei einem Angebot: nach einer Minute ohne Nutzung wieder entladen.
+const IDLE_MS = 60000;
+const idle = { digits: null, text: null };
+function touch(kind) {
+  clearTimeout(idle[kind]);
+  idle[kind] = setTimeout(() => drop(kind), IDLE_MS);
+}
+async function drop(kind) {
+  clearTimeout(idle[kind]);
+  const p = kind === 'digits' ? worker : textWorker;
+  if (kind === 'digits') worker = null;
+  else textWorker = null;
+  const w = await p;
+  if (w) await w.terminate().catch(() => {});
+}
+
 // Nach dem Spiel: Speicher freigeben, beim nächsten Bedarf wird neu geladen
 async function release() {
-  const ws = await Promise.all([worker, textWorker]);
-  worker = textWorker = null;
-  await Promise.all(ws.filter(Boolean).map((w) => w.terminate()));
+  await Promise.all([drop('digits'), drop('text')]);
 }
 
 // Augment-Angebot offen? Oberkante des hellen Kartenrahmens (Angebot ~90 % hell, sonst höchstens ~20 %)
@@ -88,7 +103,9 @@ async function readText(crop) {
   const img = nativeImage.createFromBitmap(bgra, { width: crop.width, height: crop.height });
   const w = await tesseractText();
   if (!w) return '';
+  touch('text');
   const { data } = await w.recognize(img.toPNG());
+  touch('text');
   return data.text.trim();
 }
 
@@ -121,7 +138,9 @@ async function recognize(crop, test) {
   const img = nativeImage.createFromBitmap(px, { width, height }).resize({ width: width * 4, quality: 'best' });
   const w = await tesseract();
   if (!w) return null;
+  touch('digits');
   const { data: res } = await w.recognize(img.toPNG());
+  touch('digits');
   const digits = res.text.replace(/\D/g, '');
   return digits ? Number(digits) : null;
 }

@@ -9,6 +9,9 @@ Build & Runen
   „Jetzt setzen“ und Schalter fürs automatische Setzen
 
 Leistung
+- Weniger Arbeitsspeicher (im Spiel ~815 → ~670 MB): Das Stats-Fenster schließt sich beim Spielstart, wenn die App
+  es selbst geöffnet hat und du es nicht benutzt hast (Strg+Shift+S holt es zurück). Die Texterkennung wird nach
+  einer Minute ohne Nutzung entladen, das Aufnahme-Fenster gibt es nur noch während eines Spiels
 - Overlay: Mausbewegungen werden nur noch in der Nähe des Griffs ans Overlay weitergeleitet. Vorher bekam
   das Overlay im Spiel jede Mausbewegung; das kostete etwa 21 % eines CPU-Kerns im Hauptprozess plus 6 % im
   Overlay, jetzt unter 1 %

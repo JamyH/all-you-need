@@ -17,7 +17,7 @@ app.whenReady().then(async () => {
     const img = nativeImage.createFromPath(path.join(__dirname, '..', 'debug', 'screen.png'));
     crops = regions.map((r) => ocr.fromNativeImage(img, r));
   } else {
-    await capture.init();
+    await capture.start();
     for (let i = 0; i < 5; i++) {
       const t = Date.now();
       crops = await capture.grab(regions);

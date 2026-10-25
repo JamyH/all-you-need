@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('lol', {
   applyRunes: (champId) => ipcRenderer.invoke('runes:apply', champId),
   setRunesAuto: (on) => ipcRenderer.invoke('runes:auto', on),
   setSpellsAuto: (on) => ipcRenderer.invoke('spells:auto', on),
+  statsUsed: () => ipcRenderer.send('stats:used'),
   applySpells: () => ipcRenderer.invoke('spells:apply'),
   suggestion: (champId, load) => ipcRenderer.invoke('suggestion:get', champId, load),
   runeOptions: (champId) => ipcRenderer.invoke('runes:options', champId),

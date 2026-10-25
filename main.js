@@ -123,13 +123,20 @@ function raiseOverlay() {
 
 // tab: Reiter, der angezeigt werden soll; inactive: einblenden, ohne dem League-Client den Fokus zu nehmen
 // (Champ-Auswahl). Auch Klick-Handler rufen das auf, opts kann dann ein Event sein.
+// auto: von der App geöffnet (App-Start, nach dem Spiel). Automatisch geöffnet und nicht benutzt -> schließt sich
+// beim Spielstart wieder (im Spiel sieht man es nicht, spart ~125 MB). Klick oder Taste im Fenster = benutzt.
+let statsUsed = false;
+let statsAutoClosing = false;
 function openStats(opts = {}) {
   const { tab, inactive } = opts;
+  const auto = !!(inactive || opts.auto);
   if (stats && !stats.isDestroyed()) {
+    if (!auto) statsUsed = true;
     if (stats.isMinimized()) stats.restore();
     if (tab) stats.webContents.send('show-tab', tab);
     return inactive ? stats.showInactive() : stats.focus();
   }
+  statsUsed = !auto;
   stats = new BrowserWindow({
     width: 1000,
     height: 720,
@@ -145,6 +152,7 @@ function openStats(opts = {}) {
   stats.loadFile('renderer/stats.html');
   // beim ersten Schließen einmal erklären, dass die App im Hintergrund weiterläuft
   stats.on('closed', () => {
+    if (statsAutoClosing) return (statsAutoClosing = false);
     if (config.closedHint || !tray) return;
     tray.displayBalloon({
       iconType: 'custom',
@@ -155,6 +163,15 @@ function openStats(opts = {}) {
     saveConfig({ closedHint: true });
   });
 }
+
+function closeUnusedStats() {
+  if (!stats || stats.isDestroyed() || statsUsed) return;
+  statsAutoClosing = true;
+  stats.close();
+}
+ipcMain.on('stats:used', () => {
+  statsUsed = true;
+});
 
 function setEditMode(on) {
   editMode = on;
@@ -233,6 +250,7 @@ async function pollGame() {
     : null;
   if (summary && !gameRunning) {
     refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
+    closeUnusedStats();
     warnFullscreen();
     if (screenReading) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
     if (screenReading) startTabWatch();
@@ -676,7 +694,7 @@ async function pollClient() {
   // das gerade beendete Spiel steht oft erst nach ein paar Sekunden im Verlauf
   if (lastPhase === 'EndOfGame' && phase !== 'EndOfGame') importHistory();
   if (phase === 'EndOfGame' && lastPhase !== 'EndOfGame') {
-    if (config.autoOpenStatsAfterGame) openStats();
+    if (config.autoOpenStatsAfterGame) openStats({ auto: true });
     setTimeout(importHistory, 10000);
   }
   if (phase !== 'ChampSelect') {
@@ -969,7 +987,7 @@ app.whenReady().then(async () => {
   refreshLayout();
   createOverlay();
   createTray();
-  openStats();
+  openStats({ auto: true });
 
   const hk = config.hotkeys;
   globalShortcut.register(hk.toggleOverlay, toggleOverlay);
@@ -982,7 +1000,7 @@ app.whenReady().then(async () => {
   if (config.ocr && config.ocr.enabled) {
     // ocr.collectDigits: CS-Ausschnitte als Lernmaterial für die eigene Ziffern-Erkennung sammeln
     const collect = config.ocr.collectDigits ? path.join(app.getPath('userData'), 'digit-samples') : null;
-    await Promise.all([ocr.init(app.getPath('userData'), { collect }), capture.init()]);
+    await ocr.init(app.getPath('userData'), { collect });
     screenReading = true;
     if (gameRunning) {
       capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));

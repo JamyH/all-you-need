@@ -463,6 +463,9 @@ $('applySpells').addEventListener('click', async () => {
   }
 });
 window.lol.onSpellsStatus((msg) => spellStatus(msg));
+
+// Benutzt: dann bleibt das Fenster beim Spielstart offen (sonst schließt die App es, wenn sie es selbst geöffnet hat)
+for (const ev of ['mousedown', 'keydown', 'wheel']) window.addEventListener(ev, () => window.lol.statsUsed(), { once: true });
 window.lol.onBuildChampion((id) => selectChampion(id));
 window.lol.onRunesStatus((msg) => runeStatus(msg));
 
