@@ -318,8 +318,9 @@ async function pollScreen() {
     const items = lastItems.filter((it) => it.slot < 6);
     const regions = [...slots.map(([, r]) => r), ...items.map((it) => L.items[it.slot])];
     if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
-    // Mayhem: Augments werden nur im Tod (oder ganz am Anfang) gewählt, nur dann nach dem Angebot schauen
-    const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI' && (meDead || lastData.gameData.gameTime < 90);
+    // Mayhem: Augment-Angebote kommen auch lebend (z. B. Stufe 7 auf der Lane), daher immer nachsehen. Der
+    // Rahmen-Check kostet fast nichts, Texterkennung läuft nur bei offenem Angebot und geänderter Karte
+    const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI';
     if (watchAugments) regions.push(...L.augments.map((a) => a.frame), ...L.augments.map((a) => a.name));
     const crops = await capture.grab(regions);
     const augCrops = watchAugments ? crops.splice(crops.length - 6, 6) : null;

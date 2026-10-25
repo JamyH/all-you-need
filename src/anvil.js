@@ -28,7 +28,10 @@ const SHARDS = [
   { key: 'random', name: 'Zwei zufällige Splitter', always: 'C', why: 'Glückssache' },
 ];
 
-const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+// Lesefehler wie bei den Augments angleichen: „ü“ -> „ii“, „ß“/„s“ -> „3“
+const norm = (s) =>
+  s.toLowerCase().replace(/ß/g, 'ss').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
+    .replace(/ii/g, 'u').replace(/3/g, 's');
 function distance(a, b) {
   let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
@@ -43,7 +46,8 @@ function distance(a, b) {
 // Lange Namen bricht die Karte um; bleibt unten nur „splitter“, ist es Magie- oder Rüstungsdurchdringung.
 function match(text) {
   const t = norm(text || '');
-  if (!t.endsWith('splitter')) return null;
+  // Endung „splitter“ mit höchstens zwei Lesefehlern („splittar“), sonst ist es ein Augment
+  if (t.length < 8 || distance(t.slice(-8), 'splitter') > 2) return null;
   if (t === 'splitter') return SHARDS.find((s) => s.key === 'pen');
   let best = null, bestD = Infinity;
   for (const s of SHARDS) {
