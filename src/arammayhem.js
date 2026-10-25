@@ -13,6 +13,7 @@ const CACHE_MS = 24 * 60 * 60 * 1000;
 const USER_AGENT = 'AllYouNeed (+https://github.com/JamyH/all-you-need)';
 const DATA = 'https://arammayhem.com/data/v1/latest';
 const EN_NAMES = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json';
+const GLOBAL_VERSION = 2; // erhöhen, wenn sich der Aufbau von cache.global ändert
 const RARITY = { kSilver: 'silver', kGold: 'gold', kPrismatic: 'prismatic' };
 
 let cacheFile = null;
@@ -39,16 +40,18 @@ const unescape = (s) => s.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace
 // Pickraten, Combos und Champion-Adressen; Augments schon auf Riot-IDs umgeschlüsselt
 async function loadGlobal() {
   const hit = cache.global;
-  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit;
+  if (hit && hit.v === GLOBAL_VERSION && Date.now() - hit.fetchedAt < CACHE_MS) return hit;
   const [aug, combos, champs, en] = await Promise.all([
     get(`${DATA}/augments.json`), get(`${DATA}/combos.json`), get(`${DATA}/champions.json`), get(EN_NAMES),
   ]);
   const riotId = {}; // normierter englischer Name -> Riot-ID
   for (const a of en) if (a.id >= 1000 && a.nameTRA) riotId[norm(a.nameTRA)] = a.id;
+  // arammayhem.com stellt Quest-Augments „Quest: “ voran („Quest: Steel Your Heart“), Riot nicht
+  const idOf = (name) => riotId[norm(name)] || riotId[norm(name.replace(/^Quest:\s*/, ''))];
   const byAm = {}; // arammayhem-ID -> Riot-ID
   const augments = {}; // Riot-ID -> { rarity, rank (1 = beliebteste ihrer Seltenheit), of }
-  const rows = aug.rows.filter((r) => riotId[norm(r.name.en)]);
-  for (const r of rows) byAm[r.augmentId] = riotId[norm(r.name.en)];
+  const rows = aug.rows.filter((r) => idOf(r.name.en));
+  for (const r of rows) byAm[r.augmentId] = idOf(r.name.en);
   for (const rarity of new Set(rows.map((r) => r.rarity))) {
     const list = rows.filter((r) => r.rarity === rarity).sort((a, b) => b.pickRate - a.pickRate);
     list.forEach((r, i) => (augments[byAm[r.augmentId]] = { rarity, rank: i + 1, of: list.length }));
@@ -60,7 +63,7 @@ async function loadGlobal() {
     (comboTags[c.championId] ||= {})[byAm[c.augmentIds[0]]] = c.types;
   }
   const champions = Object.fromEntries(champs.rows.map((c) => [c.championId, c.url]));
-  cache.global = { fetchedAt: Date.now(), augments, comboTags, champions, enIds: riotId };
+  cache.global = { v: GLOBAL_VERSION, fetchedAt: Date.now(), augments, comboTags, champions, enIds: riotId };
   fs.writeFileSync(cacheFile, JSON.stringify(cache));
   return cache.global;
 }
@@ -97,7 +100,7 @@ const pending = {};
 function prepare(champId) {
   if (!champId || pending[champId]) return;
   const fresh = (e) => e && Date.now() - e.fetchedAt < CACHE_MS;
-  if (fresh(cache.global) && fresh(cache[`champ|${champId}`])) return;
+  if (cache.global?.v === GLOBAL_VERSION && fresh(cache.global) && fresh(cache[`champ|${champId}`])) return;
   pending[champId] = loadChampion(champId)
     .catch((e) => console.warn('arammayhem:', e.message))
     .finally(() => delete pending[champId]);

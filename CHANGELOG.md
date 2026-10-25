@@ -6,6 +6,8 @@ Fixes
 - Mayhem: Augment-Tiers fehlten bei Angeboten, die lebend kommen (z. B. Stufe 7 auf der Lane); die App
   schaute nur im Tod nach
 - Werte-Schmiede: Splitter mit einem falsch gelesenen Buchstaben („…splittar“) wurden nicht erkannt
+- Mayhem: Quest-Augments (z. B. „Stähle dein Herz“) zeigten „keine Daten“, weil arammayhem.com sie mit
+  „Quest:“ davor führt
 
 ## 1.3.0 – 2026-10-25
 
