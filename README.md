@@ -52,6 +52,8 @@ often there is an allowed variant. Found something that is read wrong? Use the
 - Skill hint: which ability to level next (lolalytics skill order) while a point is unspent
 - Item cooldowns (Zhonya's, Stopwatch, Guardian Angel …) read from your item slots
 - Item value difference to your lane opponent and the enemy team
+- In-game settings (⚙ in the panel header): switch every module on or off, compact mode, UI scale, background
+  and hover transparency, click-through
 
 **Tab scoreboard**
 - Item value difference per row (above the ward slot) plus team difference
@@ -75,6 +77,7 @@ often there is an allowed variant. Found something that is read wrong? Use the
 |---|---|
 | Ctrl+Shift+O | Toggle overlay |
 | Ctrl+Shift+E | Move panel (or drag the ⠿ handle) |
+| ⚙ in the panel header | Overlay settings (also in the tray menu) |
 | Ctrl+Shift+S | Stats window |
 | Tab (in game) | Scoreboard badges – the key is only read, the game still receives it |
 

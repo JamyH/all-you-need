@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://ddragon.leagueoflegends.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="overlay.css">
 </head>
 <body>
   <div id="panel" class="panel">
     <div class="edit-hint">Ziehen zum Verschieben · Strg+Shift+E beendet</div>
     <div class="row head">
-      <span><span id="grip" class="grip" title="Ziehen zum Verschieben">⠿</span><span id="champ">–</span></span>
-      <span id="time" class="muted">0:00</span>
+      <span><span id="grip" class="grip" title="Ziehen zum Verschieben">⠿</span><span id="champ">–</span><span id="lvl" class="lvl"></span></span>
+      <span><span id="time" class="muted">0:00</span><span id="gear" class="gear" title="Overlay-Einstellungen">⚙</span></span>
     </div>
     <div class="alerts">
       <div id="skill" class="alert skill" hidden></div>
       <div id="recall" class="alert recall" hidden></div>
-      <div id="noMana" class="alert no-mana" hidden>NO MANA</div>
+      <div id="noMana" class="alert no-mana" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/><path d="M4 4l16 16"/></svg>NO MANA</div>
     </div>
     <div class="grid">
       <div><label>KDA</label><b id="kda">–</b><small id="kdaRatio"></small></div>
@@ -39,7 +39,12 @@
       <small id="xpMinions"></small>
     </div>
     <div id="lane" class="lane"></div>
-    <div class="row"><label>Team-Itemwert</label><b id="teamDiff">–</b></div>
+    <div id="teamRow" class="row"><label>Team-Itemwert</label><b id="teamDiff">–</b></div>
+    <div id="foot" class="foot"></div>
+  </div>
+  <div id="settings" class="settings" hidden>
+    <div class="settings-head"><span>ALL YOU NEED</span><span id="settingsClose" class="close" title="Schließen">✕</span></div>
+    <div id="settingsBody"></div>
   </div>
   <div id="aug" class="aug" hidden></div>
   <div id="sb" class="sb" hidden>

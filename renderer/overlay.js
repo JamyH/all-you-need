@@ -12,6 +12,11 @@ const compact = (n) => {
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+// Icons für die Warn-Pillen (Richtung B: Icon links neben dem Text)
+const ICON_SKILL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+const ICON_RECALL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+const ICON_BUY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>';
+
 // Mayhem-Augment-Angebot und Werte-Schmiede: Tier über jeder Karte (keine Siegquoten, die verbietet Riot)
 function renderAugments(list) {
   const box = $('aug');
@@ -36,11 +41,51 @@ function renderAugments(list) {
   }));
 }
 
+// Kompakt-Modus: Cooldowns als Ringe. Riot liefert nur die Restzeit, daher gilt die längste Restzeit seit
+// Beginn des Cooldowns als volle Länge
+const RING = 100.5; // Umfang bei r = 16
+const ICON_CHECK = '<svg class="check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+const cdMax = {};
+function cdShare(s) {
+  if (s.ready) {
+    delete cdMax[s.key];
+    return 0;
+  }
+  if (s.cd == null) return 1;
+  cdMax[s.key] = Math.max(cdMax[s.key] || 0, s.cd);
+  return cdMax[s.key] ? s.cd / cdMax[s.key] : 0;
+}
+function ringHtml(s) {
+  const share = cdShare(s);
+  const arc = s.ready ? '' : `<circle class="arc" cx="19" cy="19" r="16" stroke-dasharray="${(share * RING).toFixed(1)} ${RING}"/>`;
+  const inner = s.ready ? ICON_CHECK : `<span>${s.cd == null ? '…' : fmtTime(s.cd)}</span>`;
+  return `<div class="ring ${s.ready ? 'ready' : ''}" title="${esc(s.name)}"><div class="dial">` +
+    `<svg class="bg" viewBox="0 0 38 38" aria-hidden="true"><circle class="trk" cx="19" cy="19" r="16"/>${arc}</svg>${inner}</div>` +
+    `<label>${s.key}</label></div>`;
+}
+function tileHtml(s) {
+  const value = s.ready ? 'bereit' : s.cd == null ? '…' : fmtTime(s.cd);
+  const b = `<b class="${s.ready ? 'good' : ''}">${value}</b>`;
+  // Icon statt Name (Namen wie „Zhonyas Stundenglas“ passen nicht in die Kachel)
+  if (s.icon) {
+    return `<div class="spell item ${s.ready ? '' : 'cd'}"><img src="${esc(s.icon)}" alt="" title="${esc(s.name)}">` +
+      `<div><label>${s.key}</label>${b}</div></div>`;
+  }
+  return `<div class="spell ${s.ready ? '' : 'cd'}"><label>${s.key} · ${esc(s.name)}</label>${b}</div>`;
+}
+const footHtml = (label, n, fmt) => `<span>${esc(label)} <b class="${cls(n)}">${fmt(n)}</b></span>`;
+
 window.lol.onGame((g) => {
   lastGame = g;
   if (sbState.open) renderScoreboard();
   renderAugments(g.augments);
-  $('champ').textContent = `${g.champion} · Lvl ${g.level}`;
+  renderGame(g);
+});
+
+function renderGame(g) {
+  const small = isCompact();
+  $('champ').textContent = g.champion;
+  $('lvl').textContent = g.level;
   $('time').textContent = fmtTime(g.gameTime);
   $('kda').textContent = g.kda;
   $('kdaRatio').textContent = g.kdaRatio;
@@ -57,17 +102,17 @@ window.lol.onGame((g) => {
   if (b) {
     $('build').classList.toggle('ready', b.affordable);
     $('buildLabel').textContent = b.name;
-    $('buildMissing').textContent = b.affordable ? 'bezahlbar' : `noch ${b.missing.toLocaleString('de-DE')} g`;
+    $('buildMissing').textContent = b.affordable ? 'bezahlbar' : `${small ? '−' : 'noch '}${b.missing.toLocaleString('de-DE')} g`;
     $('buildFill').style.width = `${b.progress}%`;
-    $('recall').textContent = g.aram ? 'KAUFEN' : 'RECALL';
+    $('recall').innerHTML = (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? 'KAUFEN' : 'RECALL');
   }
 
   // Skillpunkt offen: welche Fähigkeit laut Lolalytics dran ist, dahinter die Max-Reihenfolge
   const sk = g.skill && g.skill.next ? g.skill : null;
   $('skill').hidden = !sk;
   if (sk) {
-    $('skill').innerHTML = `SKILL <b>${sk.next}</b>${sk.open > 1 ? ` <small>+${sk.open - 1}</small>` : ''}` +
-      (sk.priority ? ` <small>${sk.priority.join(' › ')}</small>` : '');
+    $('skill').innerHTML = `${ICON_SKILL}SKILL <b>${sk.next}</b>${sk.open > 1 ? ` <small>+${sk.open - 1}</small>` : ''}` +
+      (sk.priority ? ` <small class="prio">${sk.priority.join(' › ')}</small>` : '');
   }
 
   const m = g.mana;
@@ -82,17 +127,8 @@ window.lol.onGame((g) => {
   }
 
   // Summoner D/F, danach Item-Cooldowns (Taste 1–7 wie im Spiel)
-  $('spells').innerHTML = [...(g.spells || []), ...(g.itemCds || [])]
-    .map((s) => {
-      const value = s.ready ? 'bereit' : s.cd == null ? '…' : fmtTime(s.cd);
-      const b = `<b class="${s.ready ? 'good' : ''}">${value}</b>`;
-      // Icon statt Name (Namen wie „Zhonyas Stundenglas“ passen nicht in die Kachel)
-      if (s.icon) {
-        return `<div class="spell item ${s.ready ? '' : 'cd'}"><img src="${esc(s.icon)}" alt="" title="${esc(s.name)}">` +
-          `<div><label>${s.key}</label>${b}</div></div>`;
-      }
-      return `<div class="spell ${s.ready ? '' : 'cd'}"><label>${s.key} · ${esc(s.name)}</label>${b}</div>`;
-    })
+  $('spells').innerHTML = [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : [])]
+    .map(small ? ringHtml : tileHtml)
     .join('');
   // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann wieder den Namen zeigen
   $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => {
@@ -103,18 +139,28 @@ window.lol.onGame((g) => {
   const xp = g.xp;
   $('xp').hidden = !xp;
   if (xp) {
-    $('xpLabel').textContent = `Lvl ${g.level} → ${g.level + 1}`;
+    $('xpLabel').textContent = small ? `Lvl ${g.level + 1} ·` : `Lvl ${g.level} → ${g.level + 1}`;
     $('xpPct').textContent = `${xp.percent} %`;
     $('xpFill').style.width = `${xp.percent}%`;
     // Vasallen-XP gelten nur auf Summoner's Rift; im ARAM nur den Prozentwert zeigen
     $('xpMinions').hidden = !!g.aram;
-    $('xpMinions').textContent = `noch ${xp.missing} XP ≈ ${xp.melee} Melee / ${xp.caster} Caster · ${xp.waves} Wellen`;
+    $('xpMinions').textContent = small
+      ? `${xp.melee} Melee / ${xp.caster} Caster`
+      : `noch ${xp.missing} XP ≈ ${xp.melee} Melee / ${xp.caster} Caster · ${xp.waves} Wellen`;
   }
   $('gold').textContent = g.gold.toLocaleString('de-DE');
   $('ward').textContent = g.wardScore;
 
+  // Kompakt: Lane-Gegner, CS-Diff und Team in einer Fußzeile
   const o = g.laneOpponent;
-  if (o) {
+  const foot = [];
+  if (small && o && moduleOn('lane')) {
+    foot.push(footHtml(o.champion, g.myItemValue - o.itemValue, compact), footHtml('CS', g.cs - o.cs, signed));
+  }
+  if (small && moduleOn('team')) foot.push(footHtml('Team', g.teamItemDiff, compact));
+  $('foot').innerHTML = foot.join('');
+
+  if (o && !small) {
     const diff = g.myItemValue - o.itemValue;
     $('lane').innerHTML =
       `<div class="row"><label>vs ${o.champion}${o.isDead ? ' (tot)' : ''}</label>` +
@@ -127,7 +173,7 @@ window.lol.onGame((g) => {
   const t = $('teamDiff');
   t.textContent = `${signed(g.teamItemDiff)} g`;
   t.className = cls(g.teamItemDiff);
-});
+}
 
 // Tab-Scoreboard: Badges relativ zum gefundenen Anker (Mitte des Scoreboard-Ornaments)
 let lastGame = null;
@@ -169,22 +215,54 @@ window.lol.onScoreboard((s) => {
 window.lol.onPanelPos((p) => {
   panel.style.left = `${p.x}px`;
   panel.style.top = `${p.y}px`;
-  reportGrip();
+  reportRects();
 });
-// Lage des Griffs an main melden: nur in seiner Nähe werden Mausbewegungen ans Overlay weitergeleitet
-function reportGrip() {
-  const r = $('grip').getBoundingClientRect();
-  window.lol.gripRect({ x: r.x, y: r.y, width: r.width, height: r.height });
+// Lage der bedienbaren Teile an main melden: nur in ihrer Nähe werden Mausbewegungen ans Overlay
+// weitergeleitet; über dem Panel schaltet main die Hover-Transparenz
+const rectOf = (el) => {
+  const r = el.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+};
+function reportRects() {
+  const box = $('settings');
+  window.lol.hitRects({ grip: rectOf(grip), gear: rectOf($('gear')), panel: rectOf(panel), settings: box.hidden ? null : rectOf(box) });
 }
-new ResizeObserver(reportGrip).observe(panel);
 window.lol.onEditMode((on) => document.body.classList.toggle('edit', on));
+window.lol.onPanelHover((on) => document.body.classList.toggle('panel-hover', on));
 
+// Maus über einem bedienbaren Teil: Overlay fängt die Maus (Klicks gehen dann nicht ans Spiel).
+// hot = Teile, über denen die Maus gerade steht; holding = Regler wird gerade gezogen
 let drag = null;
+let holding = false;
+let hotSent = false;
+const hot = new Set();
 const grip = $('grip');
-grip.addEventListener('mouseenter', () => window.lol.gripHover(true));
-grip.addEventListener('mouseleave', () => !drag && window.lol.gripHover(false));
+function sendHover() {
+  const on = hot.size > 0 || holding || !!drag;
+  document.body.classList.toggle('ui-hot', on);
+  if (on === hotSent) return;
+  hotSent = on;
+  window.lol.uiHover(on);
+}
+function hotZone(el, active = () => true) {
+  el.addEventListener('mouseenter', () => {
+    if (!active()) return;
+    hot.add(el);
+    sendHover();
+  });
+  el.addEventListener('mouseleave', () => {
+    if (hot.delete(el)) sendHover();
+  });
+}
+hotZone(grip);
+hotZone($('gear'));
+hotZone($('settings'));
+hotZone(panel, () => settings && !settings.clickThrough);
+
 panel.addEventListener('mousedown', (e) => {
-  if (!document.body.classList.contains('edit') && e.target !== grip) return;
+  if (e.target === $('gear')) return;
+  const free = document.body.classList.contains('edit') || (settings && !settings.clickThrough);
+  if (!free && e.target !== grip) return;
   drag = { dx: e.clientX - panel.offsetLeft, dy: e.clientY - panel.offsetTop };
   document.body.classList.add('dragging');
 });
@@ -194,10 +272,140 @@ window.addEventListener('mousemove', (e) => {
   panel.style.top = `${e.clientY - drag.dy}px`;
 });
 window.addEventListener('mouseup', () => {
-  if (!drag) return;
-  drag = null;
-  document.body.classList.remove('dragging');
-  window.lol.gripHover(false);
-  window.lol.panelMoved({ x: panel.offsetLeft, y: panel.offsetTop });
-  reportGrip();
+  holding = false;
+  if (drag) {
+    drag = null;
+    document.body.classList.remove('dragging');
+    window.lol.panelMoved({ x: panel.offsetLeft, y: panel.offsetTop });
+    reportRects();
+    if (!$('settings').hidden) placeSettings();
+  }
+  sendHover();
+});
+
+// Overlay-Einstellungen (⚙ im Panel-Kopf oder Tray): Module ein/aus, UI-Größe, Transparenz, Klick-durch.
+// Gespeichert in config.json unter „overlay“; main liest dieselben Werte (abgeschaltete Module werden dort
+// gar nicht erst vom Bildschirm gelesen)
+const MODULES = [
+  ['Panel', [
+    ['stats', 'Werte (KDA, CS, Gold, Vision)'],
+    ['skill', 'Skill-Hinweis'],
+    ['build', 'Spar-Ziel und Recall'],
+    ['mana', 'Mana und NO MANA'],
+    ['spells', 'Summoner-Cooldowns'],
+    ['items', 'Item-Cooldowns'],
+    ['xp', 'XP bis Level-Up'],
+    ['lane', 'Lane-Gegner'],
+    ['team', 'Team-Itemwert'],
+  ]],
+  ['Weitere Overlays', [
+    ['scoreboard', 'Tab: Itemwert je Spieler'],
+    ['augments', 'Mayhem: Augment-Tiers'],
+  ]],
+];
+// [Schlüssel, Name, min, max, Schritt, Anzeige]
+const SLIDERS = [
+  ['scale', 'UI-Größe', 0.7, 1.5, 0.05, (v) => v.toFixed(2).replace('.', ',')],
+  ['bgTransparency', 'Hintergrund-Transparenz', 0, 90, 5, (v) => `${v} %`],
+  ['hoverTransparency', 'Hover-Transparenz', 0, 90, 5, (v) => `${v} %`],
+];
+let settings = null;
+const moduleOn = (key) => !settings || settings.modules[key] !== false;
+const isCompact = () => !!(settings && settings.compact);
+
+function buildSettings() {
+  const toggle = (attr, key, name) =>
+    `<label class="toggle"><span>${esc(name)}</span><input type="checkbox" ${attr}="${key}"><i></i></label>`;
+  $('settingsBody').innerHTML =
+    MODULES.map(([title, list]) => `<h4>${title}</h4>${list.map(([k, n]) => toggle('data-mod', k, n)).join('')}`).join('') +
+    '<h4>Allgemein</h4>' +
+    toggle('data-opt', 'compact', 'Kompakt-Modus') +
+    toggle('data-opt', 'clickThrough', 'Klick-durch') +
+    SLIDERS.map(([k, n, min, max, step]) =>
+      `<div class="slider"><label><span>${n}</span><output data-out="${k}"></output></label>` +
+      `<input type="range" data-range="${k}" min="${min}" max="${max}" step="${step}"></div>`).join('');
+
+  $('settingsBody').querySelectorAll('[data-mod]').forEach((el) => el.addEventListener('change', () =>
+    save({ modules: { [el.dataset.mod]: el.checked } })));
+  $('settingsBody').querySelectorAll('[data-opt]').forEach((el) => el.addEventListener('change', () =>
+    save({ [el.dataset.opt]: el.checked })));
+  $('settingsBody').querySelectorAll('[data-range]').forEach((el) => {
+    const key = el.dataset.range;
+    // beim Ziehen sofort anzeigen, gespeichert wird beim Loslassen
+    el.addEventListener('input', () => applySettings({ ...settings, [key]: Number(el.value) }));
+    el.addEventListener('change', () => save({ [key]: Number(el.value) }));
+  });
+  $('settings').addEventListener('mousedown', () => {
+    holding = true;
+    sendHover();
+  });
+  $('settingsClose').addEventListener('click', () => window.lol.settingsOpen(false));
+  $('gear').addEventListener('click', () => window.lol.settingsOpen($('settings').hidden));
+}
+const save = (patch) => window.lol.setOverlay(patch).then(applySettings);
+
+function applySettings(s) {
+  settings = s;
+  const root = document.documentElement.style;
+  root.setProperty('--ui', s.scale);
+  root.setProperty('--bg-a', (1 - s.bgTransparency / 100).toFixed(2));
+  root.setProperty('--hover-op', (1 - s.hoverTransparency / 100).toFixed(2));
+  for (const [, list] of MODULES) for (const [k] of list) document.body.classList.toggle(`off-${k}`, s.modules[k] === false);
+  document.body.classList.toggle('click-through', s.clickThrough);
+  document.body.classList.toggle('compact', !!s.compact);
+  // Kompakt-Modus und Fußzeile hängen an den Einstellungen: sofort neu zeichnen, nicht erst beim nächsten Abruf
+  if (lastGame) renderGame(lastGame);
+
+  const body = $('settingsBody');
+  body.querySelectorAll('[data-mod]').forEach((el) => { el.checked = s.modules[el.dataset.mod] !== false; });
+  body.querySelectorAll('[data-opt]').forEach((el) => { el.checked = !!s[el.dataset.opt]; });
+  for (const [k, , , , , show] of SLIDERS) {
+    const el = body.querySelector(`[data-range="${k}"]`);
+    if (Number(el.value) !== s[k]) el.value = s[k];
+    body.querySelector(`[data-out="${k}"]`).textContent = show(s[k]);
+  }
+  // Panel kann durch Ausblenden oder Skalieren die Größe ändern: Maus-Zonen neu melden
+  requestAnimationFrame(reportRects);
+}
+
+// Neben das Panel, auf die Seite mit mehr Platz. Abstand nach der größten UI-Größe: so bleibt das Fenster beim
+// Ziehen am Größen-Regler stehen (rückte es mit, rutschte der Regler unter der Maus weg) und das Panel wächst
+// trotzdem nie darunter
+const MAX_SCALE = SLIDERS.find(([k]) => k === 'scale')[3];
+function placeSettings() {
+  const box = $('settings');
+  const left = panel.offsetLeft;
+  const top = panel.offsetTop;
+  const w = box.offsetWidth;
+  const reach = left + panel.offsetWidth * MAX_SCALE + 12;
+  const right = reach + w <= window.innerWidth;
+  box.style.left = `${right ? reach : Math.max(8, left - 12 - w)}px`;
+  box.style.top = `${Math.max(8, Math.min(top, window.innerHeight - box.offsetHeight - 8))}px`;
+  reportRects(); // Verschieben meldet kein ResizeObserver
+}
+
+// Overlay ausgeblendet (Spielende): kein mouseleave mehr, daher Maus-Zustand hier vergessen; main setzt
+// seine Seite beim Ausblenden ebenfalls zurück
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'hidden') return;
+  hot.clear();
+  holding = false;
+  hotSent = false;
+  document.body.classList.remove('ui-hot', 'panel-hover');
+});
+
+buildSettings();
+new ResizeObserver(reportRects).observe(panel);
+new ResizeObserver(reportRects).observe($('settings'));
+window.lol.onOverlaySettings(applySettings);
+window.lol.onSettingsOpen((on) => {
+  $('settings').hidden = !on;
+  document.body.classList.toggle('settings-open', on);
+  if (on) placeSettings();
+  else {
+    hot.delete($('settings'));
+    holding = false;
+    sendHover();
+  }
+  reportRects();
 });

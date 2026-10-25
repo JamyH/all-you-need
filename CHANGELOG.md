@@ -8,6 +8,19 @@ Build & Runen
   automatisch; dein Blitz bleibt auf seiner Taste (D oder F). Eigene Karte „Summoner“ im Build-Tab mit
   „Jetzt setzen“ und Schalter fürs automatische Setzen
 
+Overlay
+- Neuer Look „Graphit flach“ (Redesign Richtung B): Panel, ⚙-Einstellungen, Warn-Pillen (SKILL/RECALL/KAUFEN/
+  NO MANA mit Icon), Cooldown-Kacheln, Tab-Scoreboard- und Mayhem-Badges jetzt mit Inter-Schrift, abgerundeten
+  Kacheln und türkis/gold/korallenroten Akzentfarben statt Hextech-Gold-Rahmen. App-Fenster folgt als nächster
+  Schritt
+- Kompakt-Modus (⚙ → Allgemein): schmaleres Panel mit drei Kacheln (CS, KDA, Gold), Summoner- und Item-Cooldowns
+  als Ringe, die mit der Restzeit leerlaufen, und Lane-Gegner, CS-Diff und Team-Itemwert in einer Fußzeile
+- Einstellungen direkt im Spiel (⚙ im Panel-Kopf oder Tray „Overlay-Einstellungen“): jedes Modul einzeln
+  ein- und ausschalten (Werte, Skill-Hinweis, Spar-Ziel, Mana, Summoner- und Item-Cooldowns, XP, Lane-Gegner,
+  Team-Itemwert, Tab-Scoreboard, Mayhem-Augments), UI-Größe, Hintergrund- und Hover-Transparenz (Panel wird
+  durchsichtiger, solange die Maus darüber steht) und Klick-durch (aus: Panel lässt sich überall greifen).
+  Abgeschaltete Cooldowns, Augments und Scoreboard werden auch nicht mehr vom Bildschirm gelesen
+
 App
 - ☰-Knopf oben links im Stats-Fenster: dasselbe Menü wie am Tray-Icon (Overlay, Auto-Annehmen, League beenden …)
 - Tray-Menü „League komplett beenden …“: beendet nach Rückfrage Riot Client, League-Client und Spiel, z. B. wenn

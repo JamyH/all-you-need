@@ -55,6 +55,17 @@ const saveConfig = (patch) => {
 const detectedPath = setup.findLeaguePath(config.leaguePath);
 if (detectedPath !== config.leaguePath) saveConfig({ leaguePath: detectedPath });
 
+// Overlay-Einstellungen (⚙ im Panel-Kopf): Module ein/aus, UI-Größe, Transparenz, Klick-durch.
+// Fehlende Werte (ältere config.json) kommen aus den Vorgaben.
+const OVERLAY_DEFAULTS = { modules: {}, scale: 1, bgTransparency: 30, hoverTransparency: 20, clickThrough: true, compact: false };
+const overlaySettings = () => ({
+  ...OVERLAY_DEFAULTS,
+  ...config.overlay,
+  modules: { ...(config.overlay && config.overlay.modules) },
+});
+// Modul an? Ausgeschaltete Module sparen auch die Bildschirm-Erkennung (Cooldowns, Augments, Scoreboard)
+const moduleOn = (key) => overlaySettings().modules[key] !== false;
+
 const APP_ICON = path.join(__dirname, 'assets', 'icon.ico');
 // eigener Eintrag in der Taskleiste statt „Electron“ (gleiche ID wie die Verknüpfungen des Installers)
 app.setAppUserModelId('com.jamyh.allyouneed');
@@ -86,17 +97,31 @@ function createOverlay() {
   overlay.setContentProtection(true);
   setPassThrough(false);
   overlay.loadFile('renderer/overlay.html');
-  overlay.webContents.on('did-finish-load', () => overlay.webContents.send('panel-pos', config.panel));
+  // ausgeblendet kommt kein mouseleave mehr an: Maus wieder durchlassen, sonst fängt das Overlay sie im nächsten Spiel
+  overlay.on('hide', () => {
+    uiCaptured = false;
+    panelHover = false;
+    setPassThrough(false);
+  });
+  overlay.webContents.on('did-finish-load', () => {
+    overlay.webContents.send('overlay-settings', overlaySettings());
+    overlay.webContents.send('settings-open', settingsOpen);
+    overlay.webContents.send('panel-pos', config.panel);
+  });
 }
 
-// Klicks gehen durchs Overlay zum Spiel. Mausbewegungen ans Overlay weiterleiten (forward) braucht nur der
-// Griff zum Verschieben (Hover). Electron hängt dafür einen globalen Maus-Hook ein und schickt jede Bewegung
-// ans Overlay: gemessen ~21 % eines Kerns im Hauptprozess plus ~6 % im Overlay. Daher nur einschalten, solange
-// die Maus in der Nähe des Griffs ist; das prüft ein billiger Blick auf die Mausposition alle 150 ms.
+// Klicks gehen durchs Overlay zum Spiel. Mausbewegungen ans Overlay weiterleiten (forward) brauchen nur die
+// bedienbaren Teile (Hover): Griff, ⚙, offene Einstellungen und, ohne Klick-durch, das Panel. Electron hängt
+// dafür einen globalen Maus-Hook ein und schickt jede Bewegung ans Overlay: gemessen ~21 % eines Kerns im
+// Hauptprozess plus ~6 % im Overlay. Daher nur einschalten, solange die Maus in der Nähe eines solchen Teils
+// ist; das prüft ein billiger Blick auf die Mausposition alle 150 ms.
 let forwarding = null; // true/false = Stand der Weiterleitung, null = Overlay fängt die Maus gerade selbst
-let gripRect = null; // Griff im Overlay (CSS-Pixel), meldet das Overlay
-let gripCaptured = false;
+let hitRects = {}; // grip, gear, panel, settings im Overlay (CSS-Pixel), meldet das Overlay
+let uiCaptured = false; // Maus steht über einem bedienbaren Teil, das Overlay fängt sie
+let panelHover = false;
+let settingsOpen = false;
 const GRIP_MARGIN = 40;
+const inRect = (r, x, y, m) => !!r && x >= r.x - m && x <= r.x + r.width + m && y >= r.y - m && y <= r.y + r.height + m;
 function setPassThrough(forward) {
   if (forwarding === forward) return;
   forwarding = forward;
@@ -107,13 +132,29 @@ function captureMouse() {
   overlay.setIgnoreMouseEvents(false);
 }
 setInterval(() => {
-  if (!overlay || editMode || gripCaptured || !gripRect || !overlay.isVisible()) return;
+  if (!overlay || !overlay.isVisible()) return;
   const p = screen.getCursorScreenPoint();
   const b = overlay.getBounds();
   const x = p.x - b.x, y = p.y - b.y;
-  const r = gripRect;
-  setPassThrough(x >= r.x - GRIP_MARGIN && x <= r.x + r.width + GRIP_MARGIN && y >= r.y - GRIP_MARGIN && y <= r.y + r.height + GRIP_MARGIN);
+  // Hover-Transparenz: Panel wird durchsichtiger, solange die Maus darüber steht (auch mit Klick-durch)
+  const hover = inRect(hitRects.panel, x, y, 0);
+  if (hover !== panelHover) {
+    panelHover = hover;
+    overlay.webContents.send('panel-hover', hover);
+  }
+  if (editMode || uiCaptured) return;
+  const zones = [hitRects.grip, hitRects.gear, settingsOpen && hitRects.settings, !overlaySettings().clickThrough && hitRects.panel];
+  setPassThrough(zones.some((r) => inRect(r, x, y, GRIP_MARGIN)));
 }, 150);
+
+// Einstellungen gehen auch außerhalb des Spiels auf (Tray); dann bleibt das Overlay sichtbar, bis sie zu sind
+function setSettingsOpen(on) {
+  settingsOpen = on;
+  overlay.webContents.send('settings-open', on);
+  if (on) overlay.showInactive();
+  else if (overlayHidden) overlay.hide();
+  refreshTrayMenu();
+}
 
 // Windows nimmt dem Fenster „immer im Vordergrund“ manchmal weg (z. B. nach Alt+Tab), dann liegt es
 // hinter dem Spiel. Daher bei jedem Spiel-Abruf neu setzen; moveTop aktiviert das Fenster nicht.
@@ -286,7 +327,7 @@ async function pollGame() {
     if (!overlay.isVisible()) overlay.showInactive();
     raiseOverlay();
     overlay.webContents.send('game', summary);
-  } else if (!summary && overlay.isVisible() && !editMode) {
+  } else if (!summary && overlay.isVisible() && !editMode && !settingsOpen) {
     overlay.hide();
   }
 }
@@ -394,14 +435,15 @@ async function pollScreen() {
   ocrBusy = true;
   try {
     checkHudChange();
-    const slots = Object.entries(L.spells);
+    // im ⚙ abgeschaltete Cooldown-Anzeigen werden gar nicht erst gelesen
+    const slots = moduleOn('spells') ? Object.entries(L.spells) : [];
     const readCs = Date.now() - lastCsRead >= config.ocr.intervalMs;
-    const items = lastItems.filter((it) => it.slot < 6);
+    const items = moduleOn('items') ? lastItems.filter((it) => it.slot < 6) : [];
     const regions = [...slots.map(([, r]) => r), ...items.map((it) => L.items[it.slot])];
     if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
     // Mayhem: Augment-Angebote kommen auch lebend (z. B. Stufe 7 auf der Lane), daher immer nachsehen. Der
     // Rahmen-Check kostet fast nichts, Texterkennung läuft nur bei offenem Angebot und geänderter Karte
-    const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI';
+    const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI' && moduleOn('augments');
     if (watchAugments) regions.push(...L.augments.map((a) => a.frame), ...L.augments.map((a) => a.name));
     const crops = await capture.grab(regions);
     const augCrops = watchAugments ? crops.splice(crops.length - 6, 6) : null;
@@ -492,6 +534,7 @@ function startTabWatch() {
   if (!config.scoreboard || !config.scoreboard.enabled) return;
   keys.start(
     () => {
+      if (!moduleOn('scoreboard')) return; // im ⚙ abgeschaltet: auch keine Scoreboard-Suche
       tabDown = true;
       tabPressId++;
       sendScoreboard(true);
@@ -898,15 +941,21 @@ ipcMain.handle('suggestion:open', (_e, url) => {
   if (/^https:\/\/lolalytics\.com\//.test(url)) shell.openExternal(url);
 });
 
-// Maus über dem Griff: Fenster fängt Klicks ab, sonst gehen sie durch zum Spiel
-ipcMain.on('grip-hover', (_e, over) => {
-  gripCaptured = over;
+// Maus über Griff, ⚙ oder Einstellungen: Fenster fängt Klicks ab, sonst gehen sie durch zum Spiel
+ipcMain.on('ui-hover', (_e, over) => {
+  uiCaptured = over;
   if (editMode) return;
   if (over) captureMouse();
   else setPassThrough(true);
 });
-ipcMain.on('grip-rect', (_e, r) => {
-  gripRect = r;
+ipcMain.on('hit-rects', (_e, r) => {
+  hitRects = r;
+});
+ipcMain.on('overlay:settingsOpen', (_e, on) => setSettingsOpen(on));
+ipcMain.handle('overlay:set', (_e, patch) => {
+  const s = overlaySettings();
+  saveConfig({ overlay: { ...s, ...patch, modules: { ...s.modules, ...patch.modules } } });
+  return overlaySettings();
 });
 ipcMain.handle('panel-moved', (_e, pos) => {
   saveConfig({ panel: pos });
@@ -924,6 +973,7 @@ ipcMain.handle('ddragon:version', () => ddragon.getVersion());
 function toggleOverlay() {
   overlayHidden = !overlayHidden;
   if (overlayHidden) overlay.hide(); // eingeblendet wird beim nächsten Spiel-Abruf
+  if (overlayHidden && settingsOpen) setSettingsOpen(false);
   refreshTrayMenu();
 }
 
@@ -966,6 +1016,7 @@ function appMenu() {
     { type: 'separator' },
     { label: 'Overlay anzeigen', type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
     { label: 'Panel verschieben', type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
+    { label: 'Overlay-Einstellungen', type: 'checkbox', checked: settingsOpen, click: () => setSettingsOpen(!settingsOpen) },
     {
       label: 'Spiel automatisch annehmen',
       type: 'checkbox',
