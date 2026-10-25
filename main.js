@@ -28,6 +28,7 @@ const setup = require('./src/setup');
 const layout = require('./src/layout');
 const lolalytics = require('./src/lolalytics');
 const early = require('./src/early');
+const meraki = require('./src/meraki');
 const history = require('./src/history');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
@@ -925,7 +926,10 @@ ipcMain.handle('spells:apply', async () => {
 ipcMain.handle('matchup:state', () => matchupState);
 ipcMain.handle('matchup:get', async (_e, champId, vsId, position) => {
   const stats = (id) => ddragon.champion(ddragon.championKey(id)).stats;
-  const duel = early.levels(stats(champId), stats(vsId));
+  // Fähigkeiten von Meraki; fehlen sie (offline, unbekannter Champ), rechnet das Duell nur mit Grundwerten
+  const kit = (id) => meraki.champion(id).then((c) => c.abilities, () => null);
+  const [abilA, abilB] = await Promise.all([kit(champId), kit(vsId)]);
+  const duel = early.levels(stats(champId), stats(vsId), abilA, abilB);
   try {
     return { ...(await lolalytics.matchup(champId, vsId, position || lastPosition)), duel };
   } catch (e) {
@@ -1142,6 +1146,7 @@ const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ acce
 app.whenReady().then(async () => {
   await ddragon.load(app.getPath('userData'), config.language);
   lolalytics.init(app.getPath('userData'));
+  meraki.init(app.getPath('userData'));
   history.init(app.getPath('userData'));
   augments.init(app.getPath('userData'));
   arammayhem.init(app.getPath('userData'));
