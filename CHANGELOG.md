@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.5.0 – 2026-10-26
 
 Allgemein
 - Englische Oberfläche: Overlay, Stats-Fenster, Tray-Menü und Meldungen gibt es jetzt auf Deutsch und Englisch.

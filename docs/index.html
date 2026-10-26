@@ -122,7 +122,7 @@
           <a class="btn" id="dl" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download for Windows</a>
           <a class="btn ghost" href="https://github.com/JamyH/all-you-need">View source</a>
         </div>
-        <div class="meta" id="dl-meta">Free · open source (MIT) · no account, no ads · interface currently in German</div>
+        <div class="meta" id="dl-meta">Free · open source (MIT) · no account, no ads · English &amp; German</div>
       </div>
       <img class="shot" src="panel.png" alt="In-game panel showing KDA, CS, gold, mana with combo cost, summoner cooldowns and XP">
     </div>
@@ -176,8 +176,8 @@
       </details>
       <details>
         <summary>Is it available in English?</summary>
-        <p>The interface is in German for now; an English version is planned. The values are numbers and icons, so it
-          is usable without German.</p>
+        <p>Yes. The interface is available in English and German – switch it in the tray menu under <i>Sprache /
+          Language</i>. On first start it follows your Windows language.</p>
       </details>
     </section>
 
@@ -204,7 +204,7 @@
         document.querySelectorAll('a.btn[href$="releases/latest"]').forEach(a => { a.href = setup.browser_download_url; });
         const mb = (setup.size / 1048576).toFixed(0);
         document.getElementById('dl-meta').textContent =
-          `${rel.tag_name} · ${mb} MB installer · free · open source (MIT) · interface currently in German`;
+          `${rel.tag_name} · ${mb} MB installer · free · open source (MIT) · English & German`;
       })
       .catch(() => {});
   </script>

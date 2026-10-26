@@ -2,14 +2,15 @@
 
 # All You Need – A lightweight overlay
 
-**Version 1.4** · [Website](https://jamyh.github.io/all-you-need/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
+**Version 1.5** · [Website](https://jamyh.github.io/all-you-need/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
 covering your screen. It only uses information you can already see as a player and never touches the
 game process.
 
-> The interface is currently in **German**. An English UI is planned.
+> The interface is available in **English** and **German**. Switch it in the tray menu → *Sprache / Language*;
+> on first start it follows your Windows language.
 
 <p>
   <img src="docs/panel.png" alt="In-game panel" height="360">
@@ -99,7 +100,7 @@ often there is an allowed variant. Found something that is read wrong? Use the
 
 Screen regions are computed from your resolution and League's HUD scale (read from `Config/game.cfg`).
 Tested at 3440×1440 with HUD scale 0 and 100, and at a simulated 2580×1080. If something is read
-wrong, open the stats window → *Live-Spiel* → **Erkennung prüfen** during a game: it shows exactly
+wrong, open the stats window → *Live game* → **Check recognition** during a game: it shows exactly
 which screen areas are read and what was recognized. Please attach that screenshot plus your
 resolution and HUD scale to an issue.
 
