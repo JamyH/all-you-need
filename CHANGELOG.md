@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.6.1 – 2026-10-26
 
 Leistung
 - Bildschirm-Erkennung ohne Video-Stream: Die App holt sich die paar kleinen Ausschnitte (CS, Summoner, Items,
