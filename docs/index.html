@@ -3,209 +3,204 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>All You Need – Free League of Legends Overlay</title>
-  <meta name="description" content="Free, lightweight League of Legends overlay for Windows: exact CS, summoner spell timers, XP to next level, mana for your combo, gold to your next item, matchup win rates and auto runes. Open source, uses only official Riot interfaces.">
-  <meta name="keywords" content="League of Legends overlay, LoL overlay, CS tracker, summoner spell timer, LoL companion app, rune import, lolalytics, ARAM Mayhem">
+  <title>Free LoL Overlay: Exact CS &amp; Summoner Timers | All You Need</title>
+  <meta name="description" content="Free, open-source League of Legends overlay for Windows: exact CS, summoner and item cooldowns, mana for your combo, gold to your next item. No ads, no Overwolf.">
   <link rel="canonical" href="https://jamyh.github.io/all-you-need/">
+  <link rel="alternate" hreflang="en" href="https://jamyh.github.io/all-you-need/">
+  <link rel="alternate" hreflang="de" href="https://jamyh.github.io/all-you-need/de/">
+  <link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/all-you-need/">
   <link rel="icon" type="image/png" href="icon.png">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="All You Need">
   <meta property="og:title" content="All You Need – Free League of Legends Overlay">
   <meta property="og:description" content="Exact CS, summoner timers, mana for your combo, gold to your next item – without covering your screen. Free and open source.">
   <meta property="og:url" content="https://jamyh.github.io/all-you-need/">
   <meta property="og:image" content="https://jamyh.github.io/all-you-need/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="de_DE">
   <meta name="twitter:card" content="summary_large_image">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "All You Need",
-    "operatingSystem": "Windows",
-    "applicationCategory": "GameApplication",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-    "url": "https://jamyh.github.io/all-you-need/",
-    "downloadUrl": "https://github.com/JamyH/all-you-need/releases/latest",
-    "license": "https://opensource.org/licenses/MIT"
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "All You Need",
+        "alternateName": "All You Need – League of Legends overlay",
+        "description": "Free, lightweight League of Legends overlay for Windows with exact CS, summoner spell and item cooldowns, mana for your combo, gold to your next item, auto runes and matchup win rates.",
+        "operatingSystem": "Windows 10, Windows 11",
+        "applicationCategory": "GameApplication",
+        "softwareVersion": "1.5.0",
+        "inLanguage": ["en", "de"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "url": "https://jamyh.github.io/all-you-need/",
+        "downloadUrl": "https://github.com/JamyH/all-you-need/releases/latest",
+        "screenshot": "https://jamyh.github.io/all-you-need/panel.png",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "author": { "@type": "Person", "name": "Jamy Haas", "url": "https://github.com/JamyH" },
+        "featureList": [
+          "Exact CS counter and CS per minute read from the HUD",
+          "Summoner spell and item cooldowns with countdown",
+          "Mana cost of your full combo with NO MANA warning",
+          "Gold missing for the next item of your build with RECALL alert",
+          "XP to the next level in melee and caster minions",
+          "Item value difference to your lane opponent and team",
+          "Matchup win rates in champ select",
+          "Automatic rune pages, Summoner Spells and Item Sets"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Can I get banned for using All You Need?",
+            "acceptedAnswer": { "@type": "Answer", "text": "All You Need never reads or changes the game's memory, injects nothing and sends no inputs. It uses Riot's official Live Client Data API, the League client API and small screenshots of what is already visible on your screen. Information Riot does not allow, such as enemy cooldown timers, is left out. It is not reviewed or approved by Riot, so no third-party tool can promise anything." } },
+          { "@type": "Question", "name": "Does it cost FPS?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It reads a few small screen regions about once per second, analyses them locally and draws a single lightweight panel." } },
+          { "@type": "Question", "name": "Does it work in fullscreen?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Set League to Borderless or Windowed. No overlay can sit on top of exclusive fullscreen. Resolution and HUD scale are detected automatically." } },
+          { "@type": "Question", "name": "Do I need Overwolf or an account?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. All You Need is a standalone Windows app without ads, account or Overwolf. The source code is on GitHub under the MIT license." } }
+        ]
+      }
+    ]
   }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <style>
-    :root {
-      --bg: #0f1115;
-      --card: #16181d;
-      --tile: rgba(255, 255, 255, 0.04);
-      --line: rgba(255, 255, 255, 0.06);
-      --text: #e8eaed;
-      --muted: #9aa0a6;
-      --accent: #5eead4;
-      --accent-ink: #0b1412;
-      --accent-soft: rgba(94, 234, 212, 0.1);
-      --gold: #f2c14e;
-      --blue: #8ab4f8;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 16px/1.6 Inter, system-ui, sans-serif;
-    }
-    a { color: var(--accent); }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-    header { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
-    header img { width: 36px; height: 36px; }
-    header b { font-size: 18px; }
-    header nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
-    header nav a { color: var(--muted); text-decoration: none; }
-    header nav a:hover { color: var(--text); }
-
-    .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; padding: 48px 0 64px; }
-    .eyebrow { color: var(--accent); font-weight: 600; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
-    h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.08; margin: 10px 0 18px; font-weight: 800; letter-spacing: -.02em; }
-    h1 em { font-style: normal; color: var(--accent); }
-    .lead { color: var(--muted); font-size: 18px; margin: 0 0 28px; max-width: 34em; }
-    .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 10px;
-      font-weight: 700; text-decoration: none; background: var(--accent); color: var(--accent-ink);
-    }
-    .btn:hover { filter: brightness(1.08); }
-    .btn.ghost { background: var(--tile); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
-    .meta { color: var(--muted); font-size: 13px; margin-top: 14px; }
-    .hero img.shot { width: 100%; border-radius: 14px; border: 1px solid var(--line); }
-
-    h2 { font-size: 28px; margin: 0 0 8px; letter-spacing: -.01em; }
-    section { padding: 56px 0; border-top: 1px solid var(--line); }
-    .sub { color: var(--muted); margin: 0 0 32px; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
-    .card h3 { margin: 0 0 6px; font-size: 16px; }
-    .card p { margin: 0; color: var(--muted); font-size: 14px; }
-    .card .k { font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
-
-    .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .shots img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
-
-    .faq details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
-    .faq summary { cursor: pointer; font-weight: 600; }
-    .faq details p { color: var(--muted); margin: 10px 0 0; }
-
-    .final { text-align: center; }
-    .final .cta { justify-content: center; }
-    footer { color: var(--muted); font-size: 12px; padding: 32px 0 48px; border-top: 1px solid var(--line); }
-
-    @media (max-width: 820px) {
-      .hero { grid-template-columns: 1fr; gap: 32px; padding-top: 24px; }
-      .grid { grid-template-columns: 1fr; }
-      .shots { grid-template-columns: 1fr; }
-      header nav { display: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <div class="wrap">
     <header>
-      <img src="icon.png" alt="">
-      <b>All You Need</b>
+      <a class="home" href="./"><img src="icon.png" alt="" width="36" height="36"><b>All You Need</b></a>
       <nav>
         <a href="#features">Features</a>
-        <a href="#faq">Is it safe?</a>
+        <a href="are-lol-overlays-allowed/">Is it safe?</a>
+        <a href="de/" hreflang="de" lang="de">Deutsch</a>
         <a href="https://github.com/JamyH/all-you-need">GitHub</a>
       </nav>
     </header>
 
-    <div class="hero">
-      <div>
-        <div class="eyebrow">Free League of Legends overlay · Windows</div>
-        <h1>Everything that matters in a fight. <em>Nothing that covers your screen.</em></h1>
-        <p class="lead">Exact CS, summoner spell timers, XP to the next level, mana for your full combo and the gold
-          still missing for your next item – in a small panel next to your HUD.</p>
-        <div class="cta">
-          <a class="btn" id="dl" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download for Windows</a>
-          <a class="btn ghost" href="https://github.com/JamyH/all-you-need">View source</a>
+    <main>
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Free League of Legends overlay for Windows</div>
+          <h1>Everything that matters in a fight. <em>Nothing that covers your screen.</em></h1>
+          <p class="lead">A lightweight LoL overlay with your exact CS, summoner spell timers, XP to the next level, mana for
+            your full combo and the gold still missing for your next item – in one small panel next to your HUD.</p>
+          <div class="cta">
+            <a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download for Windows</a>
+            <a class="btn ghost" href="https://github.com/JamyH/all-you-need">View source</a>
+          </div>
+          <div class="meta" id="dl-meta" data-rest="free · open source (MIT) · English &amp; German">Free · open source (MIT) · no account, no ads, no Overwolf · English &amp; German</div>
         </div>
-        <div class="meta" id="dl-meta">Free · open source (MIT) · no account, no ads · English &amp; German</div>
+        <img class="shot" src="panel.png" width="532" height="637" alt="All You Need in-game panel in League of Legends showing KDA, exact CS, gold, mana with combo cost, summoner spell cooldowns and XP to the next level">
       </div>
-      <img class="shot" src="panel.png" alt="In-game panel showing KDA, CS, gold, mana with combo cost, summoner cooldowns and XP">
-    </div>
 
-    <section id="features">
-      <h2>Made for the moments you lose games</h2>
-      <p class="sub">Every value is something you could already see as a player – just ready when you need it.</p>
-      <div class="grid">
-        <div class="card"><div class="k">NO MANA</div><h3>Mana for your combo</h3><p>Q+W+E+R cost at your current ranks, with a warning before you go all-in without mana.</p></div>
-        <div class="card"><div class="k">RECALL</div><h3>Gold to your next item</h3><p>Follows your build and tells you the moment you can afford the next item.</p></div>
-        <div class="card"><div class="k">D 3:12</div><h3>Summoner timers</h3><p>Flash and co. with countdown, read from your HUD and re-synced every 10 seconds.</p></div>
-        <div class="card"><div class="k">142 CS</div><h3>Exact CS and CS/min</h3><p>Read straight from your HUD, plus XP to the next level in melee and caster minions.</p></div>
-        <div class="card"><div class="k">+850 g</div><h3>Item value vs. your lane</h3><p>See who is ahead on items – per player on the Tab scoreboard and for the whole team.</p></div>
-        <div class="card"><div class="k">LVL 1–3</div><h3>Matchup and auto runes</h3><p>Win rate per enemy pick in champ select, who wins the early all-in, and runes applied to their own page.</p></div>
-      </div>
-    </section>
+      <section id="features">
+        <h2>Made for the moments you lose games</h2>
+        <p class="sub">Every value is something you could already see as a player – just ready when you need it.</p>
+        <div class="grid">
+          <div class="card"><div class="k">NO MANA</div><h3>Mana for your combo</h3><p>Q+W+E+R cost at your current ranks, with a warning before you go all-in without mana.</p></div>
+          <div class="card"><div class="k">RECALL</div><h3>Gold to your next item</h3><p>Follows your build and tells you the moment you can afford the next item.</p></div>
+          <a class="card" href="summoner-spell-timer/"><div class="k">D 3:12</div><h3>Summoner spell timers</h3><p>Flash and co. with countdown, read from your HUD and re-synced every 10 seconds. Item cooldowns too.</p></a>
+          <a class="card" href="lol-cs-tracker/"><div class="k">142 CS</div><h3>Exact CS counter</h3><p>Read straight from your HUD instead of Riot's rounded value, plus CS/min and XP in minions.</p></a>
+          <div class="card"><div class="k">+850 g</div><h3>Item value vs. your lane</h3><p>See who is ahead on items – per player on the Tab scoreboard and for the whole team.</p></div>
+          <div class="card"><div class="k">LVL 1–3</div><h3>Matchup and auto runes</h3><p>Win rate per enemy pick in champ select, who wins the early all-in, and runes set on their own page.</p></div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Stats window</h2>
-      <p class="sub">Live game with all ten players, your history with trends per game mode, builds and rune pages.</p>
-      <div class="shots">
-        <img src="stats-history.png" alt="Match history with CS/min, KDA and vision trends">
-        <img src="stats-build.png" alt="Build order and rune page per champion">
-      </div>
-    </section>
+      <section>
+        <h2>Stats window for before and after the game</h2>
+        <p class="sub">Live game with all ten players and their ranks, your match history with CS/min, KDA and vision trends per
+          game mode, builds, rune pages and Summoner Spells per champion – with suggestions from lolalytics.com.</p>
+        <div class="shots">
+          <img src="stats-history.png" width="1180" height="720" loading="lazy" alt="League of Legends match history with CS per minute, KDA and vision score trends">
+          <img src="stats-build.png" width="1180" height="940" loading="lazy" alt="Build order, rune page and Summoner Spells per champion with lolalytics suggestions">
+        </div>
+      </section>
 
-    <section id="faq" class="faq">
-      <h2>Questions</h2>
-      <p class="sub">The honest answers.</p>
-      <details open>
-        <summary>Can I get banned for using it?</summary>
-        <p>All You Need never reads or changes the game's memory, injects nothing and sends no inputs. It uses Riot's
-          official Live Client Data API, the League client API that rune and stats tools use, and small screenshots of
-          what is already visible on your screen. Information Riot does not allow (enemy cooldown timers, augment win
-          rates) is deliberately left out. It is not reviewed or approved by Riot, and no third-party tool can promise
-          anything – but it only shows what you could already see or look up yourself.</p>
-      </details>
-      <details>
-        <summary>Why does Windows show a SmartScreen warning?</summary>
-        <p>The app is not code-signed yet, and new unsigned files get a reputation warning. Click <i>More info → Run
-          anyway</i>. Each release lists its SHA-256 checksum, and the full source code is on GitHub.</p>
-      </details>
-      <details>
-        <summary>Does it cost FPS?</summary>
-        <p>It reads a few small screen regions about once per second, analyses them locally and draws a single lightweight panel.</p>
-      </details>
-      <details>
-        <summary>Does it work in fullscreen?</summary>
-        <p>Set League to Borderless or Windowed – no overlay can sit on top of exclusive fullscreen. Resolution and
-          HUD scale are detected automatically.</p>
-      </details>
-      <details>
-        <summary>Is it available in English?</summary>
-        <p>Yes. The interface is available in English and German – switch it in the tray menu under <i>Sprache /
-          Language</i>. On first start it follows your Windows language.</p>
-      </details>
-    </section>
+      <section>
+        <h2>Why another LoL overlay?</h2>
+        <p class="sub">Many companion apps are big, run on Overwolf and show ads. All You Need takes a different route.</p>
+        <div class="grid">
+          <div class="card"><h3>Small and quiet</h3><p>One panel next to your HUD, every module can be switched off. No pop-ups in the middle of a fight.</p></div>
+          <div class="card"><h3>No ads, no account</h3><p>A standalone Windows app. Nothing to sign up for, nothing to sell, and nothing leaves your PC except public game data requests.</p></div>
+          <div class="card"><h3>Open source</h3><p>The complete source code is on GitHub under the MIT license – check what it does or build it yourself.</p></div>
+        </div>
+      </section>
 
-    <section class="final">
-      <h2>Try it in your next game</h2>
-      <p class="sub">Missing something? <a href="https://github.com/JamyH/all-you-need/issues/new?template=idea.yml">Share an idea</a> – personal wishes are welcome.</p>
-      <div class="cta"><a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download for Windows</a></div>
-    </section>
+      <section>
+        <h2>Guides</h2>
+        <p class="sub">How the overlay works and what Riot allows.</p>
+        <div class="grid">
+          <a class="card" href="lol-cs-tracker/"><h3>Exact CS counter for League</h3><p>Why the game's API only counts CS in steps of 10 and how the overlay reads the exact number.</p></a>
+          <a class="card" href="summoner-spell-timer/"><h3>Summoner spell timers</h3><p>Your Flash, Teleport and item cooldowns at a glance – and why enemy timers are off limits.</p></a>
+          <a class="card" href="are-lol-overlays-allowed/"><h3>Are LoL overlays allowed?</h3><p>What Vanguard and Riot's rules mean for overlays, and what can get you banned.</p></a>
+        </div>
+      </section>
+
+      <section id="faq" class="faq">
+        <h2>Questions</h2>
+        <p class="sub">The honest answers.</p>
+        <details open>
+          <summary>Can I get banned for using it?</summary>
+          <p>All You Need never reads or changes the game's memory, injects nothing and sends no inputs. It uses Riot's
+            official Live Client Data API, the League client API that rune and stats tools use, and small screenshots of
+            what is already visible on your screen. Information Riot does not allow (enemy cooldown timers, augment win
+            rates) is deliberately left out. It is not reviewed or approved by Riot, and no third-party tool can promise
+            anything – but it only shows what you could already see or look up yourself.
+            <a href="are-lol-overlays-allowed/">More on what Riot allows</a>.</p>
+        </details>
+        <details>
+          <summary>Why does Windows show a SmartScreen warning?</summary>
+          <p>The app is not code-signed yet, and new unsigned files get a reputation warning. Click <i>More info → Run
+            anyway</i>. Each release lists its SHA-256 checksum, and the full source code is on GitHub.</p>
+        </details>
+        <details>
+          <summary>Does it cost FPS?</summary>
+          <p>It reads a few small screen regions about once per second, analyses them locally and draws a single lightweight panel.</p>
+        </details>
+        <details>
+          <summary>Does it work in fullscreen?</summary>
+          <p>Set League to Borderless or Windowed – no overlay can sit on top of exclusive fullscreen. Resolution and
+            HUD scale are detected automatically.</p>
+        </details>
+        <details>
+          <summary>Do I need Overwolf or an account?</summary>
+          <p>No. All You Need is a standalone Windows app without ads, account or Overwolf.</p>
+        </details>
+        <details>
+          <summary>Is it available in English?</summary>
+          <p>Yes. The interface is available in English and German – switch it in the tray menu under <i>Sprache /
+            Language</i>. On first start it follows your Windows language.</p>
+        </details>
+      </section>
+
+      <section class="final">
+        <h2>Try it in your next game</h2>
+        <p class="sub">Missing something? <a href="https://github.com/JamyH/all-you-need/issues/new?template=idea.yml">Share an idea</a> – personal wishes are welcome.</p>
+        <div class="cta"><a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download for Windows</a></div>
+      </section>
+    </main>
 
     <footer>
+      <nav>
+        <a href="lol-cs-tracker/">LoL CS tracker</a>
+        <a href="summoner-spell-timer/">Summoner spell timer</a>
+        <a href="are-lol-overlays-allowed/">Are LoL overlays allowed?</a>
+        <a href="de/" hreflang="de" lang="de">Deutsch</a>
+        <a href="https://github.com/JamyH/all-you-need/blob/main/CHANGELOG.md">Changelog</a>
+      </nav>
       All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
       officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
       are trademarks or registered trademarks of Riot Games, Inc.
     </footer>
   </div>
-
-  <script>
-    // Direkt-Link auf den Installer der neuesten Version; ohne API-Antwort bleibt die Releases-Seite
-    fetch('https://api.github.com/repos/JamyH/all-you-need/releases/latest')
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(rel => {
-        const setup = rel.assets.find(a => /Setup-.*\.exe$/.test(a.name));
-        if (!setup) return;
-        document.querySelectorAll('a.btn[href$="releases/latest"]').forEach(a => { a.href = setup.browser_download_url; });
-        const mb = (setup.size / 1048576).toFixed(0);
-        document.getElementById('dl-meta').textContent =
-          `${rel.tag_name} · ${mb} MB installer · free · open source (MIT) · English & German`;
-      })
-      .catch(() => {});
-  </script>
+  <script src="site.js"></script>
 </body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Are LoL Overlays Allowed? Vanguard &amp; Bans | All You Need</title>
+  <meta name="description" content="Can you get banned for a League of Legends overlay? What Vanguard and Riot's rules mean for overlays, what gets accounts banned, and how to stay safe.">
+  <link rel="canonical" href="https://jamyh.github.io/all-you-need/are-lol-overlays-allowed/">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="All You Need">
+  <meta property="og:title" content="Are LoL overlays allowed? Vanguard, bans and Riot's rules">
+  <meta property="og:description" content="What separates an allowed League overlay from something that gets you banned.">
+  <meta property="og:url" content="https://jamyh.github.io/all-you-need/are-lol-overlays-allowed/">
+  <meta property="og:image" content="https://jamyh.github.io/all-you-need/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Article", "headline": "Are LoL overlays allowed? Vanguard, bans and Riot's rules",
+        "author": { "@type": "Person", "name": "Jamy Haas", "url": "https://github.com/JamyH" },
+        "datePublished": "2026-10-26",
+        "mainEntityOfPage": "https://jamyh.github.io/all-you-need/are-lol-overlays-allowed/" },
+      { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "All You Need", "item": "https://jamyh.github.io/all-you-need/" },
+        { "@type": "ListItem", "position": 2, "name": "Are LoL overlays allowed?", "item": "https://jamyh.github.io/all-you-need/are-lol-overlays-allowed/" } ] },
+      { "@type": "FAQPage", "mainEntity": [
+        { "@type": "Question", "name": "Can you get banned for using an overlay in League of Legends?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Overlays that only show information you can already see or look up, using Riot's official interfaces, are a common kind of third-party app. What gets accounts banned are tools that read or change the game's memory, inject code, automate inputs, modify game files or reveal hidden information. No third-party tool can guarantee safety, because only Riot decides." } },
+        { "@type": "Question", "name": "Does Vanguard block overlays?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Vanguard is Riot's anti-cheat. It targets software that tampers with the game. An overlay that is a normal window on top of the game, never touches the game process and uses official APIs is a different thing from a cheat." } }
+      ] }
+    ]
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="home" href="../"><img src="../icon.png" alt="" width="36" height="36"><b>All You Need</b></a>
+      <nav>
+        <a href="../#features">Features</a>
+        <a href="./" aria-current="page">Is it safe?</a>
+        <a href="https://github.com/JamyH/all-you-need">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <div class="crumbs"><a href="../">All You Need</a> › Are LoL overlays allowed?</div>
+        <h1>Are LoL overlays allowed? Vanguard, bans and Riot's rules</h1>
+        <p class="lead">Before installing anything next to League, most players ask the same question: can this get my account
+          banned? Here is what separates a normal overlay from a cheat – written by the developer of a LoL overlay, so
+          read it with that in mind.</p>
+        <div class="note"><p><b>Short answer:</b> overlays that only show what you could already see or look up, through Riot's
+          official interfaces, are a common and long-standing kind of League app. Tools that tamper with the game or reveal
+          hidden information get accounts banned. Only Riot decides, so no third-party tool – this one included – can give
+          you a guarantee.</p></div>
+
+        <h2>What gets League accounts banned</h2>
+        <ul>
+          <li><b>Reading or changing the game's memory</b> – the basis of scripts, orbwalkers and map hacks.</li>
+          <li><b>Injecting code</b> into the game process or hooking its rendering.</li>
+          <li><b>Automating inputs</b> – dodging, combos or last hits done by software instead of you.</li>
+          <li><b>Modifying game files</b>, for example skin changers.</li>
+          <li><b>Revealing hidden information</b> such as enemy positions in the fog of war.</li>
+        </ul>
+        <p>This is what Riot's anti-cheat <b>Vanguard</b> is built to catch. It protects the game process; a separate window
+          that never touches that process is a different thing.</p>
+
+        <h2>What Riot allows for third-party apps</h2>
+        <p>Riot publishes <a href="https://developer.riotgames.com/policies/general" rel="nofollow">policies for developers</a>.
+          The core idea: apps may help players understand the game, but must not create an unfair advantage. In practice
+          that means no information the game deliberately hides from you – which is why tools are not allowed to track
+          enemy cooldowns for you, and why augment win rates are not shown in game.</p>
+
+        <h2>How All You Need stays on the safe side</h2>
+        <table>
+          <tr><th>Data</th><th>Where it comes from</th></tr>
+          <tr><td>In-game values (KDA, gold, level …)</td><td>Riot's official Live Client Data API, a local interface the game
+            itself provides during a match.</td></tr>
+          <tr><td>Ranks, runes, champ select</td><td>The League client's own API that rune and stats tools use.</td></tr>
+          <tr><td>Exact CS, your cooldowns, XP</td><td>Small screenshots of what is already visible in your HUD, analysed
+            locally.</td></tr>
+          <tr><td>Builds and rune suggestions</td><td>Public statistics from lolalytics.com, before the game.</td></tr>
+        </table>
+        <ul>
+          <li>No memory reading, no injection, no inputs sent to the game.</li>
+          <li>Only <b>your own</b> cooldowns – no enemy timers.</li>
+          <li>Matchup win rates only in the stats window before the game, not during it.</li>
+          <li>Open source: anyone can check exactly what it does on <a href="https://github.com/JamyH/all-you-need">GitHub</a>.</li>
+        </ul>
+
+        <h2>Why does the overlay need Borderless mode?</h2>
+        <p>Because it is an ordinary window lying on top of the game. In exclusive Full Screen, Windows gives the screen to
+          the game alone and nothing can be drawn over it. An overlay that worked in Full Screen would have to hook into the
+          game – exactly the kind of thing that is not allowed. So: Settings → Video → Window Mode <b>Borderless</b>.</p>
+
+        <section class="final">
+          <h2>See for yourself</h2>
+          <p class="sub">Free, open source, no account and no ads. Windows 10 and 11.</p>
+          <div class="cta">
+            <a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download All You Need</a>
+            <a class="btn ghost" href="https://github.com/JamyH/all-you-need">Read the source</a>
+          </div>
+        </section>
+      </article>
+    </main>
+
+    <footer>
+      <nav>
+        <a href="../">Home</a>
+        <a href="../lol-cs-tracker/">LoL CS tracker</a>
+        <a href="../summoner-spell-timer/">Summoner spell timer</a>
+        <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+      </nav>
+      All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
+      officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </footer>
+  </div>
+  <script src="../site.js"></script>
+</body>
+</html>

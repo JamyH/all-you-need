@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Summoner Spell Timer Overlay for LoL | All You Need</title>
+  <meta name="description" content="Your Flash, Teleport and item cooldowns like Zhonya's as a countdown next to your HUD. Free League of Legends overlay for Windows – and why enemy timers are off limits.">
+  <link rel="canonical" href="https://jamyh.github.io/all-you-need/summoner-spell-timer/">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="All You Need">
+  <meta property="og:title" content="Summoner spell timer overlay for League of Legends">
+  <meta property="og:description" content="Your Summoner Spell and item cooldowns as a countdown next to your HUD – free and open source.">
+  <meta property="og:url" content="https://jamyh.github.io/all-you-need/summoner-spell-timer/">
+  <meta property="og:image" content="https://jamyh.github.io/all-you-need/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Article", "headline": "Summoner spell timer overlay for League of Legends",
+        "author": { "@type": "Person", "name": "Jamy Haas", "url": "https://github.com/JamyH" },
+        "datePublished": "2026-10-26", "image": "https://jamyh.github.io/all-you-need/panel.png",
+        "mainEntityOfPage": "https://jamyh.github.io/all-you-need/summoner-spell-timer/" },
+      { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "All You Need", "item": "https://jamyh.github.io/all-you-need/" },
+        { "@type": "ListItem", "position": 2, "name": "Summoner spell timer", "item": "https://jamyh.github.io/all-you-need/summoner-spell-timer/" } ] }
+    ]
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="home" href="../"><img src="../icon.png" alt="" width="36" height="36"><b>All You Need</b></a>
+      <nav>
+        <a href="../#features">Features</a>
+        <a href="../are-lol-overlays-allowed/">Is it safe?</a>
+        <a href="https://github.com/JamyH/all-you-need">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <div class="crumbs"><a href="../">All You Need</a> › Summoner spell timer</div>
+        <h1>Summoner spell timer overlay for League of Legends</h1>
+        <p class="lead">Is your Flash up for the next fight? Can you Teleport bot after this wave? All You Need puts your
+          Summoner Spell and item cooldowns as a clear countdown next to your HUD, so you don't have to hover over tiny
+          icons in the middle of a fight.</p>
+
+        <h2>What the timer shows</h2>
+        <table>
+          <tr><th>Cooldown</th><th>How it is shown</th></tr>
+          <tr><td>Summoner Spells (D and F)</td><td>Icon, key and remaining time like <b>3:12</b>, or <b>ready</b> when it is up.</td></tr>
+          <tr><td>Item actives</td><td>Zhonya's Hourglass, Stopwatch, Guardian Angel and other items with a cooldown, on
+            their item key (1–6).</td></tr>
+          <tr><td>Compact mode</td><td>All cooldowns as rings that drain with the remaining time, in a narrower panel.</td></tr>
+        </table>
+        <img class="shot" src="../panel.png" width="532" height="637" loading="lazy" alt="League of Legends overlay panel with Summoner Spell cooldown countdown and ready state">
+
+        <h2>How it works</h2>
+        <p>League shows the remaining cooldown on your own Summoner Spells in the HUD. When a spell goes on cooldown, the
+          overlay reads that number once from the screen and counts down on its own. Every 10 seconds it checks the HUD
+          again, so cooldown reductions from runes or items are picked up. A cooldown can only go down during a check – if
+          a reading would make it jump up, it is treated as a misread and ignored.</p>
+        <p>Item cooldowns are read from your item slots once per second with the overlay's own digit recognition, which
+          costs practically nothing. Smite is recognised with and without its upgraded icon.</p>
+        <div class="note"><p>Everything runs locally. The overlay never reads the game's memory and sends no inputs – it
+          only looks at what is already on your screen. Modules you switch off in the settings are not read at all.</p></div>
+
+        <h2>What about enemy Summoner Spell timers?</h2>
+        <p>Tracking enemy cooldowns automatically is something Riot's rules for third-party apps don't allow, because it
+          gives you information the game does not show you. All You Need deliberately only shows <b>your own</b>
+          cooldowns. For enemy Flash timers you are still on your own – or on your support's memory.</p>
+
+        <h2>Setup</h2>
+        <ol>
+          <li><a href="https://github.com/JamyH/all-you-need/releases/latest">Download</a> and start All You Need.</li>
+          <li>Set League's Window Mode to <b>Borderless</b> or <b>Windowed</b> – no overlay can sit on top of exclusive Full Screen.</li>
+          <li>Start a game. Resolution and HUD scale are detected automatically; drag the panel wherever you like.</li>
+        </ol>
+
+        <section class="final">
+          <h2>Never wonder if Flash is up again</h2>
+          <p class="sub">Free, open source, no account and no ads. Windows 10 and 11.</p>
+          <div class="cta"><a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download All You Need</a></div>
+        </section>
+      </article>
+    </main>
+
+    <footer>
+      <nav>
+        <a href="../">Home</a>
+        <a href="../lol-cs-tracker/">LoL CS tracker</a>
+        <a href="../are-lol-overlays-allowed/">Are LoL overlays allowed?</a>
+        <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+      </nav>
+      All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
+      officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </footer>
+  </div>
+  <script src="../site.js"></script>
+</body>
+</html>

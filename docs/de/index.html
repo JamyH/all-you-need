@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kostenloses LoL Overlay mit CS-Zähler | All You Need</title>
+  <meta name="description" content="Kostenloses Open-Source-Overlay für League of Legends: exakter CS, Summoner- und Item-Cooldowns, Mana für die Combo, Gold bis zum Item. Ohne Werbung, auf Deutsch.">
+  <link rel="canonical" href="https://jamyh.github.io/all-you-need/de/">
+  <link rel="alternate" hreflang="en" href="https://jamyh.github.io/all-you-need/">
+  <link rel="alternate" hreflang="de" href="https://jamyh.github.io/all-you-need/de/">
+  <link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/all-you-need/">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="All You Need">
+  <meta property="og:title" content="All You Need – kostenloses League-of-Legends-Overlay">
+  <meta property="og:description" content="Exakter CS, Summoner-Timer, Mana für deine Combo, Gold bis zum nächsten Item – ohne deinen Bildschirm zuzudecken. Kostenlos und Open Source.">
+  <meta property="og:url" content="https://jamyh.github.io/all-you-need/de/">
+  <meta property="og:image" content="https://jamyh.github.io/all-you-need/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "All You Need",
+        "description": "Kostenloses, schlankes Overlay für League of Legends unter Windows mit exaktem CS, Summoner- und Item-Cooldowns, Mana für die Combo, Gold bis zum nächsten Item, Runen automatisch und Matchup-Siegquoten.",
+        "operatingSystem": "Windows 10, Windows 11",
+        "applicationCategory": "GameApplication",
+        "softwareVersion": "1.5.0",
+        "inLanguage": ["de", "en"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "url": "https://jamyh.github.io/all-you-need/de/",
+        "downloadUrl": "https://github.com/JamyH/all-you-need/releases/latest",
+        "screenshot": "https://jamyh.github.io/all-you-need/panel.png",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "author": { "@type": "Person", "name": "Jamy Haas", "url": "https://github.com/JamyH" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Kann ich für All You Need gebannt werden?",
+            "acceptedAnswer": { "@type": "Answer", "text": "All You Need liest und verändert nie den Speicher des Spiels, klinkt sich nirgends ein und sendet keine Eingaben. Es nutzt Riots offizielle Live-Client-Schnittstelle, die Schnittstelle des League-Clients und kleine Bildschirmausschnitte von dem, was du ohnehin siehst. Was Riot nicht erlaubt, etwa gegnerische Cooldown-Timer, fehlt bewusst. Riot hat das Programm nicht geprüft, daher kann kein Drittanbieter-Tool etwas garantieren." } },
+          { "@type": "Question", "name": "Kostet das Overlay FPS?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Es liest etwa einmal pro Sekunde ein paar kleine Bildschirmbereiche, wertet sie lokal aus und zeichnet ein einziges schlankes Panel." } },
+          { "@type": "Question", "name": "Funktioniert es im Vollbild?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Stell League auf Randlos oder Fenster. Über echtem Vollbild kann kein Overlay liegen. Auflösung und HUD-Skalierung werden automatisch erkannt." } },
+          { "@type": "Question", "name": "Brauche ich Overwolf oder ein Konto?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Nein. All You Need ist eine eigenständige Windows-App ohne Werbung, Konto oder Overwolf. Der Quellcode steht unter MIT-Lizenz auf GitHub." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="home" href="./"><img src="../icon.png" alt="" width="36" height="36"><b>All You Need</b></a>
+      <nav>
+        <a href="#funktionen">Funktionen</a>
+        <a href="#fragen">Ist es sicher?</a>
+        <a href="../" hreflang="en" lang="en">English</a>
+        <a href="https://github.com/JamyH/all-you-need">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Kostenloses LoL Overlay für Windows</div>
+          <h1>Alles, was im Kampf zählt. <em>Nichts, was den Bildschirm zudeckt.</em></h1>
+          <p class="lead">Ein schlankes Overlay für League of Legends mit exaktem CS, Summoner-Timern, XP bis zum nächsten
+            Level, Mana für deine ganze Combo und dem Gold, das dir noch zum nächsten Item fehlt – in einem kleinen Panel
+            neben deinem HUD. Komplett auf Deutsch.</p>
+          <div class="cta">
+            <a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Für Windows herunterladen</a>
+            <a class="btn ghost" href="https://github.com/JamyH/all-you-need">Quellcode ansehen</a>
+          </div>
+          <div class="meta" id="dl-meta" data-rest="kostenlos · Open Source (MIT) · Deutsch &amp; Englisch">Kostenlos · Open Source (MIT) · ohne Konto, Werbung und Overwolf · Deutsch &amp; Englisch</div>
+        </div>
+        <img class="shot" src="../panel.png" width="532" height="637" alt="All-You-Need-Panel in League of Legends mit KDA, exaktem CS, Gold, Mana samt Combo-Kosten, Summoner-Cooldowns und XP bis zum nächsten Level">
+      </div>
+
+      <section id="funktionen">
+        <h2>Gemacht für die Momente, in denen Spiele verloren gehen</h2>
+        <p class="sub">Jeder Wert ist etwas, das du als Spieler ohnehin sehen könntest – nur genau dann zur Hand, wenn du es brauchst.</p>
+        <div class="grid">
+          <div class="card"><div class="k">NO MANA</div><h3>Mana für deine Combo</h3><p>Kosten von Q+W+E+R auf deinen aktuellen Rängen, mit Warnung, bevor du ohne Mana ins All-in gehst.</p></div>
+          <div class="card"><div class="k">RECALL</div><h3>Gold bis zum nächsten Item</h3><p>Folgt deinem Build und sagt dir, sobald du dir das nächste Item leisten kannst.</p></div>
+          <div class="card"><div class="k">D 3:12</div><h3>Summoner-Timer</h3><p>Blitz und Co. mit Countdown, aus dem HUD gelesen und alle 10 Sekunden abgeglichen. Item-Cooldowns wie Zhonyas gleich mit.</p></div>
+          <div class="card"><div class="k">142 CS</div><h3>Exakter CS-Zähler</h3><p>Direkt aus dem HUD statt Riots auf Zehner gerundetem Wert, dazu CS/min und XP in Vasallen.</p></div>
+          <div class="card"><div class="k">+850 g</div><h3>Itemwert gegen deine Lane</h3><p>Wer bei den Items vorne liegt – je Spieler im Tab-Scoreboard und fürs ganze Team.</p></div>
+          <div class="card"><div class="k">LVL 1–3</div><h3>Matchup und Runen automatisch</h3><p>Siegquote gegen jeden gegnerischen Pick in der Champ-Auswahl, wer das frühe All-in gewinnt, und Runen auf einer eigenen Seite.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Stats-Fenster für vor und nach dem Spiel</h2>
+        <p class="sub">Live-Spiel mit allen zehn Spielern und ihren Rängen, dein Verlauf mit Trends für CS/min, KDA und Vision
+          je Spielmodus, Builds, Runenseiten und Summoner je Champion – mit Vorschlägen von lolalytics.com.</p>
+        <div class="shots">
+          <img src="../stats-history.png" width="1180" height="720" loading="lazy" alt="Spielverlauf in League of Legends mit Trends für CS pro Minute, KDA und Vision">
+          <img src="../stats-build.png" width="1180" height="940" loading="lazy" alt="Build-Reihenfolge, Runenseite und Summoner je Champion mit Vorschlägen von lolalytics">
+        </div>
+      </section>
+
+      <section>
+        <h2>Warum noch ein LoL-Overlay?</h2>
+        <p class="sub">Viele Companion-Apps sind groß, laufen über Overwolf und zeigen Werbung. All You Need geht einen anderen Weg.</p>
+        <div class="grid">
+          <div class="card"><h3>Klein und ruhig</h3><p>Ein Panel neben deinem HUD, jedes Modul lässt sich abschalten. Keine Pop-ups mitten im Kampf.</p></div>
+          <div class="card"><h3>Ohne Werbung und Konto</h3><p>Eine eigenständige Windows-App. Nichts anzumelden, nichts zu verkaufen, und außer Abrufen öffentlicher Spieldaten verlässt nichts deinen PC.</p></div>
+          <div class="card"><h3>Open Source</h3><p>Der komplette Quellcode steht unter MIT-Lizenz auf GitHub – schau nach, was das Programm tut, oder bau es selbst.</p></div>
+        </div>
+      </section>
+
+      <section id="fragen" class="faq">
+        <h2>Fragen</h2>
+        <p class="sub">Die ehrlichen Antworten.</p>
+        <details open>
+          <summary>Kann ich dafür gebannt werden?</summary>
+          <p>All You Need liest und verändert nie den Speicher des Spiels, klinkt sich nirgends ein und sendet keine
+            Eingaben. Es nutzt Riots offizielle Live-Client-Schnittstelle, die Schnittstelle des League-Clients, die auch
+            Runen- und Statistik-Tools nutzen, und kleine Bildschirmausschnitte von dem, was du ohnehin siehst. Was Riot
+            nicht erlaubt (gegnerische Cooldown-Timer, Augment-Siegquoten), fehlt bewusst. Riot hat das Programm nicht
+            geprüft, also kann kein Drittanbieter-Tool etwas versprechen – es zeigt aber nur, was du auch selbst sehen oder
+            nachschlagen könntest. <a href="../are-lol-overlays-allowed/" hreflang="en">Ausführlich (Englisch)</a>.</p>
+        </details>
+        <details>
+          <summary>Warum warnt Windows SmartScreen?</summary>
+          <p>Die App ist noch nicht signiert, und neue unsignierte Dateien bekommen eine Reputations-Warnung. Klick auf
+            <i>Weitere Informationen → Trotzdem ausführen</i>. Zu jeder Version steht die SHA-256-Prüfsumme in den
+            Release-Notizen, und der ganze Quellcode liegt auf GitHub.</p>
+        </details>
+        <details>
+          <summary>Kostet das Overlay FPS?</summary>
+          <p>Es liest etwa einmal pro Sekunde ein paar kleine Bildschirmbereiche, wertet sie lokal aus und zeichnet ein einziges schlankes Panel.</p>
+        </details>
+        <details>
+          <summary>Funktioniert es im Vollbild?</summary>
+          <p>Stell League auf <b>Randlos</b> oder <b>Fenster</b> (Einstellungen → Video → Fenstermodus) – über echtem
+            Vollbild kann kein Overlay liegen. Auflösung und HUD-Skalierung werden automatisch erkannt.</p>
+        </details>
+        <details>
+          <summary>Brauche ich Overwolf oder ein Konto?</summary>
+          <p>Nein. All You Need ist eine eigenständige Windows-App ohne Werbung, Konto oder Overwolf.</p>
+        </details>
+      </section>
+
+      <section class="final">
+        <h2>Probier es im nächsten Spiel</h2>
+        <p class="sub">Dir fehlt etwas? <a href="https://github.com/JamyH/all-you-need/issues/new?template=idea.yml">Teil deine Idee</a> – auch ganz persönliche Wünsche sind willkommen.</p>
+        <div class="cta"><a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Für Windows herunterladen</a></div>
+      </section>
+    </main>
+
+    <footer>
+      <nav>
+        <a href="../" hreflang="en" lang="en">English</a>
+        <a href="../lol-cs-tracker/" hreflang="en">CS tracker (EN)</a>
+        <a href="../summoner-spell-timer/" hreflang="en">Summoner spell timer (EN)</a>
+        <a href="../are-lol-overlays-allowed/" hreflang="en">Are LoL overlays allowed? (EN)</a>
+        <a href="https://github.com/JamyH/all-you-need/blob/main/CHANGELOG.md">Changelog</a>
+      </nav>
+      All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
+      officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </footer>
+  </div>
+  <script src="../site.js"></script>
+</body>
+</html>

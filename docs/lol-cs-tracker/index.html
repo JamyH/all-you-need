@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exact CS Counter for League of Legends | All You Need</title>
+  <meta name="description" content="League's Live Client API only counts CS in steps of 10. This free overlay reads your exact CS from the HUD, with CS/min, XP in minions and your CS trend.">
+  <link rel="canonical" href="https://jamyh.github.io/all-you-need/lol-cs-tracker/">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="All You Need">
+  <meta property="og:title" content="Exact CS counter for League of Legends">
+  <meta property="og:description" content="Why the game's API rounds CS to 10 and how a free overlay shows the exact number, CS/min and XP in minions.">
+  <meta property="og:url" content="https://jamyh.github.io/all-you-need/lol-cs-tracker/">
+  <meta property="og:image" content="https://jamyh.github.io/all-you-need/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Article", "headline": "Exact CS counter for League of Legends",
+        "author": { "@type": "Person", "name": "Jamy Haas", "url": "https://github.com/JamyH" },
+        "datePublished": "2026-10-26", "image": "https://jamyh.github.io/all-you-need/panel.png",
+        "mainEntityOfPage": "https://jamyh.github.io/all-you-need/lol-cs-tracker/" },
+      { "@type": "BreadcrumbList", "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "All You Need", "item": "https://jamyh.github.io/all-you-need/" },
+        { "@type": "ListItem", "position": 2, "name": "LoL CS tracker", "item": "https://jamyh.github.io/all-you-need/lol-cs-tracker/" } ] }
+    ]
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="home" href="../"><img src="../icon.png" alt="" width="36" height="36"><b>All You Need</b></a>
+      <nav>
+        <a href="../#features">Features</a>
+        <a href="../are-lol-overlays-allowed/">Is it safe?</a>
+        <a href="https://github.com/JamyH/all-you-need">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <article>
+        <div class="crumbs"><a href="../">All You Need</a> › LoL CS tracker</div>
+        <h1>Exact CS counter for League of Legends</h1>
+        <p class="lead">Your CS is the cleanest number to measure how well you farm – but the value most tools show you is
+          rounded. Here is why, and how All You Need shows the exact count while you play.</p>
+
+        <h2>Why most tools show CS in steps of 10</h2>
+        <p>Overlays and companion apps usually get their numbers from Riot's <b>Live Client Data API</b>, a small local
+          interface the game opens while a match is running. It is the official way to read in-game data – but its
+          creep score only moves in steps of 10. If you have 147 CS, the API still says 140 until you reach 150.</p>
+        <p>For a quick glance that is fine. For practising last hits, comparing yourself to your lane opponent or
+          checking whether you hit your CS/min goal, a value that is up to 9 CS off is not.</p>
+
+        <h2>How All You Need gets the exact number</h2>
+        <p>The number in the top right of your HUD is always exact, so the overlay reads it from there: every
+          2.5 seconds it looks at that small screen region and recognises the digits locally with its own digit
+          recognition (Tesseract as a fallback). Nothing is sent anywhere, and the game itself is never touched.</p>
+        <p>If the number can't be read – for example because the HUD is covered – the panel falls back to Riot's value and
+          marks it with a plus: <b>140+</b>. That way you always know whether you are looking at the exact count.</p>
+        <div class="note"><p>Resolution and HUD scale are detected automatically, also if you change the HUD scale during a
+          game. If a value is ever read wrong, the stats window has a <i>Check recognition</i> button that shows exactly
+          which area was read.</p></div>
+
+        <h2>What the panel shows around your CS</h2>
+        <table>
+          <tr><th>Value</th><th>What it tells you</th></tr>
+          <tr><td>CS and CS/min</td><td>Exact creep score and your farming rate for the current game.</td></tr>
+          <tr><td>CS diff</td><td>How far ahead or behind you are compared to your lane opponent.</td></tr>
+          <tr><td>XP to next level</td><td>The XP you still need, translated into melee and caster minions and waves – useful
+            for timing level 2, 3 and 6 spikes.</td></tr>
+          <tr><td>Gold to next item</td><td>Gold still missing for the next item of your build, with a RECALL alert once
+            you can afford it.</td></tr>
+        </table>
+
+        <h2>Track your CS/min over many games</h2>
+        <p>The stats window keeps your match history with trend charts for <b>CS/min, KDA and vision</b>, split by game
+          mode – CS on Summoner's Rift and in ARAM are not comparable, so they are never mixed. You see your last games,
+          your average and whether the line goes up.</p>
+        <img class="shot" src="../stats-history.png" width="1180" height="720" loading="lazy" alt="Match history with CS per minute trend over recent League of Legends games">
+
+        <h2>Is reading CS from the screen allowed?</h2>
+        <p>The overlay only reads what you already see on your own screen and shows it in a different place. It does not
+          read the game's memory and sends no inputs. Read more in <a href="../are-lol-overlays-allowed/">Are LoL
+          overlays allowed?</a></p>
+
+        <section class="final">
+          <h2>Get the exact CS in your next game</h2>
+          <p class="sub">Free, open source, no account and no ads. Windows 10 and 11.</p>
+          <div class="cta"><a class="btn" href="https://github.com/JamyH/all-you-need/releases/latest">⬇ Download All You Need</a></div>
+        </section>
+      </article>
+    </main>
+
+    <footer>
+      <nav>
+        <a href="../">Home</a>
+        <a href="../summoner-spell-timer/">Summoner spell timer</a>
+        <a href="../are-lol-overlays-allowed/">Are LoL overlays allowed?</a>
+        <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+      </nav>
+      All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone
+      officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties
+      are trademarks or registered trademarks of Riot Games, Inc.
+    </footer>
+  </div>
+  <script src="../site.js"></script>
+</body>
+</html>
