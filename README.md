@@ -2,9 +2,9 @@
 
 # All You Need – A lightweight overlay
 
-**Version 1.4** · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
+**Version 1.4** · [Website](https://jamyh.github.io/all-you-need/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
 
-A small, clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
+A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
 covering your screen. It only uses information you can already see as a player and never touches the
 game process.
@@ -27,6 +27,15 @@ game process.
 3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
+
+## Can I get banned for using it?
+
+All You Need never reads or changes the game's memory, injects nothing and sends no inputs. It only uses
+Riot's official Live Client Data API, the League client API that rune and stats tools use, and small
+screenshots of what is already visible on your screen (see [where the data comes from](#where-the-data-comes-from)).
+Information Riot does not allow – enemy cooldown timers, augment win rates – is deliberately left out.
+The project is not reviewed or approved by Riot, so no third-party tool can make promises, but it only shows
+what you could already see or look up yourself.
 
 ## Your ideas are welcome
 
