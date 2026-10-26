@@ -2,6 +2,7 @@
 // Für Splitter gibt es keine Statistiken; die App bewertet sie danach, wie gut der Wert zum Build passt:
 // Anteil der Build-Items, die diesen Wert haben (Item-Tags aus Data Dragon).
 // Namen wie im deutschen Client (Stringtable cherry_statanvil_*, cherry_goldstatanvil_*, cherry_prisstatanvil_*).
+const { t } = require('../renderer/i18n');
 const SHARDS = [
   { key: 'ad', name: 'Angriffsschadensplitter', tags: ['Damage'] },
   { key: 'ap', name: 'Fähigkeitsstärkesplitter', tags: ['SpellDamage'] },
@@ -81,12 +82,13 @@ function rateOffer(shards, itemTags, magic = false) {
   const best = Math.max(0, ...fits.map((f) => (f ? f.score : 0)));
   return shards.map((s, i) => {
     if (!s) return null;
-    if (s.always) return { tier: s.always, why: s.why };
+    if (s.always) return { tier: s.always, why: t(s.why) };
     const f = fits[i];
-    if (!f) return { tier: null, why: 'Build unbekannt' };
-    const why = f.hits ? `passt zu ${f.hits} von ${f.total} Build-Items` : 'passt nicht zum Build';
+    if (!f) return { tier: null, why: t('Build unbekannt') };
+    const why = f.hits ? t('passt zu {hits} von {total} Build-Items', f) : t('passt nicht zum Build');
     const tier = f.score >= 0.5 ? (f.score === best ? 'S' : 'A') : f.score >= 0.3 ? 'A' : f.score > 0 ? 'B' : 'C';
-    if (s.floor && 'SABCD'.indexOf(tier) > 'SABCD'.indexOf(s.floor)) return { tier: s.floor, why: s.floorWhy };
+    if (s.floor && 'SABCD'.indexOf(tier) > 'SABCD'.indexOf(s.floor)) return { tier: s.floor, why: t(s.floorWhy) };
+
     return { tier, why };
   });
 }

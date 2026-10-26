@@ -5,11 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const ddragon = require('../src/ddragon');
 const lcu = require('../src/lcu');
+const lang = require('./lang');
 
 app.whenReady().then(async () => {
   const root = path.join(__dirname, '..');
   const config = JSON.parse(fs.readFileSync(path.join(root, 'config.json'), 'utf8'));
-  await ddragon.load(app.getPath('userData'), config.language);
+  await ddragon.load(app.getPath('userData'), lang.ddLang);
   const lp = config.leaguePath;
   // Beispiel-Build nur für das Bild, wenn noch keiner gespeichert ist
   const builds = Object.keys(config.builds || {}).length ? config.builds : { Jax: [3078, 3153, 3047] };
@@ -48,7 +49,8 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript(`document.querySelector('nav button[data-tab="${tab}"]').click()`);
     await new Promise((r) => setTimeout(r, 800));
     await win.webContents.executeJavaScript(anonymize);
-    fs.writeFileSync(path.join(root, 'debug', `stats-${tab}.png`), (await win.webContents.capturePage()).toPNG());
+    fs.writeFileSync(path.join(root, 'debug', `stats-${tab}${lang.suffix}.png`), (await win.webContents.capturePage()).toPNG());
+
   }
   app.quit();
 });

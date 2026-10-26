@@ -1,5 +1,13 @@
 # Changelog
 
+## Unveröffentlicht
+
+Allgemein
+- Englische Oberfläche: Overlay, Stats-Fenster, Tray-Menü und Meldungen gibt es jetzt auf Deutsch und Englisch.
+  Umschalten im Menü (Tray oder ☰ im Stats-Fenster) unter „Sprache / Language“; beim ersten Start gilt die
+  Sprache von Windows. LoL-Begriffe stehen so da wie im englischen Spiel und Client (Riots eigene Texte), Item-,
+  Champion-, Runen- und Summoner-Namen kommen in der gewählten Sprache von Data Dragon
+
 ## 1.4.0 – 2026-10-25
 
 Build & Runen

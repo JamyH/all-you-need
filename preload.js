@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('lol', {
+  lang: ipcRenderer.sendSync('i18n:lang'), // Sprache der Oberfläche (de/en), fürs Übersetzen beim Laden
+
   onGame: (cb) => ipcRenderer.on('game', (_e, d) => cb(d)),
   onEditMode: (cb) => ipcRenderer.on('edit-mode', (_e, on) => cb(on)),
   onScoreboard: (cb) => ipcRenderer.on('scoreboard-state', (_e, s) => cb(s)),

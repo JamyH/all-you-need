@@ -1,13 +1,16 @@
 const $ = (id) => document.getElementById(id);
 const panel = $('panel');
+i18n.setLang(window.lol.lang);
+i18n.translatePage(document);
+const { t, num } = i18n;
 
-const fmtTime = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-const signed = (n) => `${n >= 0 ? '+' : ''}${n.toLocaleString('de-DE')}`;
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const signed = (n) => `${n >= 0 ? '+' : ''}${num(n)}`;
 const cls = (n) => (n >= 0 ? 'good' : 'bad');
 // +450 / +1,2k / -12k: höchstens 5 Zeichen
 const compact = (n) => {
   const a = Math.abs(n);
-  const v = a < 1000 ? String(a) : a < 10000 ? `${(a / 1000).toFixed(1).replace('.', ',')}k` : `${Math.round(a / 1000)}k`;
+  const v = a < 1000 ? String(a) : a < 10000 ? `${num(a / 1000, 1)}k` : `${Math.round(a / 1000)}k`;
   return `${n >= 0 ? '+' : '-'}${v}`;
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -29,13 +32,13 @@ function renderAugments(list) {
     el.style.top = `${a.y}px`;
     if (a.unknown) {
       el.className = 'aug-badge unknown';
-      el.textContent = 'nicht erkannt';
+      el.textContent = t('nicht erkannt');
       return el;
     }
     // Tier wie bei Blitz: Buchstabe groß, darunter der Grund. Augment-Tiers stammen von arammayhem.com
     // (CC BY 4.0, Quellenangabe nötig), daher unter der mittleren Karte die Quelle
     el.className = `aug-badge grade-${a.tier || 'none'}`;
-    const credit = a.credit && i === 1 ? '<small>Daten: arammayhem.com</small>' : '';
+    const credit = a.credit && i === 1 ? `<small>${t('Daten: arammayhem.com')}</small>` : '';
     el.innerHTML = `<b>${a.tier ? `${esc(a.tier)} Tier` : '–'}</b><span>${esc(a.why)}</span>${credit}`;
     return el;
   }));
@@ -64,7 +67,7 @@ function ringHtml(s) {
     `<label>${s.key}</label></div>`;
 }
 function tileHtml(s) {
-  const value = s.ready ? 'bereit' : s.cd == null ? '…' : fmtTime(s.cd);
+  const value = s.ready ? t('bereit') : s.cd == null ? '…' : fmtTime(s.cd);
   const b = `<b class="${s.ready ? 'good' : ''}">${value}</b>`;
   // Icon und Taste, keine Namen (passen nicht in die Kachel); ohne Bild nur die Taste
   const img = s.icon ? `<img src="${esc(s.icon)}" alt="">` : '';
@@ -99,9 +102,9 @@ function renderGame(g) {
   if (b) {
     $('build').classList.toggle('ready', b.affordable);
     $('buildLabel').textContent = b.name;
-    $('buildMissing').textContent = b.affordable ? 'bezahlbar' : `${small ? '−' : 'noch '}${b.missing.toLocaleString('de-DE')} g`;
+    $('buildMissing').textContent = b.affordable ? t('bezahlbar') : small ? `−${num(b.missing)} g` : t('noch {gold} g', { gold: num(b.missing) });
     $('buildFill').style.width = `${b.progress}%`;
-    $('recall').innerHTML = (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? 'KAUFEN' : 'RECALL');
+    $('recall').innerHTML = (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? t('KAUFEN') : t('RECALL'));
   }
 
   // Skillpunkt offen: welche Fähigkeit laut Lolalytics dran ist, dahinter die Max-Reihenfolge
@@ -140,9 +143,10 @@ function renderGame(g) {
     $('xpMinions').hidden = !!g.aram;
     $('xpMinions').textContent = small
       ? `${xp.melee} Melee / ${xp.caster} Caster`
-      : `noch ${xp.missing} XP ≈ ${xp.melee} Melee / ${xp.caster} Caster · ${xp.waves} Wellen`;
+      : t('noch {xp} XP ≈ {melee} Melee / {caster} Caster · {waves} Wellen', { ...xp, xp: xp.missing, waves: num(Number(xp.waves), 1) });
+
   }
-  $('gold').textContent = g.gold.toLocaleString('de-DE');
+  $('gold').textContent = num(g.gold);
   $('ward').textContent = g.wardScore;
 
   // Kompakt: Lane-Gegner, CS-Diff und Team in einer Fußzeile
@@ -157,16 +161,16 @@ function renderGame(g) {
   if (o && !small) {
     const diff = g.myItemValue - o.itemValue;
     $('lane').innerHTML =
-      `<div class="row"><label>vs ${o.champion}${o.isDead ? ' (tot)' : ''}</label>` +
+      `<div class="row"><label>vs ${o.champion}${o.isDead ? ` (${t('tot')})` : ''}</label>` +
       `<b class="${cls(diff)}">${signed(diff)} g</b></div>` +
-      `<div class="row"><label>CS-Diff</label><b class="${cls(g.cs - o.cs)}">${signed(g.cs - o.cs)}</b></div>`;
+      `<div class="row"><label>${t('CS-Diff')}</label><b class="${cls(g.cs - o.cs)}">${signed(g.cs - o.cs)}</b></div>`;
   } else {
     $('lane').innerHTML = '';
   }
 
-  const t = $('teamDiff');
-  t.textContent = `${signed(g.teamItemDiff)} g`;
-  t.className = cls(g.teamItemDiff);
+  const team = $('teamDiff');
+  team.textContent = `${signed(g.teamItemDiff)} g`;
+  team.className = cls(g.teamItemDiff);
 }
 
 // Tab-Scoreboard: Badges relativ zum gefundenen Anker (Mitte des Scoreboard-Ornaments)
@@ -183,7 +187,7 @@ function renderScoreboard() {
   const team = $('sbTeam');
   team.style.left = `${a.x}px`;
   team.style.top = `${a.y + o.top - 8}px`;
-  team.innerHTML = `<label>Team-Itemwert</label><b class="${cls(sb.teamDiff)}">${signed(sb.teamDiff)} g</b>`;
+  team.innerHTML = `<label>${t('Team-Itemwert')}</label><b class="${cls(sb.teamDiff)}">${signed(sb.teamDiff)} g</b>`;
 
   // Positionen per element.style setzen: die CSP blockt style-Attribute aus innerHTML
   const rows = $('sbRows');
@@ -299,7 +303,7 @@ const MODULES = [
 ];
 // [Schlüssel, Name, min, max, Schritt, Anzeige]
 const SLIDERS = [
-  ['scale', 'UI-Größe', 0.7, 1.5, 0.05, (v) => v.toFixed(2).replace('.', ',')],
+  ['scale', 'UI-Größe', 0.7, 1.5, 0.05, (v) => num(v, 2)],
   ['bgTransparency', 'Hintergrund-Transparenz', 0, 90, 5, (v) => `${v} %`],
   ['hoverTransparency', 'Hover-Transparenz', 0, 90, 5, (v) => `${v} %`],
 ];
@@ -309,14 +313,15 @@ const isCompact = () => !!(settings && settings.compact);
 
 function buildSettings() {
   const toggle = (attr, key, name) =>
-    `<label class="toggle"><span>${esc(name)}</span><input type="checkbox" ${attr}="${key}"><i></i></label>`;
+    `<label class="toggle"><span>${esc(t(name))}</span><input type="checkbox" ${attr}="${key}"><i></i></label>`;
   $('settingsBody').innerHTML =
-    MODULES.map(([title, list]) => `<h4>${title}</h4>${list.map(([k, n]) => toggle('data-mod', k, n)).join('')}`).join('') +
-    '<h4>Allgemein</h4>' +
+    MODULES.map(([title, list]) => `<h4>${t(title)}</h4>${list.map(([k, n]) => toggle('data-mod', k, n)).join('')}`).join('') +
+    `<h4>${t('Allgemein')}</h4>` +
     toggle('data-opt', 'compact', 'Kompakt-Modus') +
     toggle('data-opt', 'clickThrough', 'Klick-durch') +
     SLIDERS.map(([k, n, min, max, step]) =>
-      `<div class="slider"><label><span>${n}</span><output data-out="${k}"></output></label>` +
+      `<div class="slider"><label><span>${t(n)}</span><output data-out="${k}"></output></label>` +
+
       `<input type="range" data-range="${k}" min="${min}" max="${max}" step="${step}"></div>`).join('');
 
   $('settingsBody').querySelectorAll('[data-mod]').forEach((el) => el.addEventListener('change', () =>

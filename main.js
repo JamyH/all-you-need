@@ -35,6 +35,10 @@ const arammayhem = require('./src/arammayhem');
 const anvil = require('./src/anvil');
 const keys = require('./src/keys');
 const riot = require('./src/riot');
+const i18n = require('./renderer/i18n');
+const { t } = i18n;
+// Data-Dragon-Sprache (Item-, Champion-, Runen- und Summoner-Namen) folgt der Sprache der Oberfläche
+const DD_LANG = { de: 'de_DE', en: 'en_US' };
 
 // Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
@@ -226,8 +230,8 @@ function openStats(opts = {}) {
     tray.displayBalloon({
       iconType: 'custom',
       icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-      title: 'All You Need läuft weiter',
-      content: 'Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.',
+      title: t('All You Need läuft weiter'),
+      content: t('Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.'),
     });
     saveConfig({ closedHint: true });
   });
@@ -284,8 +288,8 @@ function warnFullscreen() {
   tray.displayBalloon({
     iconType: 'custom',
     icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-    title: 'League läuft im Vollbild',
-    content: 'Dort ist das Overlay nicht zu sehen. Im Spiel: Einstellungen → Video → Fenstermodus „Randlos“.',
+    title: t('League läuft im Vollbild'),
+    content: t('Dort ist das Overlay nicht zu sehen. Im Spiel: Einstellungen → Video → Fenstermodus „Randlos“.'),
   });
 }
 
@@ -456,8 +460,8 @@ async function readAugmentOffer(augCrops) {
     if ((text.match(/\p{L}/gu) || []).length < 4) return null;
     const id = augments.match(text);
     if (!id) return { ...pos(i), unknown: true };
-    const t = arammayhem.tier(id, lastChampion, champName);
-    return { ...pos(i), tier: t ? t.tier : null, why: t ? t.why : 'keine Daten', credit: true };
+    const rated = arammayhem.tier(id, lastChampion, champName);
+    return { ...pos(i), tier: rated ? rated.tier : null, why: rated ? rated.why : t('keine Daten'), credit: true };
   });
 }
 
@@ -626,9 +630,9 @@ function notifyStats(channel, payload) {
 
 async function applyRunesFor(champId) {
   const rune = (config.runes || {})[champId];
-  if (!rune) throw new Error(`Für ${champId} ist keine Runenseite gespeichert.`);
+  if (!rune) throw new Error(t('Für {champ} ist keine Runenseite gespeichert.', { champ: champId }));
   await lcu.applyRunePage(config.leaguePath, rune);
-  return `Runen für ${champId} gesetzt (Seite „${lcu.PAGE_NAME}“).`;
+  return t('Runen für {champ} gesetzt (Seite „{page}“).', { champ: champId, page: lcu.PAGE_NAME });
 }
 
 // Fester Pick ohne eigene Runen/eigenen Build: Vorschlag von lolalytics laden (aus dem Cache, wenn
@@ -642,14 +646,14 @@ async function useSuggestion(champId, key, position) {
     notifyStats('suggestion', champId);
   } catch (e) {
     console.warn('lolalytics:', e.message);
-    source = 'Riot-Empfehlung';
+    source = t('Riot-Empfehlung');
   }
   const ownRunes = (config.runes || {})[champId];
   if (ownRunes || config.runesAuto === false) return;
   if (!rune) rune = await lcu.recommendedRunes(config.leaguePath, key, position, mapId()).catch(() => null);
   if (!rune) return;
   await lcu.applyRunePage(config.leaguePath, rune);
-  notifyStats('runes:status', `Runen für ${champId} von ${source} gesetzt (Seite „${lcu.PAGE_NAME}“).`);
+  notifyStats('runes:status', t('Runen für {champ} von {source} gesetzt (Seite „{page}“).', { champ: champId, source, page: lcu.PAGE_NAME }));
 }
 
 // Summoner beim festen Pick setzen: das meistgespielte Paar laut lolalytics, sonst Riots Empfehlung.
@@ -668,15 +672,16 @@ async function applySpells(champId, key, position, current) {
   let source = 'lolalytics.com';
   if (suggestionsOn()) rec = await lolalytics.load(champId, position, gameMode).then((s) => s.spells, () => null);
   if (!rec) {
-    source = 'Riot-Empfehlung';
+    source = t('Riot-Empfehlung');
     rec = await lcu.recommendedSpells(config.leaguePath, key, position, mapId()).catch(() => null);
   }
-  if (!rec) return 'Summoner: keine Empfehlung gefunden.';
+  if (!rec) return t('Summoner: keine Empfehlung gefunden.');
   const [d, f] = placeSpells(current, rec);
   const name = (k) => ddragon.summoner(k)?.name || k;
-  if (d === current[0] && f === current[1]) return `Summoner ${name(d)} (D) + ${name(f)} (F) passen schon (${source}).`;
+  const vars = { d: name(d), f: name(f), source };
+  if (d === current[0] && f === current[1]) return t('Summoner {d} (D) + {f} (F) passen schon ({source}).', vars);
   await lcu.applySpells(config.leaguePath, d, f);
-  return `Summoner ${name(d)} (D) + ${name(f)} (F) von ${source} gesetzt.`;
+  return t('Summoner {d} (D) + {f} (F) von {source} gesetzt.', vars);
 }
 
 // Item-Set „All You Need – Champ“ in den Client schreiben, im Spiel im Shop wählbar: eigener Build
@@ -693,19 +698,19 @@ async function importItemSet(champId) {
   const key = ddragon.championKey(champId);
   const s = suggestionsOn() ? lolalytics.cached(champId, gameMode) : null;
   const blocks = [];
-  if (ownBuild(champId)) blocks.push({ title: 'Dein Build (All You Need)', items: withParts(config.builds[champId]) });
+  if (ownBuild(champId)) blocks.push({ title: t('Dein Build (All You Need)'), items: withParts(config.builds[champId]) });
   if (s) {
-    blocks.push({ title: 'Start – lolalytics.com', items: s.starting.map((id) => ({ id, count: (s.startCount || {})[id] || 1 })) });
+    blocks.push({ title: t('Start – lolalytics.com'), items: s.starting.map((id) => ({ id, count: (s.startCount || {})[id] || 1 })) });
     // Kern-Build erst ohne Teile als Überblick, dann jedes Item mit seinen Teilen in Kaufreihenfolge
-    blocks.push({ title: 'Kern-Build – lolalytics.com', items: s.items.slice(0, 3).map((id) => ({ id })) });
-    s.items.slice(0, 3).forEach((id, i) => blocks.push({ title: `${i + 1}. ${ddragon.itemName(id)} – Teile`, items: withParts([id]) }));
-    if (s.items.length > 3) blocks.push({ title: 'Danach – lolalytics.com', items: withParts(s.items.slice(3)) });
+    blocks.push({ title: t('Kern-Build – lolalytics.com'), items: s.items.slice(0, 3).map((id) => ({ id })) });
+    s.items.slice(0, 3).forEach((id, i) => blocks.push({ title: t('{n}. {item} – Teile', { n: i + 1, item: ddragon.itemName(id) }), items: withParts([id]) }));
+    if (s.items.length > 3) blocks.push({ title: t('Danach – lolalytics.com'), items: withParts(s.items.slice(3)) });
   }
-  if (!key || !blocks.length) throw new Error(`Für ${champId} gibt es weder eigenen Build noch Vorschlag.`);
+  if (!key || !blocks.length) throw new Error(t('Für {champ} gibt es weder eigenen Build noch Vorschlag.', { champ: champId }));
   const name = ddragon.champion(key).name;
   const label = s && (s.mode === 'aram' ? 'ARAM' : LANE_LABEL[s.lane]);
   await lcu.applyItemSet(config.leaguePath, key, `All You Need – ${name}${label ? ` ${label}` : ''}`, blocks, mapId());
-  return `Item-Set „All You Need – ${name}“ ist im Client, im Spiel im Shop wählbar.`;
+  return t('Item-Set „All You Need – {name}“ ist im Client, im Spiel im Shop wählbar.', { name });
 }
 
 // ARAM-Bank: dein Champ und die Bank-Champs mit ARAM-Siegrate (lolalytics-Tierliste, einmal am Tag),
@@ -819,14 +824,14 @@ async function pollClient() {
         if (suggestionsOn()) await useSuggestion(champId, sel.key, sel.position);
         if (config.spellsAuto !== false) {
           await applySpells(champId, sel.key, sel.position, sel.spells)
-            .then((msg) => notifyStats('spells:status', msg), (e) => notifyStats('spells:status', `Summoner: ${e.message}`));
+            .then((msg) => notifyStats('spells:status', msg), (e) => notifyStats('spells:status', `${t('Summoner')}: ${e.message}`));
         }
         if (config.itemSetAuto !== false) {
-          importItemSet(champId).then((msg) => notifyStats('build:status', msg), (e) => notifyStats('build:status', `Item-Set: ${e.message}`));
+          importItemSet(champId).then((msg) => notifyStats('build:status', msg), (e) => notifyStats('build:status', `${t('Item-Set')}: ${e.message}`));
         }
       }
     } catch (e) {
-      notifyStats('runes:status', `Runen: ${e.message}`);
+      notifyStats('runes:status', `${t('Runen')}: ${e.message}`);
     }
   }
   lastPhase = phase;
@@ -857,7 +862,7 @@ ipcMain.handle('live:data', () => {
 
 // „Bildschirm-Erkennung prüfen“: zeigt die ausgeschnittenen Bereiche und was daraus gelesen wird
 ipcMain.handle('calib:check', async () => {
-  if (!gameRunning) throw new Error('Nur im laufenden Spiel möglich.');
+  if (!gameRunning) throw new Error(t('Nur im laufenden Spiel möglich.'));
   refreshLayout();
   const slotItems = lastItems.filter((it) => it.slot < 6);
   const regions = [L.cs, L.spells.d, L.spells.f, ocr.xpBox(L.xpArc), ...slotItems.map((it) => L.items[it.slot])];
@@ -867,7 +872,7 @@ ipcMain.handle('calib:check', async () => {
     for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
     return nativeImage.createFromBitmap(bgra, { width: c.width, height: c.height }).toDataURL();
   };
-  const spell = async (c) => (ocr.spellOnCooldown(c) ? `Cooldown ${await ocr.readSpellCd(c)}` : 'bereit');
+  const spell = async (c) => (ocr.spellOnCooldown(c) ? `Cooldown ${await ocr.readSpellCd(c)}` : t('bereit'));
   return {
     screen: (() => {
       const d = screen.getPrimaryDisplay();
@@ -882,7 +887,7 @@ ipcMain.handle('calib:check', async () => {
       { label: 'XP', img: toUrl(crops[3]), value: `${Math.round(ocr.readXp(crops[3], L.xpArc) * 100)} %` },
       ...slotItems.map((it, i) => {
         const cd = ocr.readItemCd(crops[4 + i]);
-        return { label: it.name, img: toUrl(crops[4 + i]), value: cd == null ? 'kein Cooldown' : `Cooldown ${cd}` };
+        return { label: it.name, img: toUrl(crops[4 + i]), value: cd == null ? t('kein Cooldown') : `Cooldown ${cd}` };
       }),
     ],
   };
@@ -915,9 +920,9 @@ ipcMain.handle('runes:auto', (_e, on) => saveConfig({ runesAuto: on }));
 ipcMain.handle('spells:auto', (_e, on) => saveConfig({ spellsAuto: on }));
 // „Jetzt setzen“ im Stats-Fenster: geht nur in der Champ-Auswahl mit gewähltem Champion
 ipcMain.handle('spells:apply', async () => {
-  if (lastPhase !== 'ChampSelect') return 'Summoner lassen sich nur in der Champ-Auswahl setzen.';
+  if (lastPhase !== 'ChampSelect') return t('Summoner lassen sich nur in der Champ-Auswahl setzen.');
   const sel = await lcu.champSelect(config.leaguePath);
-  if (!sel.key) return 'Erst einen Champion wählen.';
+  if (!sel.key) return t('Erst einen Champion wählen.');
   return applySpells(ddragon.champion(sel.key).id, sel.key, sel.position, sel.spells);
 });
 
@@ -956,12 +961,12 @@ ipcMain.handle('history:items', (_e, champId) => {
 ipcMain.handle('history:take', (_e, champId) => {
   const top = history.topItems(Number(ddragon.championKey(champId)), mapId(), ddragon.finishedItem);
   const ids = top.items.slice(0, 6).map((i) => i.id);
-  if (!ids.length) throw new Error('Noch keine eigenen Spiele mit diesem Champion.');
+  if (!ids.length) throw new Error(t('Noch keine eigenen Spiele mit diesem Champion.'));
   saveConfig({ builds: { ...(config.builds || {}), [champId]: ids } });
 });
 ipcMain.handle('suggestion:take', (_e, champId, what) => {
   const s = lolalytics.cached(champId, gameMode);
-  if (!s) throw new Error('Kein Vorschlag geladen.');
+  if (!s) throw new Error(t('Kein Vorschlag geladen.'));
   if (what === 'build') saveConfig({ builds: { ...(config.builds || {}), [champId]: s.items } });
   if (what === 'runes' && s.runes) saveConfig({ runes: { ...(config.runes || {}), [champId]: s.runes } });
 });
@@ -975,7 +980,7 @@ ipcMain.handle('runes:options', async (_e, champId) => {
   const options = [];
   if (s?.runes) options.push({ source: 'lolalytics.com', url: s.url, runes: s.runes });
   const riot = await lcu.recommendedRunePages(config.leaguePath, ddragon.championKey(champId), position, mapId()).catch(() => []);
-  riot.forEach((runes) => options.push({ source: 'Riot-Empfehlung', runes }));
+  riot.forEach((runes) => options.push({ source: t('Riot-Empfehlung'), runes }));
   const seen = new Set();
   const unique = options.filter((o) => {
     const k = o.runes.selectedPerkIds.join(',');
@@ -986,13 +991,13 @@ ipcMain.handle('runes:options', async (_e, champId) => {
 });
 ipcMain.handle('runes:useOption', async (_e, champId, i, save) => {
   const o = (runeOptions.get(champId) || [])[i];
-  if (!o) throw new Error('Runenseite nicht mehr verfügbar, bitte neu laden.');
+  if (!o) throw new Error(t('Runenseite nicht mehr verfügbar, bitte neu laden.'));
   if (save) {
     saveConfig({ runes: { ...(config.runes || {}), [champId]: o.runes } });
-    return 'Als deine Runen gespeichert.';
+    return t('Als deine Runen gespeichert.');
   }
   await lcu.applyRunePage(config.leaguePath, o.runes);
-  return `Gesetzt (Seite „${lcu.PAGE_NAME}“).`;
+  return t('Gesetzt (Seite „{page}“).', { page: lcu.PAGE_NAME });
 });
 ipcMain.handle('build:itemSet', (_e, champId) => importItemSet(champId));
 ipcMain.handle('build:itemSetAuto', (_e, on) => saveConfig({ itemSetAuto: on }));
@@ -1054,10 +1059,10 @@ const LOGIN_ITEM = {
 async function quitLeague() {
   const { response } = await dialog.showMessageBox({
     type: 'warning',
-    title: 'League komplett beenden',
-    message: 'Riot Client, League-Client und ein laufendes Spiel werden sofort beendet.',
-    detail: 'Gedacht für den Fall, dass League nach einem Vanguard-Fehler hängt. Ein laufendes Spiel verlässt du damit; danach League normal neu starten.',
-    buttons: ['Beenden', 'Abbrechen'],
+    title: t('League komplett beenden'),
+    message: t('Riot Client, League-Client und ein laufendes Spiel werden sofort beendet.'),
+    detail: t('Gedacht für den Fall, dass League nach einem Vanguard-Fehler hängt. Ein laufendes Spiel verlässt du damit; danach League normal neu starten.'),
+    buttons: [t('Beenden'), t('Abbrechen')],
     defaultId: 1,
     cancelId: 1,
     noLink: true,
@@ -1067,10 +1072,10 @@ async function quitLeague() {
   tray.displayBalloon({
     iconType: 'custom',
     icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-    title: 'League komplett beenden',
-    content: !before.length ? 'League lief gar nicht.'
-      : left.length ? `Noch nicht beendet: ${left.join(', ')}. Dann bitte im Task-Manager.`
-        : 'League und Riot Client sind beendet. Du kannst League jetzt neu starten.',
+    title: t('League komplett beenden'),
+    content: !before.length ? t('League lief gar nicht.')
+      : left.length ? t('Noch nicht beendet: {list}. Dann bitte im Task-Manager.', { list: left.join(', ') })
+        : t('League und Riot Client sind beendet. Du kannst League jetzt neu starten.'),
   });
 }
 
@@ -1078,13 +1083,13 @@ async function quitLeague() {
 function appMenu() {
   const keys = config.hotkeys;
   return Menu.buildFromTemplate([
-    { label: 'Stats-Fenster öffnen', accelerator: keys.openStats, click: openStats },
+    { label: t('Stats-Fenster öffnen'), accelerator: keys.openStats, click: openStats },
     { type: 'separator' },
-    { label: 'Overlay anzeigen', type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
-    { label: 'Panel verschieben', type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
-    { label: 'Overlay-Einstellungen', type: 'checkbox', checked: settingsOpen, click: () => setSettingsOpen(!settingsOpen) },
+    { label: t('Overlay anzeigen'), type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
+    { label: t('Panel verschieben'), type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
+    { label: t('Overlay-Einstellungen'), type: 'checkbox', checked: settingsOpen, click: () => setSettingsOpen(!settingsOpen) },
     {
-      label: 'Spiel automatisch annehmen',
+      label: t('Spiel automatisch annehmen'),
       type: 'checkbox',
       checked: config.autoAccept === true,
       click: (item) => {
@@ -1093,27 +1098,50 @@ function appMenu() {
       },
     },
     {
-      label: 'Mit Windows starten',
+      label: t('Mit Windows starten'),
       type: 'checkbox',
       checked: app.getLoginItemSettings(LOGIN_ITEM).openAtLogin,
       click: (item) => app.setLoginItemSettings({ ...LOGIN_ITEM, openAtLogin: item.checked }),
     },
+    // Sprachnamen immer in der eigenen Sprache, damit man zurückfindet
+    {
+      label: 'Sprache / Language',
+      submenu: [['de', 'Deutsch'], ['en', 'English']].map(([lang, label]) => ({
+        label, type: 'radio', checked: i18n.lang() === lang,
+        click: () => setLanguage(lang).catch((e) => console.warn('Sprache:', e.message)),
+      })),
+    },
     { type: 'separator' },
-    { label: 'League komplett beenden …', click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
+    { label: t('League komplett beenden …'), click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
     { type: 'separator' },
     { label: `All You Need ${app.getVersion()}`, enabled: false },
-    { label: 'Beenden', click: () => app.quit() },
+    { label: t('Beenden'), click: () => app.quit() },
   ]);
 }
 function refreshTrayMenu() {
-  if (tray) tray.setContextMenu(appMenu());
+  if (!tray) return;
+  tray.setContextMenu(appMenu());
+  tray.setToolTip(t('All You Need {version} läuft', { version: app.getVersion() }));
 }
+
+// Sprache umschalten: Namen aus Data Dragon neu laden, Menü neu bauen und beide Fenster neu laden
+async function setLanguage(lang) {
+  if (lang === i18n.lang()) return;
+  i18n.setLang(lang);
+  saveConfig({ uiLanguage: lang });
+  refreshTrayMenu();
+  await ddragon.load(DATA_DIR, DD_LANG[lang]);
+  if (overlay && !overlay.isDestroyed()) overlay.webContents.reload();
+  if (stats && !stats.isDestroyed()) stats.webContents.reload();
+}
+ipcMain.on('i18n:lang', (e) => {
+  e.returnValue = i18n.lang();
+});
 ipcMain.on('menu:popup', (_e, pos) => {
   if (stats && !stats.isDestroyed()) appMenu().popup({ window: stats, x: pos.x, y: pos.y });
 });
 function createTray() {
   tray = new Tray(APP_ICON);
-  tray.setToolTip(`All You Need ${app.getVersion()} läuft`);
   tray.on('click', openStats);
   refreshTrayMenu();
   // erster Start: zeigen, wo die App steckt
@@ -1121,8 +1149,8 @@ function createTray() {
     tray.displayBalloon({
       iconType: 'custom',
       icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-      title: 'All You Need läuft',
-      content: 'Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.',
+      title: t('All You Need läuft'),
+      content: t('Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.'),
     });
     saveConfig({ welcomed: true });
   }
@@ -1144,7 +1172,11 @@ const HOTKEYS = {
 const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ accelerator: config.hotkeys[name], run }));
 
 app.whenReady().then(async () => {
-  await ddragon.load(app.getPath('userData'), config.language);
+  // Sprache der Oberfläche: gespeicherte Wahl, beim ersten Start die von Windows (Deutsch, sonst Englisch)
+  if (!config.uiLanguage) saveConfig({ uiLanguage: app.getLocale().startsWith('de') ? 'de' : 'en' });
+  i18n.setLang(config.uiLanguage);
+  await ddragon.load(app.getPath('userData'), DD_LANG[i18n.lang()]);
+
   lolalytics.init(app.getPath('userData'));
   meraki.init(app.getPath('userData'));
   history.init(app.getPath('userData'));

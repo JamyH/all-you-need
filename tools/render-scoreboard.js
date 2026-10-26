@@ -3,13 +3,14 @@
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const lang = require('./lang');
 
 app.whenReady().then(async () => {
   const root = path.join(__dirname, '..');
   const config = JSON.parse(fs.readFileSync(path.join(root, 'config.json'), 'utf8'));
   const { summary, data } = JSON.parse(fs.readFileSync(path.join(root, 'debug', 'last-game.json'), 'utf8'));
   const live = require('../src/live');
-  await require('../src/ddragon').load(app.getPath('userData'), config.language);
+  await require('../src/ddragon').load(app.getPath('userData'), lang.ddLang);
   summary.scoreboard = live.scoreboard(data);
   // --long: große Diffs testen, ob die Badges noch über den Ward-Slot passen
   if (process.argv.includes('--long')) {
@@ -28,6 +29,7 @@ app.whenReady().then(async () => {
   await new Promise((r) => setTimeout(r, 1500));
   console.log(await win.webContents.executeJavaScript('JSON.stringify([...document.querySelectorAll(".sb-row,.sb-team")].map(e=>{const r=e.getBoundingClientRect();return [e.className,Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height),getComputedStyle(e).display]}))'));
   const img = await win.webContents.capturePage();
-  fs.writeFileSync(path.join(root, 'debug', 'scoreboard-overlay.png'), img.toPNG());
+  fs.writeFileSync(path.join(root, 'debug', `scoreboard-overlay${lang.suffix}.png`), img.toPNG());
+
   app.quit();
 });

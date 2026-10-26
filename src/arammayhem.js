@@ -8,6 +8,7 @@
 // von CommunityDragon. Alles wird einen Tag lang zwischengespeichert.
 const fs = require('fs');
 const path = require('path');
+const { t, lang } = require('../renderer/i18n');
 
 const CACHE_MS = 24 * 60 * 60 * 1000;
 const USER_AGENT = 'AllYouNeed (+https://github.com/JamyH/all-you-need)';
@@ -116,20 +117,22 @@ function tier(id, champId, champName = champId) {
   const g = cache.global;
   if (!g) return null;
   const tags = g.comboTags[champId]?.[id] || [];
-  if (tags.includes('trap')) return { tier: 'D', why: `Falle mit ${champName}` };
+  const champ = { champ: champName };
+  if (tags.includes('trap')) return { tier: 'D', why: t('Falle mit {champ}', champ) };
   let best = null;
-  if (tags.includes('god')) best = better({ tier: 'S', why: `God-Combo mit ${champName}` }, best);
-  if (tags.includes('bug')) best = better({ tier: 'S', why: `Bug-Combo mit ${champName}` }, best);
-  if (tags.includes('strong')) best = better({ tier: 'A', why: `starke Combo mit ${champName}` }, best);
-  if (tags.includes('blackTech')) best = better({ tier: 'A', why: `Geheimtipp für ${champName}` }, best);
+  if (tags.includes('god')) best = better({ tier: 'S', why: t('God-Combo mit {champ}', champ) }, best);
+  if (tags.includes('bug')) best = better({ tier: 'S', why: t('Bug-Combo mit {champ}', champ) }, best);
+  if (tags.includes('strong')) best = better({ tier: 'A', why: t('starke Combo mit {champ}', champ) }, best);
+  if (tags.includes('blackTech')) best = better({ tier: 'A', why: t('Geheimtipp für {champ}', champ) }, best);
   const top = cache[`champ|${champId}`]?.top?.[id];
   if (top) {
-    const t = top.rank <= 2 ? 'S' : top.rank <= 4 ? 'A' : 'B';
-    best = better({ tier: t, why: `${String(top.rate).replace('.', ',')} % der ${champName}-Spieler` }, best);
+    const rank = top.rank <= 2 ? 'S' : top.rank <= 4 ? 'A' : 'B';
+
+    best = better({ tier: rank, why: t('{rate} % der {champ}-Spieler', { rate: String(top.rate).replace('.', lang() === 'en' ? '.' : ','), ...champ }) }, best);
   }
-  if (tags.includes('entertainment')) best = better({ tier: 'C', why: `Spaß-Combo mit ${champName}` }, best);
+  if (tags.includes('entertainment')) best = better({ tier: 'C', why: t('Spaß-Combo mit {champ}', champ) }, best);
   const all = g.augments[id];
-  if (!best && all) best = all.rank <= all.of / 4 ? { tier: 'B', why: 'oft gewählt' } : { tier: 'C', why: 'selten gewählt' };
+  if (!best && all) best = all.rank <= all.of / 4 ? { tier: 'B', why: t('oft gewählt') } : { tier: 'C', why: t('selten gewählt') };
   return best;
 }
 

@@ -3,6 +3,7 @@
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const lang = require('./lang');
 
 app.whenReady().then(async () => {
   const root = path.join(__dirname, '..');
@@ -16,11 +17,12 @@ app.whenReady().then(async () => {
   // --build / --recall: Spar-Ziel unterwegs bzw. bezahlbar
   if (process.argv.includes('--build') || process.argv.includes('--recall')) {
     const recall = process.argv.includes('--recall');
-    summary.build = { name: 'Stärke der Dreieinigkeit', missing: recall ? 0 : 420, progress: recall ? 100 : 87, affordable: recall };
+    summary.build = { name: lang.suffix ? 'Trinity Force' : 'Stärke der Dreieinigkeit', missing: recall ? 0 : 420, progress: recall ? 100 : 87, affordable: recall };
   }
-  const out = process.argv.includes('--nomana') ? 'panel-nomana.png'
-    : process.argv.includes('--recall') ? 'panel-recall.png'
-    : process.argv.includes('--build') ? 'panel-build.png' : 'panel.png';
+  const out = `${process.argv.includes('--nomana') ? 'panel-nomana'
+    : process.argv.includes('--recall') ? 'panel-recall'
+    : process.argv.includes('--build') ? 'panel-build' : 'panel'}${lang.suffix}.png`;
+
   const win = new BrowserWindow({
     width: 320, height: 560, show: false, backgroundColor: '#2a3a2a',
     webPreferences: { preload: path.join(root, 'preload.js') },

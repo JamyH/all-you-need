@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const ddragon = require('./ddragon');
+const { t } = require('../renderer/i18n');
 
 const CACHE_MS = 24 * 60 * 60 * 1000;
 const USER_AGENT = 'AllYouNeed (+https://github.com/JamyH/all-you-need)';
@@ -165,7 +166,7 @@ async function load(champId, position, mode = 'sr') {
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
   const data = parse(await res.text());
-  if (!data) throw new Error('lolalytics.com: Seitenaufbau nicht erkannt');
+  if (!data) throw new Error(t('lolalytics.com: Seitenaufbau nicht erkannt'));
   cache[key] = { champId, mode: aram ? 'aram' : 'sr', lane: aram ? null : lane(position), url, fetchedAt: Date.now(), ...data };
   fs.writeFileSync(cacheFile, JSON.stringify(cache));
   return cache[key];
@@ -201,7 +202,7 @@ async function matchup(champId, vsId, position) {
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
   const data = parseMatchup(await res.text());
-  if (!data) throw new Error('lolalytics.com: zu wenige Spiele oder Seitenaufbau nicht erkannt');
+  if (!data) throw new Error(t('lolalytics.com: zu wenige Spiele oder Seitenaufbau nicht erkannt'));
   cache[key] = { champId, vsId, lane: l, url, fetchedAt: Date.now(), ...data };
   fs.writeFileSync(cacheFile, JSON.stringify(cache));
   return cache[key];
@@ -235,7 +236,8 @@ async function aramTier() {
   const res = await fetch(TIER_URL, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`lolalytics.com antwortet mit ${res.status}`);
   const champs = parseTier(await res.text());
-  if (!champs) throw new Error('lolalytics.com: Tierliste nicht erkannt');
+  if (!champs) throw new Error(t('lolalytics.com: Tierliste nicht erkannt'));
+
   cache['tier|aram'] = { url: TIER_URL, fetchedAt: Date.now(), champs };
   fs.writeFileSync(cacheFile, JSON.stringify(cache));
   return cache['tier|aram'];

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { requestJson } = require('./http');
+const { t } = require('../renderer/i18n');
 
 function readLockfile(leaguePath) {
   const file = path.join(leaguePath, 'lockfile');
@@ -13,7 +14,7 @@ function readLockfile(leaguePath) {
 
 function lcu(leaguePath, endpoint, method = 'GET', body = undefined) {
   const lock = readLockfile(leaguePath);
-  if (!lock) return Promise.reject(new Error('League-Client läuft nicht'));
+  if (!lock) return Promise.reject(new Error(t('League-Client läuft nicht')));
   const auth = Buffer.from(`riot:${lock.password}`).toString('base64');
   return requestJson(method, `${lock.protocol}://127.0.0.1:${lock.port}${endpoint}`, { Authorization: `Basic ${auth}` }, body, 4000);
 }
@@ -106,7 +107,8 @@ async function applyRunePage(lp, rune) {
     try {
       page = await lcu(lp, '/lol-perks/v1/pages', 'POST', body);
     } catch (e) {
-      throw new Error(`Keine freie Runenseite. Leg im Client eine Seite namens "${PAGE_NAME}" an, die wird dann benutzt.`);
+      throw new Error(t('Keine freie Runenseite. Leg im Client eine Seite namens "{page}" an, die wird dann benutzt.', { page: PAGE_NAME }));
+
     }
   }
   const id = (page && page.id) || (own && own.id);
