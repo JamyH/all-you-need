@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- All You Need – App-Icon (Monogramm), Vollversion ab 64 px -->
+  <!-- Farmy – App-Icon (F-Monogramm im Hextech-Sechseck, türkiser Kristall), Vollversion ab 64 px -->
   <rect x="4" y="4" width="248" height="248" rx="56" fill="#061019" stroke="#785A28" stroke-width="6"/>
   <polygon points="128,30 213,79 213,177 128,226 43,177 43,79" fill="none" stroke="#C8AA6E" stroke-width="10" stroke-linejoin="round"/>
   <polygon points="128,46 199,87 199,169 128,210 57,169 57,87" fill="none" stroke="#785A28" stroke-width="3"/>
-  <path d="M128 70 L180 186 H156 L128 120 L100 186 H76 Z" fill="#F0E6D2"/>
-  <rect x="106" y="150" width="44" height="14" fill="#0AC8B9"/>
+  <path d="M96 190 V66 H166 L156 88 H120 V116 H150 L141 136 H120 V190 Z" fill="#F0E6D2"/>
+  <polygon points="158,150 170,164 158,190 146,164" fill="#0AC8B9"/>
 </svg>

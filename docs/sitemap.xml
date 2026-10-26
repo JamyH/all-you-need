@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://jamyh.github.io/all-you-need/</loc>
+    <loc>https://jamyh.github.io/farmy/</loc>
     <lastmod>2026-10-26</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://jamyh.github.io/all-you-need/"/>
-    <xhtml:link rel="alternate" hreflang="de" href="https://jamyh.github.io/all-you-need/de/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/all-you-need/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jamyh.github.io/farmy/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://jamyh.github.io/farmy/de/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/farmy/"/>
   </url>
   <url>
-    <loc>https://jamyh.github.io/all-you-need/de/</loc>
+    <loc>https://jamyh.github.io/farmy/de/</loc>
     <lastmod>2026-10-26</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://jamyh.github.io/all-you-need/"/>
-    <xhtml:link rel="alternate" hreflang="de" href="https://jamyh.github.io/all-you-need/de/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/all-you-need/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jamyh.github.io/farmy/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://jamyh.github.io/farmy/de/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jamyh.github.io/farmy/"/>
   </url>
-  <url><loc>https://jamyh.github.io/all-you-need/lol-cs-tracker/</loc><lastmod>2026-10-26</lastmod></url>
-  <url><loc>https://jamyh.github.io/all-you-need/summoner-spell-timer/</loc><lastmod>2026-10-26</lastmod></url>
-  <url><loc>https://jamyh.github.io/all-you-need/are-lol-overlays-allowed/</loc><lastmod>2026-10-26</lastmod></url>
+  <url><loc>https://jamyh.github.io/farmy/lol-cs-tracker/</loc><lastmod>2026-10-26</lastmod></url>
+  <url><loc>https://jamyh.github.io/farmy/summoner-spell-timer/</loc><lastmod>2026-10-26</lastmod></url>
+  <url><loc>https://jamyh.github.io/farmy/are-lol-overlays-allowed/</loc><lastmod>2026-10-26</lastmod></url>
 </urlset>

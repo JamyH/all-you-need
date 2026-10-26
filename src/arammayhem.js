@@ -11,7 +11,7 @@ const path = require('path');
 const { t, lang } = require('../renderer/i18n');
 
 const CACHE_MS = 24 * 60 * 60 * 1000;
-const USER_AGENT = 'AllYouNeed (+https://github.com/JamyH/all-you-need)';
+const USER_AGENT = 'Farmy (+https://github.com/JamyH/farmy)';
 const DATA = 'https://arammayhem.com/data/v1/latest';
 const EN_NAMES = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json';
 const GLOBAL_VERSION = 2; // erhöhen, wenn sich der Aufbau von cache.global ändert

@@ -87,7 +87,9 @@ async function soloRank(lp, puuid) {
 }
 
 // Runen. Wir schreiben nur in eine eigene Seite namens PAGE_NAME; andere Seiten werden nie gelöscht oder überschrieben.
-const PAGE_NAME = 'All You Need';
+// Eine Seite mit dem alten App-Namen (bis 1.5) wird weiterbenutzt und dabei umbenannt.
+const PAGE_NAME = 'Farmy';
+const OLD_PAGE_NAME = 'All You Need';
 const currentRunePage = (lp) => lcu(lp, '/lol-perks/v1/currentpage');
 
 async function applyRunePage(lp, rune) {
@@ -99,7 +101,7 @@ async function applyRunePage(lp, rune) {
     current: true,
   };
   const pages = await lcu(lp, '/lol-perks/v1/pages');
-  const own = pages.find((p) => p.name === PAGE_NAME && p.isEditable);
+  const own = pages.find((p) => p.name === PAGE_NAME && p.isEditable) || pages.find((p) => p.name === OLD_PAGE_NAME && p.isEditable);
   let page;
   if (own) {
     page = await lcu(lp, `/lol-perks/v1/pages/${own.id}`, 'PUT', { ...body, id: own.id });
@@ -108,7 +110,6 @@ async function applyRunePage(lp, rune) {
       page = await lcu(lp, '/lol-perks/v1/pages', 'POST', body);
     } catch (e) {
       throw new Error(t('Keine freie Runenseite. Leg im Client eine Seite namens "{page}" an, die wird dann benutzt.', { page: PAGE_NAME }));
-
     }
   }
   const id = (page && page.id) || (own && own.id);
@@ -117,13 +118,14 @@ async function applyRunePage(lp, rune) {
 }
 
 // Item-Set für den Shop im Spiel (Reiter mit eigenen Sets). Wir schreiben nur unser eigenes Set pro Champion
-// (erkennbar an der uid); alle anderen Sets bleiben, wie sie sind.
+// (erkennbar an der uid); alle anderen Sets bleiben, wie sie sind. Das Set mit der alten uid (bis 1.5) wird ersetzt.
 // blocks: [{ title, items: [{ id, count }] }]; map 11 = Summoner's Rift, 12 = ARAM (eigenes Set daneben)
 async function applyItemSet(lp, championKey, title, blocks, map = 11) {
   const me = await currentSummoner(lp);
   const url = `/lol-item-sets/v1/item-sets/${me.summonerId}/sets`;
   const data = await lcu(lp, url);
-  const uid = `all-you-need-${championKey}${map === 12 ? '-aram' : ''}`;
+  const suffix = `${championKey}${map === 12 ? '-aram' : ''}`;
+  const uid = `farmy-${suffix}`;
   const own = {
     uid,
     title,
@@ -137,7 +139,8 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
     preferredItemSlots: [],
     blocks: blocks.map((b) => ({ type: b.title, items: b.items.map((i) => ({ id: String(i.id), count: i.count || 1 })) })),
   };
-  const itemSets = [...(data.itemSets || []).filter((s) => s.uid !== uid), own];
+  const itemSets = [...(data.itemSets || []).filter((s) => s.uid !== uid && s.uid !== `all-you-need-${suffix}`), own];
+
   await lcu(lp, url, 'PUT', { accountId: data.accountId || me.accountId, itemSets, timestamp: Date.now() });
 }
 

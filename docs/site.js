@@ -1,6 +1,6 @@
 // Download-Knöpfe direkt auf den Installer der neuesten Version; ohne API-Antwort bleibt die Releases-Seite.
 // #dl-meta bekommt Version und Größe vor seinen Text (data-rest)
-fetch('https://api.github.com/repos/JamyH/all-you-need/releases/latest')
+fetch('https://api.github.com/repos/JamyH/farmy/releases/latest')
   .then((r) => (r.ok ? r.json() : Promise.reject()))
   .then((rel) => {
     const setup = rel.assets.find((a) => /Setup-.*\.exe$/.test(a.name));

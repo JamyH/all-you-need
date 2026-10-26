@@ -42,7 +42,7 @@ app.whenReady().then(async () => {
   // Kopfzeile und die eigene Zeile im Live-Tab tragen den Namen; beides wird überschrieben
   const anonymize = docs ? `(() => {
     window.__docs = true;
-    document.getElementById('who').textContent = 'All You Need';
+    document.getElementById('who').textContent = 'Farmy';
     document.querySelectorAll('tr.me .sub').forEach((el) => (el.textContent = 'Du'));
   })()` : '0';
   for (const tab of ['live', 'history', 'build']) {

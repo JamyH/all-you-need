@@ -1,7 +1,7 @@
 {
-  "name": "all-you-need",
+  "name": "farmy",
   "version": "1.5.0",
-  "description": "All You Need – A lightweight overlay for League of Legends (Windows, Electron)",
+  "description": "Farmy – A lightweight overlay for League of Legends (Windows, Electron)",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -17,11 +17,11 @@
     "tesseract.js": "^5.1.1"
   },
   "license": "MIT",
-  "productName": "All You Need",
+  "productName": "Farmy",
   "author": "Jamy Haas",
   "build": {
     "appId": "com.jamyh.allyouneed",
-    "productName": "All You Need",
+    "productName": "Farmy",
     "directories": {
       "output": "dist"
     },
@@ -50,7 +50,7 @@
         "nsis",
         "portable"
       ],
-      "legalTrademarks": "All You Need"
+      "legalTrademarks": "Farmy"
     },
     "nsis": {
       "oneClick": false,
@@ -60,13 +60,13 @@
       "uninstallerIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "All You Need",
+      "shortcutName": "Farmy",
       "runAfterFinish": true,
-      "uninstallDisplayName": "All You Need",
-      "artifactName": "All-You-Need-Setup-${version}.exe"
+      "uninstallDisplayName": "Farmy",
+      "artifactName": "Farmy-Setup-${version}.exe"
     },
     "portable": {
-      "artifactName": "All-You-Need-${version}-portable.exe"
+      "artifactName": "Farmy-${version}-portable.exe"
     },
     "copyright": "Copyright © 2026 Jamy Haas"
   }

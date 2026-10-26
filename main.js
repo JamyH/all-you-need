@@ -7,6 +7,23 @@ const path = require('path');
 const DATA_DIR_ARG = process.argv.find((a) => a.startsWith('--data-dir='));
 if (DATA_DIR_ARG) app.setPath('userData', path.resolve(DATA_DIR_ARG.slice('--data-dir='.length)));
 
+// Bis 1.5 hieß die App „All You Need“: Einstellungen, Builds, Runen und Caches beim ersten Start als Farmy aus dem
+// alten Ordner übernehmen. Chromiums eigene Ordner (Cache, Local Storage …) baut Electron selbst neu auf.
+const OLD_DATA_DIR = path.join(app.getPath('appData'), 'All You Need');
+const CHROMIUM_ENTRIES = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'Local Storage',
+  'Session Storage', 'Network', 'Shared Dictionary', 'blob_storage', 'Crashpad', 'Local State', 'Preferences', 'lockfile']);
+if (!DATA_DIR_ARG && !fs.existsSync(path.join(app.getPath('userData'), 'config.json')) && fs.existsSync(path.join(OLD_DATA_DIR, 'config.json'))) {
+  fs.mkdirSync(app.getPath('userData'), { recursive: true });
+  for (const name of fs.readdirSync(OLD_DATA_DIR)) {
+    if (CHROMIUM_ENTRIES.has(name) || name.startsWith('Singleton')) continue;
+    try {
+      fs.cpSync(path.join(OLD_DATA_DIR, name), path.join(app.getPath('userData'), name), { recursive: true });
+    } catch (e) {
+      console.warn('Übernahme aus „All You Need“:', name, e.message); // ein Cache fehlt dann nur und wird neu geladen
+    }
+  }
+}
+
 // Nur eine Instanz: ein zweiter Start öffnet das Stats-Fenster der laufenden App statt eines zweiten Overlays
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -40,7 +57,7 @@ const { t } = i18n;
 // Data-Dragon-Sprache (Item-, Champion-, Runen- und Summoner-Namen) folgt der Sprache der Oberfläche
 const DD_LANG = { de: 'de_DE', en: 'en_US' };
 
-// Config und Debug-Dateien liegen unter %APPDATA%\All You Need, beim Start aus dem Quellcode genauso wie in
+// Config und Debug-Dateien liegen unter %APPDATA%\Farmy, beim Start aus dem Quellcode genauso wie in
 // der installierten App, damit beide dieselben Einstellungen, Builds und Runen nutzen
 const DATA_DIR = app.getPath('userData');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -74,6 +91,7 @@ const moduleOn = (key) => overlaySettings().modules[key] !== false;
 
 const APP_ICON = path.join(__dirname, 'assets', 'icon.ico');
 // eigener Eintrag in der Taskleiste statt „Electron“ (gleiche ID wie die Verknüpfungen des Installers)
+// Die ID bleibt aus der Zeit als „All You Need“: so ersetzt der Installer die alte Installation, statt daneben zu landen
 app.setAppUserModelId('com.jamyh.allyouneed');
 
 let overlay = null;
@@ -210,7 +228,7 @@ function openStats(opts = {}) {
     minHeight: 520,
     // ohne Windows-Rahmen wie das Overlay; Verschieben über Seitenleiste und Kopf, eigene Knöpfe oben rechts
     frame: false,
-    title: 'All You Need',
+    title: 'Farmy',
     icon: APP_ICON,
     autoHideMenuBar: true,
     backgroundColor: '#0f1115',
@@ -230,7 +248,7 @@ function openStats(opts = {}) {
     tray.displayBalloon({
       iconType: 'custom',
       icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-      title: t('All You Need läuft weiter'),
+      title: t('Farmy läuft weiter'),
       content: t('Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.'),
     });
     saveConfig({ closedHint: true });
@@ -684,7 +702,7 @@ async function applySpells(champId, key, position, current) {
   return t('Summoner {d} (D) + {f} (F) von {source} gesetzt.', vars);
 }
 
-// Item-Set „All You Need – Champ“ in den Client schreiben, im Spiel im Shop wählbar: eigener Build
+// Item-Set „Farmy – Champ“ in den Client schreiben, im Spiel im Shop wählbar: eigener Build
 // und/oder der lolalytics-Vorschlag (Start, Kern, danach). Ohne beides passiert nichts.
 const LANE_LABEL = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', support: 'Support' };
 // Vor jedes Item seine Teile (gleiche Teile zusammengefasst, z. B. 2× Verstärkender Foliant), dann das Item
@@ -698,7 +716,7 @@ async function importItemSet(champId) {
   const key = ddragon.championKey(champId);
   const s = suggestionsOn() ? lolalytics.cached(champId, gameMode) : null;
   const blocks = [];
-  if (ownBuild(champId)) blocks.push({ title: t('Dein Build (All You Need)'), items: withParts(config.builds[champId]) });
+  if (ownBuild(champId)) blocks.push({ title: t('Dein Build (Farmy)'), items: withParts(config.builds[champId]) });
   if (s) {
     blocks.push({ title: t('Start – lolalytics.com'), items: s.starting.map((id) => ({ id, count: (s.startCount || {})[id] || 1 })) });
     // Kern-Build erst ohne Teile als Überblick, dann jedes Item mit seinen Teilen in Kaufreihenfolge
@@ -709,8 +727,8 @@ async function importItemSet(champId) {
   if (!key || !blocks.length) throw new Error(t('Für {champ} gibt es weder eigenen Build noch Vorschlag.', { champ: champId }));
   const name = ddragon.champion(key).name;
   const label = s && (s.mode === 'aram' ? 'ARAM' : LANE_LABEL[s.lane]);
-  await lcu.applyItemSet(config.leaguePath, key, `All You Need – ${name}${label ? ` ${label}` : ''}`, blocks, mapId());
-  return t('Item-Set „All You Need – {name}“ ist im Client, im Spiel im Shop wählbar.', { name });
+  await lcu.applyItemSet(config.leaguePath, key, `Farmy – ${name}${label ? ` ${label}` : ''}`, blocks, mapId());
+  return t('Item-Set „Farmy – {name}“ ist im Client, im Spiel im Shop wählbar.', { name });
 }
 
 // ARAM-Bank: dein Champ und die Bank-Champs mit ARAM-Siegrate (lolalytics-Tierliste, einmal am Tag),
@@ -1114,14 +1132,14 @@ function appMenu() {
     { type: 'separator' },
     { label: t('League komplett beenden …'), click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
     { type: 'separator' },
-    { label: `All You Need ${app.getVersion()}`, enabled: false },
+    { label: `Farmy ${app.getVersion()}`, enabled: false },
     { label: t('Beenden'), click: () => app.quit() },
   ]);
 }
 function refreshTrayMenu() {
   if (!tray) return;
   tray.setContextMenu(appMenu());
-  tray.setToolTip(t('All You Need {version} läuft', { version: app.getVersion() }));
+  tray.setToolTip(t('Farmy {version} läuft', { version: app.getVersion() }));
 }
 
 // Sprache umschalten: Namen aus Data Dragon neu laden, Menü neu bauen und beide Fenster neu laden
@@ -1149,7 +1167,8 @@ function createTray() {
     tray.displayBalloon({
       iconType: 'custom',
       icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
-      title: t('All You Need läuft'),
+      title: t('Farmy läuft'),
+
       content: t('Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.'),
     });
     saveConfig({ welcomed: true });

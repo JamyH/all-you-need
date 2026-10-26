@@ -70,9 +70,9 @@
     'League komplett beenden': 'Quit League completely',
     'Beenden': 'Quit',
     'Abbrechen': 'Cancel',
-    'All You Need {version} läuft': 'All You Need {version} is running',
-    'All You Need läuft': 'All You Need is running',
-    'All You Need läuft weiter': 'All You Need keeps running',
+    'Farmy {version} läuft': 'Farmy {version} is running',
+    'Farmy läuft': 'Farmy is running',
+    'Farmy läuft weiter': 'Farmy keeps running',
     'Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.':
       'You can find it here in the notification area. Right-click the icon for settings and Quit.',
     'Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.':
@@ -107,14 +107,14 @@
     'Erst einen Champion wählen.': 'Pick a champion first.',
     'Item-Set': 'Item Set',
     'Runen': 'Runes',
-    'Dein Build (All You Need)': 'Your build (All You Need)',
+    'Dein Build (Farmy)': 'Your build (Farmy)',
     'Start – lolalytics.com': 'Starting items – lolalytics.com',
     'Kern-Build – lolalytics.com': 'Core build – lolalytics.com',
     '{n}. {item} – Teile': '{n}. {item} – components',
     'Danach – lolalytics.com': 'After that – lolalytics.com',
     'Für {champ} gibt es weder eigenen Build noch Vorschlag.': 'There is neither an own build nor a suggestion for {champ}.',
-    'Item-Set „All You Need – {name}“ ist im Client, im Spiel im Shop wählbar.':
-      'Item Set "All You Need – {name}" is in the client and can be picked in the shop in game.',
+    'Item-Set „Farmy – {name}“ ist im Client, im Spiel im Shop wählbar.':
+      'Item Set "Farmy – {name}" is in the client and can be picked in the shop in game.',
     'Noch keine eigenen Spiele mit diesem Champion.': 'No own games with this champion yet.',
     'Kein Vorschlag geladen.': 'No suggestion loaded.',
     'lolalytics.com: Seitenaufbau nicht erkannt': 'lolalytics.com: page layout not recognized',
@@ -231,8 +231,8 @@
       'In game, the panel shows the first item on the list you do not have yet and how much gold is missing. Components in your inventory count. Once you have enough gold, RECALL appears.',
     'Als Item-Set in den Client': 'Send to client as Item Set',
     'Beim Pick automatisch als Item-Set in den Client': 'Send to client as Item Set automatically on pick',
-    'Das Set „All You Need – Champion“ findest du im Spiel im Shop bei deinen Item-Sets. Deine anderen Sets bleiben unangetastet.':
-      'You will find the set "All You Need – Champion" in the shop in game under your Item Sets. Your other sets stay untouched.',
+    'Das Set „Farmy – Champion“ findest du im Spiel im Shop bei deinen Item-Sets. Deine anderen Sets bleiben unangetastet.':
+      'You will find the set "Farmy – Champion" in the shop in game under your Item Sets. Your other sets stay untouched.',
     'Deine meistgebauten Items ({n} Spiel, {mode})': 'Your most built items ({n} game, {mode})',
     'Deine meistgebauten Items ({n} Spiele, {mode})': 'Your most built items ({n} games, {mode})',
     '{n}× gebaut, {pct} % Siege': 'built {n}×, {pct}% wins',
@@ -244,8 +244,8 @@
     'Jetzt setzen': 'Set now',
     'Aktuelle Runenseite speichern': 'Save current Rune Page',
     'In der Champ-Auswahl automatisch setzen': 'Set automatically in champ select',
-    'Gesetzt wird immer auf die Seite „All You Need“. Deine anderen Runenseiten bleiben unangetastet.':
-      'Runes are always set on the page "All You Need". Your other Rune Pages stay untouched.',
+    'Gesetzt wird immer auf die Seite „Farmy“. Deine anderen Runenseiten bleiben unangetastet.':
+      'Runes are always set on the page "Farmy". Your other Rune Pages stay untouched.',
     'Für diesen Champion ist noch keine Runenseite gespeichert. Stell sie im Client ein und klick „Aktuelle Runenseite speichern“.':
       'No Rune Page saved for this champion yet. Set it up in the client and click "Save current Rune Page".',
     'Beim Pick automatisch setzen': 'Set automatically on pick',

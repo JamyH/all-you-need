@@ -421,7 +421,7 @@ async function renderSuggestion(load = false) {
 }
 
 // Mehrere Runenseiten zur Auswahl (lolalytics + Riot-Empfehlungen): „Setzen“ schreibt sie sofort auf die
-// Seite „All You Need“, „Merken“ speichert sie als deine Runen für diesen Champion
+// Seite „Farmy“, „Merken“ speichert sie als deine Runen für diesen Champion
 async function renderRuneOptions() {
   const r = $('runeSuggestion');
   const forChamp = champId;

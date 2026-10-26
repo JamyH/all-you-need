@@ -1,8 +1,10 @@
-<img src="assets/icon.png" alt="All You Need icon" width="96" align="right">
+<img src="assets/icon.png" alt="Farmy icon" width="96" align="right">
 
-# All You Need – A lightweight overlay
+# Farmy – free League of Legends overlay
 
-**Version 1.5** · [Website](https://jamyh.github.io/all-you-need/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/all-you-need/releases/latest) · [💡 Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)
+*Formerly known as „All You Need“.*
+
+**Version 1.5** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
@@ -19,19 +21,19 @@ game process.
 
 ## Download
 
-1. Grab the latest **`All-You-Need-Setup-x.y.z.exe`** (installer) or **`All-You-Need-x.y.z-portable.exe`**
-   (no install) from the [Releases page](https://github.com/JamyH/all-you-need/releases/latest).
+1. Grab the latest **`Farmy-Setup-x.y.z.exe`** (installer) or **`Farmy-x.y.z-portable.exe`**
+   (no install) from the [Releases page](https://github.com/JamyH/farmy/releases/latest).
 2. Start it. Windows SmartScreen may warn because the app is not code-signed: click *More info → Run anyway*.
    This is a reputation warning for new, unsigned files, not a virus detection – Microsoft Defender finds
    nothing in it. You can compare the file's SHA-256 checksum with the one listed in the release notes
-   (PowerShell: `Get-FileHash .\All-You-Need-Setup-x.y.z.exe`), and the full source is in this repository.
+   (PowerShell: `Get-FileHash .\Farmy-Setup-x.y.z.exe`), and the full source is in this repository.
 3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
 
 ## Can I get banned for using it?
 
-All You Need never reads or changes the game's memory, injects nothing and sends no inputs. It only uses
+Farmy never reads or changes the game's memory, injects nothing and sends no inputs. It only uses
 Riot's official Live Client Data API, the League client API that rune and stats tools use, and small
 screenshots of what is already visible on your screen (see [where the data comes from](#where-the-data-comes-from)).
 Information Riot does not allow – enemy cooldown timers, augment win rates – is deliberately left out.
@@ -40,16 +42,16 @@ what you could already see or look up yourself.
 
 ## Your ideas are welcome
 
-All You Need grows from what players actually miss in their games – so **please bring in your own ideas**,
+Farmy grows from what players actually miss in their games – so **please bring in your own ideas**,
 even very personal ones. Something that would help you in a specific situation, a small annoyance, a
 whole new feature: all of it is explicitly wanted.
 
-👉 **[Share an idea](https://github.com/JamyH/all-you-need/issues/new?template=idea.yml)** (short form, German or English)
+👉 **[Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)** (short form, German or English)
 
 The only limit is Riot's rules: the app uses official APIs and what is already visible on your screen,
 so things like enemy cooldown timers or augment win rates are off the table. Post those ideas anyway –
 often there is an allowed variant. Found something that is read wrong? Use the
-[bug form](https://github.com/JamyH/all-you-need/issues/new?template=bug.yml) instead.
+[bug form](https://github.com/JamyH/farmy/issues/new?template=bug.yml) instead.
 
 ## Features
 
@@ -78,7 +80,7 @@ often there is an allowed variant. Found something that is read wrong? Use the
   from real games plus a computed all-in from base stats and rank-1 basic abilities
   ([Meraki Analytics](https://github.com/meraki-analytics/lolstaticdata) data; no passives or crowd control)
 - Build order and rune page per champion; runes are applied automatically in champ select to a
-  dedicated page called "All You Need" (your other pages are never touched)
+  dedicated page called "Farmy" (your other pages are never touched)
 - Build and rune suggestions from [lolalytics.com](https://lolalytics.com) for your champion and role,
   loaded once when you lock in; your own builds and runes always take priority (can be switched off)
 - Several rune pages to choose from (lolalytics plus Riot's recommended pages for your role): apply one
@@ -128,7 +130,7 @@ npm start          # run in development
 npm run dist       # build installer + portable exe into dist/
 ```
 
-Requires Node.js 20+. Settings live in `%APPDATA%\All You Need\config.json` (created from
+Requires Node.js 20+. Settings live in `%APPDATA%\Farmy\config.json` (created from
 `config.example.json` on first start), shared by `npm start` and the installed app.
 
 To use the app straight from source without building, create a shortcut to
@@ -159,6 +161,6 @@ Games, and Riot may change the interfaces it relies on at any time.
 
 ## Legal
 
-All You Need isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games
+Farmy isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games
 or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all
 associated properties are trademarks or registered trademarks of Riot Games, Inc.
