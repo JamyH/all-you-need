@@ -40,7 +40,7 @@ const ddragon = require('./src/ddragon');
 const live = require('./src/live');
 const lcu = require('./src/lcu');
 const ocr = require('./src/ocr');
-const capture = require('./src/capture');
+const capture = require('./src/screengrab'); // Bildschirm-Ausschnitte per GDI (vorher Video-Stream in src/capture.js)
 const setup = require('./src/setup');
 const layout = require('./src/layout');
 const lolalytics = require('./src/lolalytics');
@@ -210,8 +210,9 @@ function openStats(opts = {}) {
   const auto = !!(inactive || opts.auto);
   if (stats && !stats.isDestroyed()) {
     // Strg+Shift+S schaltet um: liegt das Fenster schon oben, verschwindet es wieder (sonst bliebe es über dem
-    // Spiel, falls Windows ihm keinen Fokus gab und daher nie ein blur kommt)
-    if (!auto && !tab && stats.isVisible() && !stats.isMinimized() && stats.isAlwaysOnTop()) {
+    // Spiel, falls Windows ihm keinen Fokus gab und daher nie ein blur kommt). Nur das Tastenkürzel: Tray, Menü und
+    // ein zweiter Start sollen das Fenster immer zeigen, nicht wegschicken
+    if (opts.toggle && stats.isVisible() && !stats.isMinimized() && stats.isAlwaysOnTop()) {
       stats.setAlwaysOnTop(false);
       return stats.minimize();
     }
@@ -237,7 +238,11 @@ function openStats(opts = {}) {
   });
   stats.once('ready-to-show', () => (inactive ? stats.showInactive() : raiseStats()));
   stats.on('blur', () => {
-    if (Date.now() - statsRaisedAt > 1000) stats.setAlwaysOnTop(false);
+    const early = 1000 - (Date.now() - statsRaisedAt);
+    if (early <= 0) return stats.setAlwaysOnTop(false);
+    // in der ersten Sekunde nicht sofort glauben, aber nachsehen: wer schnell ins Spiel klickt, hätte das Fenster
+    // sonst dauerhaft „immer oben“ über dem Spiel
+    setTimeout(() => !stats.isDestroyed() && !stats.isFocused() && stats.setAlwaysOnTop(false), early);
   });
   if (tab) stats.webContents.once('did-finish-load', () => stats.webContents.send('show-tab', tab));
   stats.loadFile('renderer/stats.html');
@@ -272,11 +277,15 @@ ipcMain.on('stats:used', () => {
 
 function setEditMode(on) {
   editMode = on;
+  // Steht die Maus beim Beenden noch über Griff/⚙, bliebe uiCaptured hängen: ohne Weiterleitung kommt kein
+  // mouseleave mehr, dann wären Griff und ⚙ bis zum Ausblenden tot. Daher Zustand zurücksetzen
+  uiCaptured = false;
   if (on) captureMouse();
   else setPassThrough(false);
   overlay.setFocusable(on);
   overlay.webContents.send('edit-mode', on);
   if (on) overlay.showInactive();
+  else if (overlayHidden && !settingsOpen) overlay.hide(); // ausgeblendetes Overlay bleibt ausgeblendet
   refreshTrayMenu();
 }
 
@@ -398,6 +407,9 @@ let meDead = false; // tot: Bildschirm grau, Cooldown-Erkennung der Summoner unz
 // Regionen aus Auflösung und HUD-Größe (game.cfg) berechnen; neu bei jedem Spielstart,
 // falls die HUD-Skalierung inzwischen geändert wurde
 let L = null;
+// Bildschirm-Regionen sind physische Pixel, das Overlay rechnet in CSS-Pixeln (DIP). Bei Windows-Skalierung
+// 125/150 % säßen Badges sonst um diesen Faktor zu weit rechts unten
+const toDip = (v) => Math.round(v / screen.getPrimaryDisplay().scaleFactor);
 // game.cfg alle paar Sekunden auf Änderungen prüfen: League schreibt die HUD-Skalierung sofort,
 // wenn sie im Spiel geändert wird (nur Änderungszeit lesen, kostet praktisch nichts)
 let cfgMtime = 0;
@@ -416,7 +428,9 @@ function checkHudChange() {
 function refreshLayout() {
   const d = screen.getPrimaryDisplay();
   const hud = setup.readHudScale(config.leaguePath);
-  L = layout.compute(Math.round(d.size.width * d.scaleFactor), Math.round(d.size.height * d.scaleFactor), hud || 0);
+  const size = { width: Math.round(d.size.width * d.scaleFactor), height: Math.round(d.size.height * d.scaleFactor) };
+  L = layout.compute(size.width, size.height, hud || 0);
+  capture.setScreen(size); // ganzer Bildschirm für die Scoreboard-Suche
   console.log('Layout', JSON.stringify(L.factors), 'HUD-Skalierung', hud);
 }
 const sbAnchor = () =>
@@ -463,7 +477,7 @@ async function readAugmentOffer(augCrops) {
     }
     return augmentCache[i].text;
   }));
-  const pos = (i) => ({ x: L.augments[i].x, y: L.augments[i].badgeY });
+  const pos = (i) => ({ x: toDip(L.augments[i].x), y: toDip(L.augments[i].badgeY) });
   const shards = texts.map(anvil.match);
   if (shards.some(Boolean)) {
     const key = lastChampion && ddragon.championKey(lastChampion);
@@ -558,7 +572,10 @@ let tabPressId = 0;
 
 function sendScoreboard(open, anchor) {
   sbOpen = open;
-  overlay.webContents.send('scoreboard-state', { open, anchor: anchor || sbAnchor(), offsets: L.scoreboard.offsets });
+  const a = anchor || sbAnchor(), o = L.scoreboard.offsets;
+  const offsets = { ...o, top: toDip(o.top), badgeX: toDip(o.badgeX), badgeXRight: toDip(o.badgeXRight), badgeDy: toDip(o.badgeDy),
+    rows: o.rows.map((r) => (r == null ? r : toDip(r))) };
+  overlay.webContents.send('scoreboard-state', { open, anchor: { x: toDip(a.x), y: toDip(a.y) }, offsets });
 }
 
 async function confirmScoreboard(pressId) {
@@ -1101,7 +1118,7 @@ async function quitLeague() {
 function appMenu() {
   const keys = config.hotkeys;
   return Menu.buildFromTemplate([
-    { label: t('Stats-Fenster öffnen'), accelerator: keys.openStats, click: openStats },
+    { label: t('Stats-Fenster öffnen'), accelerator: keys.openStats, click: () => openStats() },
     { type: 'separator' },
     { label: t('Overlay anzeigen'), type: 'checkbox', checked: !overlayHidden, accelerator: keys.toggleOverlay, click: toggleOverlay },
     { label: t('Panel verschieben'), type: 'checkbox', checked: editMode, accelerator: keys.editMode, click: () => setEditMode(!editMode) },
@@ -1160,7 +1177,7 @@ ipcMain.on('menu:popup', (_e, pos) => {
 });
 function createTray() {
   tray = new Tray(APP_ICON);
-  tray.on('click', openStats);
+  tray.on('click', () => openStats());
   refreshTrayMenu();
   // erster Start: zeigen, wo die App steckt
   if (!config.welcomed) {
@@ -1186,7 +1203,7 @@ const hotkeyOnce = (name, run) => () => {
 const HOTKEYS = {
   toggleOverlay: hotkeyOnce('toggleOverlay', () => toggleOverlay()),
   editMode: hotkeyOnce('editMode', () => setEditMode(!editMode)),
-  openStats: hotkeyOnce('openStats', () => openStats()),
+  openStats: hotkeyOnce('openStats', () => openStats({ toggle: true })),
 };
 const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ accelerator: config.hotkeys[name], run }));
 
@@ -1204,6 +1221,12 @@ app.whenReady().then(async () => {
   refreshLayout();
   createOverlay();
   createTray();
+  // Auflösung oder Windows-Skalierung geändert (z. B. anderer Monitor als Hauptbildschirm): Overlay mitziehen,
+  // Bildschirm-Regionen neu rechnen. Sonst deckte das Overlay nur einen Teil ab und las an falschen Stellen
+  screen.on('display-metrics-changed', () => {
+    overlay.setBounds(screen.getPrimaryDisplay().bounds);
+    refreshLayout();
+  });
   // kein Fenster beim Start: die App läuft im Hintergrund (Overlay + Tray), das Stats-Fenster nur auf Wunsch
 
   for (const [name, run] of Object.entries(HOTKEYS)) {

@@ -75,7 +75,15 @@ body:not(.click-through) .panel { cursor: move; }
   border: 1px solid var(--line-2);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  /* kleine oder skalierte Bildschirme (720 DIP): Inhalt scrollt statt unten abgeschnitten zu werden */
+  max-height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
 }
+#settingsBody { overflow-y: auto; min-height: 0; }
+#settingsBody::-webkit-scrollbar { width: 8px; }
+#settingsBody::-webkit-scrollbar-track { background: transparent; }
+#settingsBody::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 6px; background: rgba(255, 255, 255, 0.16) padding-box; }
 .settings-head {
   display: flex;
   align-items: center;

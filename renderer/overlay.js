@@ -14,6 +14,19 @@ const compact = (n) => {
   return `${n >= 0 ? '+' : '-'}${v}`;
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+// innerHTML nur bei geänderter Ausgabe neu setzen: jede Sekunde neue Knoten (und neu dekodierte Icons) kostet
+// das Overlay sonst laufend Arbeit, obwohl sich meist nichts ändert
+const setHtml = (el, html) => {
+  if (el.__html === html) return false;
+  el.__html = html;
+  el.innerHTML = html;
+  return true;
+};
+// Panel bleibt im Bild (Ziehen, gespeicherte Position nach Auflösungswechsel)
+const clampPos = (x, y) => ({
+  x: Math.max(0, Math.min(x, window.innerWidth - panel.offsetWidth)),
+  y: Math.max(0, Math.min(y, window.innerHeight - panel.offsetHeight)),
+});
 
 // Icons für die Warn-Pillen (Richtung B: Icon links neben dem Text)
 const ICON_SKILL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
@@ -104,15 +117,15 @@ function renderGame(g) {
     $('buildLabel').textContent = b.name;
     $('buildMissing').textContent = b.affordable ? t('bezahlbar') : small ? `−${num(b.missing)} g` : t('noch {gold} g', { gold: num(b.missing) });
     $('buildFill').style.width = `${b.progress}%`;
-    $('recall').innerHTML = (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? t('KAUFEN') : t('RECALL'));
+    setHtml($('recall'), (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? t('KAUFEN') : t('RECALL')));
   }
 
   // Skillpunkt offen: welche Fähigkeit laut Lolalytics dran ist, dahinter die Max-Reihenfolge
   const sk = g.skill && g.skill.next ? g.skill : null;
   $('skill').hidden = !sk;
   if (sk) {
-    $('skill').innerHTML = `${ICON_SKILL}SKILL <b>${sk.next}</b>${sk.open > 1 ? ` <small>+${sk.open - 1}</small>` : ''}` +
-      (sk.priority ? ` <small class="prio">${sk.priority.join(' › ')}</small>` : '');
+    setHtml($('skill'), `${ICON_SKILL}SKILL <b>${esc(sk.next)}</b>${sk.open > 1 ? ` <small>+${sk.open - 1}</small>` : ''}` +
+      (sk.priority ? ` <small class="prio">${esc(sk.priority.join(' › '))}</small>` : ''));
   }
 
   const m = g.mana;
@@ -127,11 +140,11 @@ function renderGame(g) {
   }
 
   // Summoner D/F, danach Item-Cooldowns (Taste 1–7 wie im Spiel)
-  $('spells').innerHTML = [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : [])]
+  const spellsNew = setHtml($('spells'), [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : [])]
     .map(small ? ringHtml : tileHtml)
-    .join('');
+    .join(''));
   // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann nur die Taste
-  $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => img.remove()));
+  if (spellsNew) $('spells').querySelectorAll('img').forEach((img) => img.addEventListener('error', () => img.remove()));
 
   const xp = g.xp;
   $('xp').hidden = !xp;
@@ -156,16 +169,16 @@ function renderGame(g) {
     foot.push(footHtml(o.champion, g.myItemValue - o.itemValue, compact), footHtml('CS', g.cs - o.cs, signed));
   }
   if (small && moduleOn('team')) foot.push(footHtml('Team', g.teamItemDiff, compact));
-  $('foot').innerHTML = foot.join('');
+  setHtml($('foot'), foot.join(''));
 
   if (o && !small) {
     const diff = g.myItemValue - o.itemValue;
-    $('lane').innerHTML =
-      `<div class="row"><label>vs ${o.champion}${o.isDead ? ` (${t('tot')})` : ''}</label>` +
+    setHtml($('lane'),
+      `<div class="row"><label>vs ${esc(o.champion)}${o.isDead ? ` (${t('tot')})` : ''}</label>` +
       `<b class="${cls(diff)}">${signed(diff)} g</b></div>` +
-      `<div class="row"><label>${t('CS-Diff')}</label><b class="${cls(g.cs - o.cs)}">${signed(g.cs - o.cs)}</b></div>`;
+      `<div class="row"><label>${t('CS-Diff')}</label><b class="${cls(g.cs - o.cs)}">${signed(g.cs - o.cs)}</b></div>`);
   } else {
-    $('lane').innerHTML = '';
+    setHtml($('lane'), '');
   }
 
   const team = $('teamDiff');
@@ -211,8 +224,10 @@ window.lol.onScoreboard((s) => {
 
 // Bearbeiten-Modus: Panel verschieben, Position wird in config.json gespeichert
 window.lol.onPanelPos((p) => {
-  panel.style.left = `${p.x}px`;
-  panel.style.top = `${p.y}px`;
+  const c = clampPos(p.x, p.y);
+  panel.style.left = `${c.x}px`;
+  panel.style.top = `${c.y}px`;
+  if (!$('settings').hidden) placeSettings(); // kommt beim Laden nach „settings-open“
   reportRects();
 });
 // Lage der bedienbaren Teile an main melden: nur in ihrer Nähe werden Mausbewegungen ans Overlay
@@ -266,8 +281,9 @@ panel.addEventListener('mousedown', (e) => {
 });
 window.addEventListener('mousemove', (e) => {
   if (!drag) return;
-  panel.style.left = `${e.clientX - drag.dx}px`;
-  panel.style.top = `${e.clientY - drag.dy}px`;
+  const c = clampPos(e.clientX - drag.dx, e.clientY - drag.dy);
+  panel.style.left = `${c.x}px`;
+  panel.style.top = `${c.y}px`;
 });
 window.addEventListener('mouseup', () => {
   holding = false;

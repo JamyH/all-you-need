@@ -8,10 +8,6 @@
   <link rel="stylesheet" href="stats.css">
 </head>
 <body>
-  <div class="win-ctl">
-    <button id="winMin" title="Minimieren" aria-label="Minimieren"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6h8"/></svg></button>
-    <button id="winClose" class="close" title="Schließen" aria-label="Schließen"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
-  </div>
   <aside class="side">
     <div class="brand"><img class="logo" src="../assets/icon.png" alt=""><span>Farmy</span></div>
     <div class="account">
@@ -140,6 +136,12 @@
       <span><kbd>Strg+Shift+E</kbd> Overlay verschieben</span>
       <span><kbd>Strg+Shift+S</kbd> dieses Fenster</span>
     </footer>
+  </div>
+  <!-- Fenster-Knöpfe am Ende: Chromium rechnet Zieh-Bereiche in DOM-Reihenfolge, sonst überdeckt das „drag“ des
+       Seitenkopfs die Knöpfe und nur ein schmaler Rand bleibt klickbar -->
+  <div class="win-ctl">
+    <button id="winMin" title="Minimieren" aria-label="Minimieren"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6h8"/></svg></button>
+    <button id="winClose" class="close" title="Schließen" aria-label="Schließen"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
   </div>
   <script src="i18n.js"></script>
   <script src="stats.js"></script>

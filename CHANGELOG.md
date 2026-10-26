@@ -2,8 +2,36 @@
 
 ## Unveröffentlicht
 
+Leistung
+- Bildschirm-Erkennung ohne Video-Stream: Die App holt sich die paar kleinen Ausschnitte (CS, Summoner, Items,
+  XP, Mayhem-Karten, Scoreboard) direkt über Windows (GDI), statt im Spiel dauerhaft den ganzen Bildschirm
+  mitzuschneiden. Spart rund 230 MB Arbeitsspeicher im Spiel (Bildpuffer des Streams und ein unsichtbares
+  Aufnahme-Fenster fallen weg) und CPU; die Farben sind exakt statt durch die Video-Kompression verwischt
+- Overlay baut Summoner-/Item-Kacheln, Skill-Banner und Lane-Zeile nur noch neu, wenn sich etwas ändert
+  (vorher jede Sekunde neu samt Icons)
+- Stats-Fenster: Der Live-Tab fragt nicht mehr nach, solange das Fenster minimiert oder verdeckt ist
+
 App
 - Stats-Fenster zeigt oben links das App-Icon statt eines „F“
+- Stats-Fenster: Der Startbildschirm „Letztes Spiel“ zeigt seinen Untertitel; schlägt beim Laden ein Bereich
+  fehl (z. B. Verlauf, weil der Client gerade neu startet), laden die anderen trotzdem
+
+Fixes
+- Stats-Fenster: Schließen- und Minimieren-Knopf ließen sich nur ganz am Rand drücken, der Rest der Fläche
+  zog das Fenster (der Seitenkopf zum Verschieben lag darüber)
+- Stats-Fenster: Tray-Klick, „Stats-Fenster öffnen“ im Menü oder ein zweiter Start ließen das Fenster
+  verschwinden, wenn es gerade oben lag; umschalten macht nur noch Strg+Shift+S
+- Stats-Fenster blieb „immer oben“ über dem Spiel, wenn man in der ersten Sekunde nach dem Öffnen ins Spiel klickte
+- Overlay: Nach dem Verschieben-Modus (Strg+Shift+E) reagierten Griff und ⚙ nicht mehr, wenn die Maus beim
+  Beenden noch darauf stand; ein ausgeblendetes Overlay kam nach dem Verschieben-Modus wieder hervor
+- Overlay: Tab-Scoreboard-Werte und Mayhem-Tiers saßen bei Windows-Skalierung über 100 % (z. B. Laptops mit
+  125/150 %) zu weit rechts unten
+- Overlay: Das Panel lässt sich nicht mehr aus dem Bild ziehen und kommt nach einem Auflösungswechsel zurück
+  ins Bild; ändern sich Auflösung oder Skalierung, passt sich das Overlay an
+- Overlay-Einstellungen (⚙): auf kleinen Bildschirmen scrollbar statt unten abgeschnitten; beim Neuladen
+  (z. B. Sprachwechsel) stehen sie wieder neben dem Panel
+- Build & Runen: Bei schnellem Champ-Wechsel konnte der lolalytics-Vorschlag des vorherigen Champs erscheinen;
+  „Als meinen Build übernehmen“ zeigt Fehler jetzt an
 
 ## 1.6.0 – 2026-10-26
 

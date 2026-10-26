@@ -27,6 +27,7 @@ async function renderEog() {
   let eog;
   try {
     eog = await window.lol.endOfGame();
+    if (!eog) throw new Error('keine Daten');
   } catch {
     el.innerHTML = `<div class="msg">${t('Keine Endspiel-Daten. Die gibt es direkt nach einem Spiel, solange der Client den Endbildschirm zeigt.')}<br>${t('Unter „Verlauf“ findest du ältere Spiele.')}</div>`;
     return;
@@ -224,7 +225,8 @@ async function renderLive() {
   el.innerHTML = html;
   return true;
 }
-setInterval(() => { if (!$('live').hidden && !window.__docs) renderLive(); }, 2000);
+// minimiert oder verdeckt (document.hidden) nicht neu zeichnen: die Abfrage holt sonst alle 2 s Daten für niemanden
+setInterval(() => { if (!$('live').hidden && !document.hidden && !window.__docs) renderLive(); }, 2000);
 
 $('calibBtn').addEventListener('click', async () => {
   const out = $('calibOut');
@@ -397,8 +399,10 @@ async function renderSuggestion(load = false) {
   b.innerHTML = '';
   $('spellView').innerHTML = `<p class="hint">${t('Empfehlung kommt beim Pick in der Champ-Auswahl.')}</p>`;
   if (buildData.suggestions && champId) {
+    const forChamp = champId;
     try {
       const s = await window.lol.suggestion(champId, load);
+      if (forChamp !== champId) return; // inzwischen anderer Champ gewählt, dessen Aufruf zeichnet selbst
       if (!s) {
         b.innerHTML = `<p class="hint">${t('Noch kein Vorschlag geladen. Er kommt automatisch beim Pick in der Champ-Auswahl.')}</p><div class="btn-row"><button id="loadSuggestion">${t('Jetzt von lolalytics laden')}</button></div>`;
       } else {
@@ -414,6 +418,7 @@ async function renderSuggestion(load = false) {
         }
       }
     } catch (e) {
+      if (forChamp !== champId) return;
       b.innerHTML = `<p class="hint">lolalytics.com: ${esc(e.message)}</p>`;
     }
   }
@@ -469,7 +474,11 @@ document.querySelectorAll('.suggestion').forEach((el) => el.addEventListener('cl
   }
   const take = e.target.closest('button[data-take]');
   if (!take || !champId) return;
-  await window.lol.takeSuggestion(champId, take.dataset.take);
+  try {
+    await window.lol.takeSuggestion(champId, take.dataset.take);
+  } catch (err) {
+    return buildStatus(errText(err));
+  }
   buildData = await window.lol.buildData();
   renderBuild();
   renderRunes();
@@ -602,9 +611,13 @@ async function loadAll() {
     state.className = 'client-state off';
     state.lastElementChild.textContent = t('Client nicht verbunden');
   }
-  const [inGame] = await Promise.all([renderLive(), renderEog(), renderHistory(), loadBuild()]);
+  // allSettled: ein Teil mit Fehler (z. B. Client gerade weg) soll die anderen und die Reiterwahl nicht aufhalten
+  const results = await Promise.allSettled([renderLive(), renderEog(), renderHistory(), loadBuild()]);
+  results.forEach((r) => r.status === 'rejected' && console.warn('Laden:', r.reason && r.reason.message));
+  const inGame = results[0].status === 'fulfilled' && results[0].value;
   // läuft gerade ein Spiel, direkt den Live-Tab zeigen
-  if (inGame && !loadAll.done) showTab('live');
+  // sonst „Letztes Spiel“ mit Untertitel (ohne diesen Aufruf blieb der Untertitel beim Start leer)
+  if (!loadAll.done && !shownTab) showTab(inGame ? 'live' : 'eog');
   loadAll.done = true;
 }
 
@@ -615,7 +628,9 @@ const PAGES = {
   history: ['Verlauf', 'Deine letzten Spiele'],
   build: ['Build & Runen', 'Eigene Einstellungen haben immer Vorrang vor Vorschlägen'],
 };
+let shownTab = null; // schon von außen gewählter Reiter (z. B. Champ-Auswahl → Build & Runen)
 function showTab(tab) {
+  shownTab = tab;
   [$('pageTitle').textContent, $('pageSub').textContent] = PAGES[tab].map((s) => t(s));
 
   document.querySelectorAll('nav button[data-tab]').forEach((x) => x.classList.toggle('active', x.dataset.tab === tab));
