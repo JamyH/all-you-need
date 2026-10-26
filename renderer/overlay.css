@@ -80,6 +80,8 @@ body:not(.click-through) .panel { cursor: move; }
   display: flex;
   flex-direction: column;
 }
+/* display: flex überstimmt sonst das hidden-Attribut: die Einstellungen ließen sich nicht mehr schließen */
+.settings[hidden] { display: none; }
 #settingsBody { overflow-y: auto; min-height: 0; }
 #settingsBody::-webkit-scrollbar { width: 8px; }
 #settingsBody::-webkit-scrollbar-track { background: transparent; }

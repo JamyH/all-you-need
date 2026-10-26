@@ -141,7 +141,7 @@ reload instantly; for everything else restart the app.
 |---|---|
 | `src/live.js` | Game data → panel values |
 | `src/layout.js` | Screen regions for any resolution and HUD scale |
-| `src/ocr.js`, `renderer/capture.js` | Screen reading and scoreboard search |
+| `src/ocr.js`, `src/screengrab.js` | Screen reading (small screen regions via Windows GDI, no video stream) and scoreboard search |
 | `src/digits.js`, `src/digits.json` | Digit recognition; templates learned with `tools/digit-samples.js` |
 | `src/lcu.js` | League client access |
 | `renderer/overlay.*`, `renderer/stats.*` | Panel and stats window |
