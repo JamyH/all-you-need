@@ -13,7 +13,7 @@ game process.
 > on first start it follows your Windows language.
 
 <p>
-  <img src="docs/panel.png" alt="In-game panel" height="360">
+  <img src="docs/panel-en.png" alt="In-game panel with exact CS, summoner spell cooldowns and mana for your combo" height="360">
   <img src="docs/stats-history.png" alt="Stats window with trends" height="360">
 </p>
 
