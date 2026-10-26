@@ -1,5 +1,10 @@
 # Changelog
 
+## Unveröffentlicht
+
+App
+- Stats-Fenster zeigt oben links das App-Icon statt eines „F“
+
 ## 1.6.0 – 2026-10-26
 
 App

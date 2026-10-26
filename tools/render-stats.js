@@ -33,7 +33,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('build:data', () => ({
     champions: ddragon.championList(), items: ddragon.itemList(), builds, runes: {}, runesAuto: true, current: 'Jax',
   }));
-  const win = new BrowserWindow({ width: 1000, height: 900, show: false, backgroundColor: '#0f1117',
+  const win = new BrowserWindow({ width: 1180, height: 720, show: false, backgroundColor: '#0f1117',
     webPreferences: { preload: path.join(root, 'preload.js') } });
   await win.loadFile(path.join(root, 'renderer', 'stats.html'));
   await new Promise((r) => setTimeout(r, 3000));
@@ -43,7 +43,7 @@ app.whenReady().then(async () => {
   const anonymize = docs ? `(() => {
     window.__docs = true;
     document.getElementById('who').textContent = 'Farmy';
-    document.querySelectorAll('tr.me .sub').forEach((el) => (el.textContent = 'Du'));
+    document.querySelectorAll('tr.me .sub').forEach((el) => (el.textContent = '${lang.suffix ? 'You' : 'Du'}'));
   })()` : '0';
   for (const tab of ['live', 'history', 'build']) {
     await win.webContents.executeJavaScript(`document.querySelector('nav button[data-tab="${tab}"]').click()`);

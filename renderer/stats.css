@@ -60,11 +60,7 @@ button, input, a, .account, .page-head p { -webkit-app-region: no-drag; }
   overflow-y: auto;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; font-weight: 700; font-size: 15px; }
-.logo {
-  display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 8px;
-  background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 15px;
-}
+.logo { width: 30px; height: 30px; flex: none; }
 .account { margin: 0 0 14px; padding: 10px; border-radius: 10px; background: var(--tile); }
 .account small { display: block; font-size: 11px; color: var(--muted); }
 .account b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

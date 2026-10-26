@@ -16,7 +16,7 @@ game process.
 
 <p>
   <img src="docs/panel-en.png" alt="In-game panel with exact CS, summoner spell cooldowns and mana for your combo" height="360">
-  <img src="docs/stats-history.png" alt="Stats window with trends" height="360">
+  <img src="docs/stats-history-en.png" alt="Stats window with trends" height="360">
 </p>
 
 ## Download
@@ -86,7 +86,7 @@ often there is an allowed variant. Found something that is read wrong? Use the
 - Several rune pages to choose from (lolalytics plus Riot's recommended pages for your role): apply one
   with a click or keep it as your own; the stats window opens on lock-in without stealing focus
 
-<img src="docs/stats-build.png" alt="Build and runes" width="720">
+<img src="docs/stats-build-en.png" alt="Build and runes" width="720">
 
 ## Hotkeys
 
