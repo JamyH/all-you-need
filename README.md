@@ -4,7 +4,7 @@
 
 *Formerly known as „All You Need“.*
 
-**Version 1.5** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
+**Version 1.6** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without

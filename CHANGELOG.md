@@ -1,11 +1,12 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.6.0 – 2026-10-26
 
 App
 - Neuer Name: **Farmy** (bisher „All You Need“). Einstellungen, Builds, Runen und Caches werden beim ersten Start
   automatisch aus dem alten Ordner übernommen; der Installer ersetzt die alte Installation. Die Runenseite
   „All You Need“ und die Item-Sets im Client werden weiterbenutzt und auf „Farmy“ umbenannt
+- Neues Icon: F-Monogramm im Hextech-Sechseck mit türkisem Kristall
 
 ## 1.5.0 – 2026-10-26
 

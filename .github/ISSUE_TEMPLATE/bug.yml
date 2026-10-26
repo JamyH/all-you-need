@@ -18,7 +18,7 @@ body:
     id: version
     attributes:
       label: App version
-      description: Shown in the tray menu or the installer file name (e.g. 1.5.0)
+      description: Shown in the tray menu or the installer file name (e.g. 1.6.0)
   - type: textarea
     id: screenshot
     attributes:
