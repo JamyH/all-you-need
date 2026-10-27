@@ -41,10 +41,25 @@ function start(changed) {
   setInterval(check, CHECK_MS);
 }
 
+// „Nach Updates suchen“ von Hand: Ergebnis für eine Rückmeldung an den Nutzer.
+// latest = schon aktuell, found = neue Version (lädt bzw. portable: Hinweis), ready = schon geladen,
+// dev = Entwicklerversion (kein Updater), error = nicht erreichbar
+async function checkNow() {
+  if (!updater) return { result: 'dev' };
+  if (state.status === 'ready') return { result: 'ready', version: state.version };
+  try {
+    const r = await updater.checkForUpdates();
+    const version = r && r.updateInfo && r.updateInfo.version;
+    return r && r.isUpdateAvailable ? { result: 'found', version } : { result: 'latest', version: app.getVersion() };
+  } catch (e) {
+    return { result: 'error', message: e.message };
+  }
+}
+
 // Jetzt neu starten und installieren (nur wenn fertig geladen), sonst die Release-Seite öffnen
 function apply() {
   if (state.status === 'ready' && updater) updater.quitAndInstall(true, true); // still installieren, danach starten
   else shell.openExternal(RELEASES);
 }
 
-module.exports = { start, apply, check, state: () => state };
+module.exports = { start, apply, check, checkNow, state: () => state };

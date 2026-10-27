@@ -1244,7 +1244,18 @@ function updateMenu() {
   if (u.status === 'ready') return [{ label: t('Neu starten und auf {version} aktualisieren', { version: u.version }), click: () => updater.apply() }];
   if (u.status === 'available') return [{ label: t('Version {version} herunterladen …', { version: u.version }), click: () => updater.apply() }];
   if (u.status === 'downloading') return [{ label: t('Lade Version {version} …', { version: u.version }), enabled: false }];
-  return [];
+  return [{ label: t('Nach Updates suchen'), click: () => manualUpdateCheck().catch((e) => console.warn('Update-Suche:', e.message)) }];
+}
+// Von Hand gesucht: immer eine Antwort zeigen, auch wenn alles aktuell ist
+async function manualUpdateCheck() {
+  const r = await updater.checkNow();
+  if (r.result === 'found' || r.result === 'ready') return; // Meldung kommt über updateChanged, sobald geladen
+  const text = {
+    latest: [t('Farmy ist aktuell'), t('Du hast die neueste Version ({version}).', { version: r.version })],
+    dev: [t('Entwicklerversion'), t('Updates gibt es nur für die installierte Version.')],
+    error: [t('Update-Suche fehlgeschlagen'), t('GitHub nicht erreichbar. Später nochmal versuchen.')],
+  }[r.result];
+  tray.displayBalloon({ iconType: 'custom', icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')), title: text[0], content: text[1] });
 }
 // Meldung einmal je neuer Version, sobald sie fertig geladen (bzw. bei portable: verfügbar) ist
 let updateNotified = null;

@@ -31,7 +31,8 @@ game process.
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
 From 1.7 on, the installed app updates itself: new versions download in the background and install when you
-quit Farmy (or right away via the tray menu). The portable exe shows a notice instead.
+quit Farmy (or right away via the tray menu). *Check for updates* in the tray menu checks on demand. The portable
+exe shows a notice instead.
 
 ## Can I get banned for using it?
 
