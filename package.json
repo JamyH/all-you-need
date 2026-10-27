@@ -6,13 +6,14 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis portable"
+    "dist": "electron-builder --win nsis portable --publish never"
   },
   "devDependencies": {
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "koffi": "^3.3.4",
     "tesseract.js": "^5.1.1"
   },
@@ -68,6 +69,13 @@
     "portable": {
       "artifactName": "Farmy-${version}-portable.exe"
     },
-    "copyright": "Copyright © 2026 Jamy Haas"
+    "copyright": "Copyright © 2026 Jamy Haas",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JamyH",
+        "repo": "farmy"
+      }
+    ]
   }
 }

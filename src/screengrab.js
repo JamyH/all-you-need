@@ -101,7 +101,7 @@ async function grab(regions) {
 // Das Bild wird so verkleinert, dass das Ornament immer so groß ist wie bei 1440p in halber Auflösung
 // (Faktor 2 × scale, scale = Bildschirmhöhe / 1440); alle Maße unten gelten in diesem Raster.
 // region = null heißt ganzer Bildschirm. Liefert den Anker (Mitte des Mittelstücks, volle Auflösung) oder null.
-let screenSize = null; // { width, height } in physischen Pixeln, setzt main über setScreen()
+let screenSize = null; // Spielfenster { x, y, width, height } in physischen Pixeln, setzt main über setScreen()
 async function findScoreboard(region, scale = 1) {
   const r = region || { x: 0, y: 0, ...screenSize };
   const step = 2 * scale;

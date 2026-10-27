@@ -44,4 +44,15 @@ function readWindowMode(leaguePath) {
   }
 }
 
-module.exports = { findLeaguePath, readHudScale, readWindowMode };
+// Minimap aus Config/game.cfg: MinimapScale (Regler „Minimap-Größe“) und FlipMiniMap (Minimap links)
+function readMinimap(leaguePath) {
+  try {
+    const cfg = fs.readFileSync(path.join(leaguePath, 'Config', 'game.cfg'), 'utf8');
+    const scale = cfg.match(/^MinimapScale=([\d.]+)/m);
+    return { scale: scale ? Number(scale[1]) : 1, flip: /^FlipMiniMap=1/m.test(cfg) };
+  } catch {
+    return {};
+  }
+}
+
+module.exports = { findLeaguePath, readHudScale, readWindowMode, readMinimap };

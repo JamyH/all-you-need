@@ -32,12 +32,13 @@ function spellName(spell) {
   return hit ? SHORT_SPELLS[hit] : spell.displayName;
 }
 // Data-Dragon-Bild zum Summoner: „GeneratedTip_SummonerSpell_SummonerFlash_DisplayName“ -> SummonerFlash.png.
-// Zerschmettern heißt nach dem Aufwerten des Jungle-Items anders (z. B. …SmiteAvatarOffensive); dafür hat
-// Data Dragon kein Bild, also immer SummonerSmite
+// Zerschmettern heißt nach dem Aufwerten des Jungle-Items anders (z. B. …SmiteAvatarOffensive), Teleport ab
+// Minute 14 „Unbegrenzte Teleportation“ (S12_SummonerTeleportUpgrade); für beide hat Data Dragon kein Bild,
+// also das Grundbild (ohne Bild sprang das Summoner-Feld im Panel hin und her)
 function spellIcon(spell) {
   const id = ((spell && spell.rawDisplayName) || '').match(/SummonerSpell_(\w+?)_DisplayName/);
   if (!id) return '';
-  return ddragon.iconUrl('spell', /Smite/i.test(id[1]) ? 'SummonerSmite' : id[1]);
+  return ddragon.iconUrl('spell', /Smite/i.test(id[1]) ? 'SummonerSmite' : /Teleport/i.test(id[1]) ? 'SummonerTeleport' : id[1]);
 }
 
 // Rohdaten -> das, was das Overlay anzeigt. Hier kannst du eigene Werte ergänzen.
@@ -63,6 +64,16 @@ function summarize(data) {
     champion: me.championName,
     // ARAM und ARAM Mayhem laufen auf Map 12: kein Recall, eigene lolalytics-Seite
     aram: data.gameData.mapNumber === 12,
+    map: data.gameData.mapNumber,
+    side: myTeam === 'CHAOS' ? 'red' : 'blue',
+    smite: [me.summonerSpells?.summonerSpellOne, me.summonerSpells?.summonerSpellTwo]
+      .some((sp) => /SummonerSmite/.test(sp?.rawDisplayName || '')),
+    // Summoner mit von Haus aus blauem Symbol (Markieren, Läuterung, Klarheit): strengere Cooldown-Erkennung
+    blueSpells: {
+      // auch Varianten wie SummonerSnowURFSnowball_Mark (URF/Mayhem)
+      d: /Snowball|SummonerBoost|SummonerMana/.test(me.summonerSpells?.summonerSpellOne?.rawDisplayName || ''),
+      f: /Snowball|SummonerBoost|SummonerMana/.test(me.summonerSpells?.summonerSpellTwo?.rawDisplayName || ''),
+    },
     isDead: !!me.isDead,
     level: me.level,
     gold: Math.floor(active.currentGold || 0),

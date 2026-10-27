@@ -22,9 +22,14 @@ const BASE = {
   // Mayhem-Augment-Angebot: drei Karten mittig, Abstand der Kartenmitten (dx), Name als weiße Zeile,
   // Oberkante des beigen Kartenrahmens als Erkennungsmerkmal; Badges über den Karten (y absolut)
   augments: { pitch: 490, name: { y: 565, height: 50, half: 180 }, frame: { y: 255, height: 25, half: 150 }, badgeY: 225 },
+  // Minimap unten rechts (FlipMiniMap=1: unten links), quadratisch, wächst mit MinimapScale (0–3).
+  // Vermessen 27.10. bei MinimapScale 3: Karte 507 px, 25 px vom rechten und 27 px vom unteren Rand.
+  // Zuwachs je Stufe geschätzt (nur diese eine Stufe gemessen), daraus die Kantenlänge bei Stufe 0
+  minimap: { size: 507 / 1.75, growth: 0.25, right: 25, bottom: 27 },
 };
 
-function compute(width, height, globalScale = 0) {
+// width/height: Innenbereich des Spielfensters; origin: dessen linke obere Ecke auf dem Bildschirm
+function compute(width, height, globalScale = 0, minimap = {}, origin = { x: 0, y: 0 }) {
   const res = height / REF.height; // Auflösung
   const hud = res * (1 + HUD_GROWTH * (globalScale || 0)); // untere Leiste zusätzlich mit HUD-Größe
   const cx = width / 2;
@@ -36,7 +41,7 @@ function compute(width, height, globalScale = 0) {
     return { x, y, width: r(s.width * hud), height: r(s.height * hud) };
   };
   const sb = BASE.scoreboard;
-  return {
+  return shift({
     factors: { res: +res.toFixed(3), hud: +hud.toFixed(3) },
     cs: {
       x: r(width - BASE.cs.right * res), y: r(BASE.cs.y * res),
@@ -51,6 +56,12 @@ function compute(width, height, globalScale = 0) {
       spell(BASE.items.trinket),
     ],
     xpArc: BASE.xpArc.map(([dx, dy]) => bottom(dx, dy)),
+    minimap: (() => {
+      const m = BASE.minimap;
+      const size = r(m.size * res * (1 + m.growth * (minimap.scale ?? 1)));
+      const side = r(m.right * res);
+      return { x: minimap.flip ? side : width - side - size, y: height - r(m.bottom * res) - size, size };
+    })(),
     augments: [-1, 0, 1].map((i) => {
       const a = BASE.augments;
       const x = cx + i * a.pitch * res;
@@ -68,6 +79,21 @@ function compute(width, height, globalScale = 0) {
         badgeX: r(sb.badgeX * res), badgeXRight: r(sb.badgeXRight * res), badgeDy: r(sb.badgeDy * res),
       },
     },
+  }, origin);
+}
+
+// Alle Bildschirm-Koordinaten um die Fensterecke verschieben (Scoreboard-Abstände sind relativ zum Anker)
+function shift(L, { x: ox, y: oy }) {
+  if (!ox && !oy) return L;
+  const box = (b) => ({ ...b, x: b.x + ox, y: b.y + oy });
+  return {
+    ...L,
+    cs: box(L.cs),
+    spells: { d: box(L.spells.d), f: box(L.spells.f) },
+    items: L.items.map(box),
+    xpArc: L.xpArc.map(([x, y]) => [x + ox, y + oy]),
+    minimap: box(L.minimap),
+    augments: L.augments.map((a) => ({ x: a.x + ox, badgeY: a.badgeY + oy, name: box(a.name), frame: box(a.frame) })),
   };
 }
 

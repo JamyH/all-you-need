@@ -316,6 +316,13 @@ small { margin-left: 4px; font-size: 11px; }
 .sb-row.bad { background: var(--bad); color: var(--bad-ink); border-color: transparent; }
 
 /* Mayhem: Tier-Badges über Augment- und Werte-Schmiede-Karten */
+/* Jungle-Route auf der Minimap */
+.jroute { position: fixed; pointer-events: none; overflow: visible; }
+.jroute[hidden] { display: none; }
+.jroute polyline { fill: none; stroke: #5eead4; stroke-linejoin: round; stroke-dasharray: 2 1.2; }
+.jroute circle { fill: #5eead4; stroke: #0f1115; stroke-width: .3; }
+.jroute text { fill: #0f1115; font-family: Inter, sans-serif; font-weight: 700; text-anchor: middle; }
+
 .aug-badge {
   position: absolute;
   transform: translate(-50%, -100%) scale(var(--ui));

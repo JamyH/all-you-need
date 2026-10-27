@@ -57,8 +57,9 @@ function glyphs(m, width, height, keep = null) {
   // Störpixel (Ränder vom Icon, Kantenreste) sind deutlich niedriger als die Ziffern
   const kept = keep ? merged.filter(keep) : merged;
   const tall = Math.max(0, ...kept.map((b) => b.y1 - b.y0 + 1));
-  // eine echte Ziffer hat mindestens so viele Pixel wie 1,2 × ihre Höhe (auch eine dünne „1“)
-  return kept.filter((b) => b.y1 - b.y0 + 1 >= tall * 0.6 && b.n >= Math.max(4, 1.2 * (b.y1 - b.y0 + 1)));
+  // eine echte Ziffer hat mindestens so viele Pixel wie 0,9 × ihre Höhe: bei 1080p ist die „1“ nur 1 px breit
+  // (8 px hoch, 9 Pixel); mit 1,2 × fiel sie weg und aus „115“ wurde „5“
+  return kept.filter((b) => b.y1 - b.y0 + 1 >= tall * 0.6 && b.n >= Math.max(4, 0.9 * (b.y1 - b.y0 + 1)));
 }
 
 // Ziffer -> H×W Werte 0..1 (Flächenanteil je Rasterzelle, 3×3 Stichproben)
@@ -98,10 +99,12 @@ function read(crop, test, templates, { central = false } = {}) {
   if (!templates) return null;
   const m = mask(crop, test);
   const mid = (a, b, size) => (a + b + 1) / 2 / size;
+  // „central“: nur Ziffern in der Mitte (Restzeit), nicht die Ladungszahl unten rechts. Waagerecht bis 0,4 vom
+  // Rand, sonst fällt bei dreistelligen Zeiten (z. B. 255) die linke Ziffer heraus
   // Ziffern sind mindestens ein Viertel so hoch wie der Ausschnitt; kurze helle Striche
   // (z. B. das Glitzern auf Zhonyas Icon) sähen hochskaliert sonst wie eine „1“ aus
   const keep = (b) => b.y1 - b.y0 + 1 >= crop.height * 0.25 &&
-    (!central || (Math.abs(mid(b.x0, b.x1, crop.width) - 0.5) < 0.3 && Math.abs(mid(b.y0, b.y1, crop.height) - 0.5) < 0.25));
+    (!central || (Math.abs(mid(b.x0, b.x1, crop.width) - 0.5) < 0.4 && Math.abs(mid(b.y0, b.y1, crop.height) - 0.5) < 0.25));
   const found = glyphs(m, crop.width, crop.height, keep);
   if (!found.length) return null;
   let text = '';

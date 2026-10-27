@@ -182,11 +182,29 @@ async function readCs(crop) {
 
 // Cooldown = blauer Uhrzeiger-Wisch, der mit der Zeit schrumpft. Bereite Icons haben 0–4 blaue Pixel,
 // deshalb reichen schon 15, damit die Zahl gelesen wird. Reiner Pixeltest, kostet praktisch nichts.
-function spellOnCooldown(crop) {
+// Cooldown: dunkles, blau getöntes Feld. Schon wenige blaue Pixel reichen, damit auch das Ende des Cooldowns
+// (fast ganz aufgedeckt) noch zählt. Von Haus aus blaue Symbole (Markieren, Läuterung, Klarheit) wären damit
+// immer „im Cooldown“, und eine Farb-Regel kippte gegen Ende hin und her (Feld wieder hell): dort zählt nur,
+// ob die weiße Restzeit in der Mitte steht. Auch während des Schneeball-Sprungs (helles Symbol, keine Zahl)
+// stimmt das: der Cooldown beginnt erst danach
+function spellOnCooldown(crop, blueIcon = false) {
+  if (blueIcon) return centralDigits(crop);
   const { data } = crop;
   let blue = 0;
   for (let i = 0; i < data.length; i += 4) if (data[i + 2] > data[i] + 50) blue++;
   return blue >= 15;
+}
+
+// Steht in der Mitte eine weiße Zahl? Nur Flächen in Ziffern-Form: ein Viertel bis 45 % so hoch wie
+// das Feld (Ziffern ~ ein Drittel; Lichtstreifen im Schneeball ~ die Hälfte) und schmal (die helle Kugel nicht)
+function centralDigits(crop) {
+  const { width: W, height: H } = crop;
+  const keep = (b) => {
+    const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
+    return h >= H * 0.25 && h <= H * 0.45 && w <= W * 0.35 &&
+      Math.abs((b.x0 + b.x1 + 1) / 2 / W - 0.5) < 0.4 && Math.abs((b.y0 + b.y1 + 1) / 2 / H - 0.5) < 0.25;
+  };
+  return digits.glyphs(digits.mask(crop, isWhite), W, H, keep).length > 0;
 }
 
 // Item-Cooldown: weiße Restzeit mitten auf dem Slot, sonst null (bereit oder kein Cooldown-Item).

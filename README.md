@@ -4,7 +4,7 @@
 
 *Formerly known as „All You Need“.*
 
-**Version 1.6** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
+**Version 1.7** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
@@ -30,6 +30,8 @@ game process.
 3. Set League to **Borderless** or **Windowed** (an overlay cannot sit on top of exclusive fullscreen).
 
 That's it. The League folder, your resolution and your HUD scale are detected automatically.
+From 1.7 on, the installed app updates itself: new versions download in the background and install when you
+quit Farmy (or right away via the tray menu). The portable exe shows a notice instead.
 
 ## Can I get banned for using it?
 
@@ -57,7 +59,8 @@ often there is an allowed variant. Found something that is read wrong? Use the
 
 **In-game panel**
 - KDA, exact CS (read from your HUD), CS/min, gold, vision
-- Summoner spell cooldowns (D/F) with countdown, re-synced with the HUD every 10 s
+- Summoner spell cooldowns (D/F) with countdown, re-synced with the HUD every 10 s (also Mark/Snowball,
+  Cleanse and Clarity, whose blue icons used to look like a cooldown)
 - XP to the next level, including "X melee / Y caster minions"
 - Mana bar with your combo cost (Q+W+E+R at current ranks) and a **NO MANA** warning
 - Savings goal: next item from your build, gold still missing, **RECALL** once you can afford it
@@ -70,6 +73,15 @@ often there is an allowed variant. Found something that is read wrong? Use the
 **Tab scoreboard**
 - Item value difference per row (above the ward slot) plus team difference
 - Finds the scoreboard on its own, even if you moved it
+
+**Jungle route**
+- In champ select (stats window, Build tab) for junglers: the first clear per starting camp as a mini map with
+  numbered camps, clear time, smites, patch and video, from
+  [Phylaris' Jungle Clear Compilation](https://docs.google.com/spreadsheets/d/1Gjk5UrtAbcqdYnRlx9KMDuHGxhKsEv50vhn02cN0y-c);
+  champions without an entry get the standard full clear
+- Pick a route with "On the minimap": in game (with Smite on Summoner's Rift) it is drawn on your minimap while
+  you hold Tab. Size and transparency in ⚙. Farmy finds the minimap on screen, so any minimap size works
+- The sheet is no longer updated every patch: the camp order rarely changes, the times may be outdated
 
 **Stats window** (frameless, opens only when you want it: tray, Ctrl+Shift+S – also in game – or a second start)
 - Live game: all 10 players with rank, win rate, level, KDA, CS, vision, items, item value
@@ -98,10 +110,12 @@ often there is an allowed variant. Found something that is read wrong? Use the
 | Ctrl+Shift+S | Stats window |
 | Tab (in game) | Scoreboard badges – the key is only read, the game still receives it |
 
-## Resolution and HUD scale
+## Resolution, window mode and HUD scale
 
-Screen regions are computed from your resolution and League's HUD scale (read from `Config/game.cfg`).
-Tested at 3440×1440 with HUD scale 0 and 100, and at a simulated 2580×1080. If something is read
+Screen regions are computed from League's game window and HUD scale (read from `Config/game.cfg`), so
+Borderless, Windowed and a game resolution smaller than your screen all work. When another window is in
+front, the overlay hides and nothing is read.
+Tested at 3440×1440 with HUD scale 0 and 100, and with a 1920×1080 game window. If something is read
 wrong, open the stats window → *Live game* → **Check recognition** during a game: it shows exactly
 which screen areas are read and what was recognized. Please attach that screenshot plus your
 resolution and HUD scale to an issue.
@@ -117,10 +131,12 @@ resolution and HUD scale to an issue.
 | Build and rune suggestions | [lolalytics.com](https://lolalytics.com) build page (Emerald+), one request per champion and role, cached for a day; fallback for runes: Riot's own recommended page from the client |
 | ARAM Mayhem augment tiers | Data: [arammayhem.com](https://arammayhem.com/data/) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)): pick rates and combo tags, no win rates (Riot does not allow augment win rates); English names from [CommunityDragon](https://communitydragon.org); both cached for a day |
 | Stat Anvil shards | Rated locally against your build (item tags from Data Dragon) |
+| Jungle routes | [Phylaris' Jungle Clear Compilation](https://docs.google.com/spreadsheets/d/1Gjk5UrtAbcqdYnRlx9KMDuHGxhKsEv50vhn02cN0y-c) (public Google Sheet, downloaded as CSV, cached for a day) |
+| Updates | GitHub releases of this repository (`latest.yml`), checked at start and every 6 hours (installer version only) |
 
 No Riot API key is needed. Apart from Data Dragon, the lolalytics build page, the arammayhem.com and
-CommunityDragon data (only in ARAM Mayhem) and a one-time download of the OCR language data, nothing
-leaves your PC. Only the champion and role are part of these requests.
+CommunityDragon data (only in ARAM Mayhem), the jungle route sheet, the update check on GitHub and a one-time
+download of the OCR language data, nothing leaves your PC. Only the champion and role are part of these requests.
 
 ## Building from source
 
@@ -141,6 +157,9 @@ reload instantly; for everything else restart the app.
 |---|---|
 | `src/live.js` | Game data → panel values |
 | `src/layout.js` | Screen regions for any resolution and HUD scale |
+| `src/gamewindow.js` | Finds League's game window (position, size, in front or not) |
+| `src/minimap.js`, `src/jungle.js` | Minimap detection and jungle routes |
+| `src/updater.js` | Auto-update from GitHub releases |
 | `src/ocr.js`, `src/screengrab.js` | Screen reading (small screen regions via Windows GDI, no video stream) and scoreboard search |
 | `src/digits.js`, `src/digits.json` | Digit recognition; templates learned with `tools/digit-samples.js` |
 | `src/lcu.js` | League client access |
@@ -152,6 +171,7 @@ reload instantly; for everything else restart the app.
 - [Electron](https://www.electronjs.org) – MIT
 - [tesseract.js](https://github.com/naptha/tesseract.js) – Apache-2.0
 - [koffi](https://koffi.dev/) – MIT
+- [electron-updater](https://www.electron.build/auto-update) – MIT
 - Fonts Cinzel and Source Sans 3 via Google Fonts – SIL Open Font License
 
 ## License

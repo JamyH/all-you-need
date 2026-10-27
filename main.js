@@ -49,6 +49,10 @@ const meraki = require('./src/meraki');
 const history = require('./src/history');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
+const jungle = require('./src/jungle');
+const minimap = require('./src/minimap');
+const gamewindow = require('./src/gamewindow');
+const updater = require('./src/updater');
 const anvil = require('./src/anvil');
 const keys = require('./src/keys');
 const riot = require('./src/riot');
@@ -80,7 +84,8 @@ if (detectedPath !== config.leaguePath) saveConfig({ leaguePath: detectedPath })
 
 // Overlay-Einstellungen (⚙ im Panel-Kopf): Module ein/aus, UI-Größe, Transparenz, Klick-durch.
 // Fehlende Werte (ältere config.json) kommen aus den Vorgaben.
-const OVERLAY_DEFAULTS = { modules: {}, scale: 1, bgTransparency: 30, hoverTransparency: 20, clickThrough: true, compact: false };
+const OVERLAY_DEFAULTS = { modules: {}, scale: 1, bgTransparency: 30, hoverTransparency: 20, clickThrough: true, compact: false,
+  jungleSize: 1, jungleTransparency: 40 };
 const overlaySettings = () => ({
   ...OVERLAY_DEFAULTS,
   ...config.overlay,
@@ -374,25 +379,75 @@ async function pollGame() {
   // Mayhem: Augment-Tiers für den Champ bereitlegen, bevor das erste Angebot kommt
   if (summary && data.gameData.gameMode === 'KIWI') arammayhem.prepare(lastChampion);
   lastItems = summary ? summary.myItems : [];
+  blueSpells = summary ? summary.blueSpells : {};
   meDead = !!(summary && summary.isDead);
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (summary) summary.augments = screenState.augments || null;
+  if (summary) summary.jungleRoute = jungleRouteFor(summary);
   // Debug-Abzug nur in der Entwicklerversion (100 KB alle 5 s wären für Nutzer nur Schreiblast)
   if (data && !app.isPackaged && Date.now() - lastDump > 5000) {
     lastDump = Date.now();
     try {
       fs.mkdirSync(DEBUG_DIR, { recursive: true });
-      fs.writeFileSync(path.join(DEBUG_DIR, 'last-game.json'), JSON.stringify({ summary, data }, null, 2));
+      fs.writeFileSync(path.join(DEBUG_DIR, 'last-game.json'), JSON.stringify({ summary, layout: { gameArea, spells: L && L.spells, factors: L && L.factors }, data }, null, 2));
     } catch (e) {
       console.warn('Debug-Datei:', e.message); // z. B. Platte voll: das Overlay muss trotzdem weiterlaufen
     }
   }
-  if (summary && !overlayHidden) {
+  // Alt-Tab: liegt ein anderes Fenster vorne, Overlay ausblenden (hing sonst über z. B. WhatsApp)
+  if (summary && !overlayHidden && (gameFocused() || editMode || settingsOpen)) {
     if (!overlay.isVisible()) overlay.showInactive();
     raiseOverlay();
     overlay.webContents.send('game', summary);
-  } else if (!summary && overlay.isVisible() && !editMode && !settingsOpen) {
+  } else if (overlay.isVisible() && !editMode && !settingsOpen) {
     overlay.hide();
+  }
+}
+
+// Spiel oder ein Farmy-Fenster vorne (Klick ins ⚙ oder ins Stats-Fenster soll das Overlay nicht verstecken).
+// Zum Bildschirm-Lesen zählt das Stats-Fenster nicht: es liegt dann über dem Spiel und verdeckt das HUD
+// (das Overlay selbst taucht in der Aufnahme nicht auf)
+const hwnd = (w) => (w && !w.isDestroyed() ? Number(w.getNativeWindowHandle().readBigUInt64LE()) : 0);
+const gameFocused = (withStats = true) => gamewindow.focused([hwnd(overlay), withStats && hwnd(stats)].filter(Boolean));
+
+// Jungle-Route auf der Minimap: nur mit Smite auf Summoner's Rift; das Overlay zeigt sie nur, solange Tab gedrückt ist.
+// Zeigt einen vorher festgelegten Plan (Startcamp aus dem Stats-Fenster, sonst die neueste Route),
+// keine Informationen aus dem Spiel
+let jungleRoutes = { champ: null, routes: null };
+function jungleRouteFor(summary) {
+  if (!summary.smite || summary.map !== 11 || !moduleOn('jungleRoute')) return null;
+  const champ = summary.championId;
+  if (jungleRoutes.champ !== champ) {
+    jungleRoutes = { champ, routes: null };
+    jungle.routes(ddragon.champion(ddragon.championKey(champ)).name)
+      .then((d) => { if (jungleRoutes.champ === champ) jungleRoutes.routes = d.routes; })
+      .catch((e) => console.warn('Jungle-Route:', e.message));
+  }
+  const list = jungleRoutes.routes;
+  if (!list) return null;
+  const start = (config.jungleStart || {})[champ];
+  const pick = list.find((r) => r.route[0] === start) || list[0];
+  if (!minimapFound && Date.now() - minimapTriedAt > 5000 && gameFocused(false)) findMinimap();
+  const m = minimapFound || L.minimap; // bis zur Erkennung die Maße aus game.cfg (vermessen bei Größe 3)
+  return { x: toDip(m.x), y: toDip(m.y), size: toDip(m.size), side: summary.side, route: pick.route };
+}
+
+// Minimap auf dem Bildschirm suchen (schwarzer Kartensaum, src/minimap.js): passt so bei jeder Größe, Auflösung
+// und mit „Minimap links“. Einmal je Spiel bzw. nach geänderter game.cfg, bei Fehlschlag alle 5 s neu
+let minimapFound = null;
+let minimapTriedAt = 0;
+async function findMinimap() {
+  minimapTriedAt = Date.now();
+  try {
+    const a = gameArea;
+    const flip = !!setup.readMinimap(config.leaguePath).flip;
+    const side = Math.round(a.height * 0.6);
+    const x0 = a.x + (flip ? 0 : a.width - side), y0 = a.y + a.height - side;
+    const [crop] = await capture.grab([{ x: x0, y: y0, width: side, height: side }]);
+    const m = minimap.find(crop, flip);
+    if (m && m.size >= a.height * 0.15) minimapFound = { x: x0 + m.x, y: y0 + m.y, size: m.size };
+  } catch (e) {
+    console.warn('Minimap suchen:', e.message);
   }
 }
 
@@ -403,6 +458,7 @@ let screenReading = false; // Bildschirm-Erkennung eingeschaltet (config.ocr.ena
 let screenState = { cs: null, xp: null, spells: {}, items: {} };
 let lastItems = []; // Inventar aus der Live-API, damit die Bildschirm-Abfrage nur belegte Item-Slots liest
 let meDead = false; // tot: Bildschirm grau, Cooldown-Erkennung der Summoner unzuverlässig
+let blueSpells = {}; // { d, f }: Summoner mit blauem Symbol, siehe ocr.spellOnCooldown
 
 // Regionen aus Auflösung und HUD-Größe (game.cfg) berechnen; neu bei jedem Spielstart,
 // falls die HUD-Skalierung inzwischen geändert wurde
@@ -417,6 +473,9 @@ let cfgChecked = 0;
 function checkHudChange() {
   if (Date.now() - cfgChecked < 3000) return;
   cfgChecked = Date.now();
+  // Spielfenster verschoben oder in der Größe geändert (Fenstermodus, andere Auflösung): Regionen neu
+  const w = gamewindow.rect();
+  if (w && ['x', 'y', 'width', 'height'].some((k) => w[k] !== gameArea[k])) return refreshLayout();
   try {
     const m = fs.statSync(path.join(config.leaguePath, 'Config', 'game.cfg')).mtimeMs;
     if (cfgMtime && m !== cfgMtime) refreshLayout();
@@ -425,16 +484,25 @@ function checkHudChange() {
     // game.cfg fehlt -> Standardwerte bleiben
   }
 }
+// Bereich, in dem League zeichnet (physische Pixel): das Spielfenster, ohne Spiel der ganze Hauptbildschirm.
+// Randlos in voller Auflösung ist beides gleich; im Fenstermodus oder bei kleinerer Spielauflösung nicht
+let gameArea = { x: 0, y: 0, width: 0, height: 0 };
 function refreshLayout() {
   const d = screen.getPrimaryDisplay();
   const hud = setup.readHudScale(config.leaguePath);
-  const size = { width: Math.round(d.size.width * d.scaleFactor), height: Math.round(d.size.height * d.scaleFactor) };
-  L = layout.compute(size.width, size.height, hud || 0);
-  capture.setScreen(size); // ganzer Bildschirm für die Scoreboard-Suche
-  console.log('Layout', JSON.stringify(L.factors), 'HUD-Skalierung', hud);
+  gameArea = gamewindow.rect() || { x: 0, y: 0, width: Math.round(d.size.width * d.scaleFactor), height: Math.round(d.size.height * d.scaleFactor) };
+  const a = gameArea;
+  L = layout.compute(a.width, a.height, hud || 0, setup.readMinimap(config.leaguePath), a);
+  minimapFound = null; // Auflösung oder Minimap-Größe geändert: neu suchen
+  capture.setScreen(a); // Spielfenster für die Scoreboard-Suche
+  console.log('Layout', JSON.stringify(L.factors), 'HUD-Skalierung', hud, 'Spielfenster', JSON.stringify(a));
 }
-const sbAnchor = () =>
-  config.scoreboard.anchor || { x: Math.round(screen.getPrimaryDisplay().size.width * screen.getPrimaryDisplay().scaleFactor / 2), y: Math.round(406 * L.factors.res) };
+// gelernter Anker gilt nur, solange er im Spielfenster liegt (Fenster verschoben -> Standardlage)
+const sbAnchor = () => {
+  const a = gameArea, saved = config.scoreboard.anchor;
+  if (saved && saved.x >= a.x && saved.x < a.x + a.width && saved.y >= a.y && saved.y < a.y + a.height) return saved;
+  return { x: Math.round(a.x + a.width / 2), y: Math.round(a.y + 406 * L.factors.res) };
+};
 // Ausschnitt um den letzten bekannten Scoreboard-Anker (wächst mit der Auflösung)
 const sbNear = (a) => {
   const s = L.scoreboard.scale;
@@ -500,7 +568,8 @@ async function readAugmentOffer(augCrops) {
 let ocrBusy = false;
 let lastCsRead = 0;
 async function pollScreen() {
-  if (!gameRunning || ocrBusy) return;
+  // anderes Fenster vorne: dort steht nicht das Spiel, Lesen ergäbe Unsinn (z. B. Summoner „bereit“)
+  if (!gameRunning || ocrBusy || !gameFocused(false)) return;
   ocrBusy = true;
   try {
     checkHudChange();
@@ -529,7 +598,7 @@ async function pollScreen() {
 
     for (const [i, [slot]] of slots.entries()) {
       const prev = screenState.spells[slot];
-      if (!ocr.spellOnCooldown(crops[i])) {
+      if (!ocr.spellOnCooldown(crops[i], !!blueSpells[slot])) {
         // Mitten im Countdown „bereit“ nicht sofort glauben: tot ist der Bildschirm grau, dann fehlt das Blau
         // des Cooldowns, obwohl der Summoner nicht bereit ist. Tot -> ignorieren, sonst erst beim zweiten Mal
         const left = prev && !prev.ready && prev.cd != null ? prev.cd - (Date.now() - prev.at) / 1000 : 0;
@@ -537,18 +606,23 @@ async function pollScreen() {
         else screenState.spells[slot] = { ready: true };
       } else if (prev && prev.readySeen) {
         prev.readySeen = false; // war nur ein Ausreißer, Countdown läuft weiter
-      } else if (!prev || prev.ready || prev.cd == null || Date.now() - prev.at > 10000) {
+      } else if (!prev || prev.ready || prev.cd == null || Date.now() - (prev.checkedAt || prev.at) > (prev.recheckMs || 10000)) {
         // Zahl lesen beim Start des Cooldowns und danach alle 10 s zum Abgleich
         const cd = await ocr.readSpellCd(crops[i]);
         // Kein Summoner startet mit weniger als 10 s. Solche Werte sind Fehllesungen, z. B. die weiße Kugel
         // im Flash-Icon, das wegen seines Blaus immer nach Cooldown aussieht
         const fresh = !prev || prev.ready;
-        // Beim Abgleich kann die Restzeit nur sinken. Springt sie hoch, war es eine Fehllesung: weiter
-        // runterzählen und erst beim nächsten Abgleich wieder lesen
         const left = fresh || prev.cd == null ? null : prev.cd - (Date.now() - prev.at) / 1000;
-        if (left != null && cd != null && cd > left + 3) screenState.spells[slot] = { ready: false, cd: Math.max(0, Math.round(left)), at: Date.now() };
-        else if (cd != null && !(fresh && cd < 10)) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
+        if (left != null && cd != null && cd > left + 3) {
+          // Höher als erwartet: Fehllesung jetzt oder schon vorher (bei 1080p z. B. 300 als 200 gelesen, danach
+          // blieb der Timer bei 0 hängen). Liest Farmy 2 s später denselben Wert (Zeit abgezogen), gilt er;
+          // bis dahin weiter runterzählen
+          const p = prev.higher;
+          if (p && Math.abs(cd - (p.cd - (Date.now() - p.at) / 1000)) <= 3) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
+          else Object.assign(prev, { cd: Math.max(0, Math.round(left)), at: Date.now(), checkedAt: Date.now(), recheckMs: 2000, higher: { cd, at: Date.now() } });
+        } else if (cd != null && !(fresh && cd < 10)) screenState.spells[slot] = { ready: false, cd, at: Date.now() };
         else if (fresh) screenState.spells[slot] = { ready: true };
+        else prev.checkedAt = Date.now(); // nicht lesbar: erst beim nächsten Abgleich wieder (Tesseract ist teuer)
       }
     }
     if (readCs) {
@@ -611,6 +685,7 @@ function startTabWatch() {
   const scoreboardOn = !!(config.scoreboard && config.scoreboard.enabled);
   keys.start(
     () => {
+      overlay.webContents.send('tab-held', true); // Jungle-Route auf der Minimap nur, solange Tab gedrückt ist
       // im ⚙ abgeschaltet oder ohne Bildschirm-Erkennung: keine Scoreboard-Suche
       if (!scoreboardOn || !screenReading || !moduleOn('scoreboard')) return;
       tabDown = true;
@@ -619,6 +694,7 @@ function startTabWatch() {
       confirmScoreboard(tabPressId);
     },
     () => {
+      overlay.webContents.send('tab-held', false);
       tabDown = false;
       if (sbOpen) sendScoreboard(false);
     },
@@ -628,6 +704,7 @@ function startTabWatch() {
 function stopTabWatch() {
   keys.stop();
   tabDown = false;
+  overlay.webContents.send('tab-held', false);
   if (sbOpen) sendScoreboard(false);
 }
 
@@ -837,10 +914,10 @@ async function pollClient() {
       if (gameMode === 'aram') updateBench(sel).catch((e) => console.warn('ARAM-Bank:', e.message));
       // Matchup-Karte im Stats-Fenster: gegnerische Picks, sobald sich etwas ändert (nur Summoner's Rift)
       const enemies = gameMode === 'sr' ? sel.enemies.map((k) => ddragon.champion(k).id) : [];
-      const matchupKey = `${champId}|${sel.position}|${enemies.join(',')}`;
+      const matchupKey = `${champId}|${sel.position}|${sel.side}|${enemies.join(',')}`;
       if (matchupKey !== lastMatchupKey) {
         lastMatchupKey = matchupKey;
-        matchupState = { champId, position: sel.position, enemies };
+        matchupState = { champId, position: sel.position, side: sel.side, enemies };
         notifyStats('matchup:enemies', matchupState);
       }
       if (sel.key && sel.key !== lastRuneKey) {
@@ -964,6 +1041,13 @@ ipcMain.handle('spells:apply', async () => {
 // Matchup gegen einen Lane-Gegner: lolalytics (Siegrate, First Blood) plus Level-1–3-Duell aus den Grundwerten.
 // Nur vor dem Spiel im Stats-Fenster: Siegraten im Spiel erlaubt Riot nicht
 ipcMain.handle('matchup:state', () => matchupState);
+// Jungle-Route (Phylaris' Clear-Tabelle) fürs Stats-Fenster; reine Vorbereitung vor dem Spiel
+ipcMain.handle('jungle:routes', async (_e, champId) => ({
+  ...(await jungle.routes(ddragon.champion(ddragon.championKey(champId)).name)),
+  chosen: (config.jungleStart || {})[champId] || null,
+}));
+// Startcamp für die Minimap merken (je Champion)
+ipcMain.handle('jungle:choose', (_e, champId, start) => saveConfig({ jungleStart: { ...(config.jungleStart || {}), [champId]: start } }));
 ipcMain.handle('matchup:get', async (_e, champId, vsId, position) => {
   const stats = (id) => ddragon.champion(ddragon.championKey(id)).stats;
   // Fähigkeiten von Meraki; fehlen sie (offline, unbekannter Champ), rechnet das Duell nur mit Grundwerten
@@ -1042,9 +1126,9 @@ ipcMain.handle('queue:autoAccept', (_e, on) => {
   refreshTrayMenu(); // Häkchen im Tray-Menü mitziehen
 });
 ipcMain.handle('suggestion:enabled', (_e, on) => saveConfig({ lolalytics: { ...(config.lolalytics || {}), enabled: on } }));
-// Quellen-Link im Standardbrowser öffnen, nur lolalytics-Seiten
+// Quellen-Link im Standardbrowser öffnen, nur lolalytics-Seiten, die Jungle-Tabelle und deren YouTube-Videos
 ipcMain.handle('suggestion:open', (_e, url) => {
-  if (/^https:\/\/lolalytics\.com\//.test(url)) shell.openExternal(url);
+  if (/^https:\/\/(lolalytics\.com|www\.youtube\.com|youtube\.com)\//.test(url) || url === jungle.SOURCE) shell.openExternal(url);
 });
 
 // Maus über Griff, ⚙ oder Einstellungen: Fenster fängt Klicks ab, sonst gehen sie durch zum Spiel
@@ -1150,9 +1234,34 @@ function appMenu() {
     { label: t('League komplett beenden …'), click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
     { type: 'separator' },
     { label: `Farmy ${app.getVersion()}`, enabled: false },
+    ...updateMenu(),
     { label: t('Beenden'), click: () => app.quit() },
   ]);
 }
+// Update-Eintrag im Tray: fertig geladen -> neu starten; portable -> Release-Seite; sonst nichts
+function updateMenu() {
+  const u = updater.state();
+  if (u.status === 'ready') return [{ label: t('Neu starten und auf {version} aktualisieren', { version: u.version }), click: () => updater.apply() }];
+  if (u.status === 'available') return [{ label: t('Version {version} herunterladen …', { version: u.version }), click: () => updater.apply() }];
+  if (u.status === 'downloading') return [{ label: t('Lade Version {version} …', { version: u.version }), enabled: false }];
+  return [];
+}
+// Meldung einmal je neuer Version, sobald sie fertig geladen (bzw. bei portable: verfügbar) ist
+let updateNotified = null;
+function updateChanged(u) {
+  refreshTrayMenu();
+  if (!tray || updateNotified === `${u.status}|${u.version}` || !['ready', 'available'].includes(u.status)) return;
+  updateNotified = `${u.status}|${u.version}`;
+  tray.displayBalloon({
+    iconType: 'custom',
+    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    title: t('Farmy {version} ist da', { version: u.version }),
+    content: u.status === 'ready'
+      ? t('Wird beim Beenden installiert. Sofort: Tray-Menü → „Neu starten und aktualisieren“.')
+      : t('Die portable Version aktualisiert sich nicht selbst. Tray-Menü → herunterladen.'),
+  });
+}
+
 function refreshTrayMenu() {
   if (!tray) return;
   tray.setContextMenu(appMenu());
@@ -1218,9 +1327,11 @@ app.whenReady().then(async () => {
   history.init(app.getPath('userData'));
   augments.init(app.getPath('userData'));
   arammayhem.init(app.getPath('userData'));
+  jungle.init(app.getPath('userData'));
   refreshLayout();
   createOverlay();
   createTray();
+  updater.start(updateChanged);
   // Auflösung oder Windows-Skalierung geändert (z. B. anderer Monitor als Hauptbildschirm): Overlay mitziehen,
   // Bildschirm-Regionen neu rechnen. Sonst deckte das Overlay nur einen Teil ab und las an falschen Stellen
   screen.on('display-metrics-changed', () => {

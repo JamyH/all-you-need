@@ -270,6 +270,27 @@ td .sub { display: block; color: var(--muted); font-size: 11px; }
 .mu-row > div b { display: block; font-size: 14px; }
 .mu-row small { display: block; font-size: 12px; color: var(--muted); }
 
+/* Jungle-Route: je Startcamp eine Mini-Karte mit nummerierten Camps */
+.jungle { margin-bottom: 14px; }
+.jungle[hidden] { display: none; }
+.jungle .card-head a { color: var(--muted); }
+#jungleList { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+#jungleList > .hint { flex-basis: 100%; margin: 0; }
+.jroute { display: flex; gap: 12px; flex: 1 1 280px; padding: 10px 12px; border-radius: 9px; background: var(--tile); }
+.jroute b { display: block; font-size: 14px; }
+.jroute ol { margin: 4px 0; padding-left: 18px; font-size: 13px; }
+.jroute small { display: block; font-size: 12px; color: var(--muted); }
+.jroute a { font-size: 12px; }
+.jroute button { display: block; height: 26px; margin-top: 6px; padding: 0 10px; font-size: 12px; }
+.jroute button.on { color: var(--accent); border-color: var(--accent); }
+.jmap { width: 150px; height: 150px; flex: none; }
+.jmap rect { fill: var(--bg); }
+.jmap .lane { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .35; }
+.jmap .river { fill: none; stroke: #3d8fb8; stroke-width: 5; opacity: .35; }
+.jmap polyline { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; }
+.jmap circle { fill: var(--accent); }
+.jmap text { fill: var(--bg); font-size: 6.5px; font-weight: 700; text-anchor: middle; }
+
 /* ARAM-Bank in der Champ-Auswahl */
 .bench { margin-bottom: 14px; }
 .bench-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 9px; cursor: pointer; }

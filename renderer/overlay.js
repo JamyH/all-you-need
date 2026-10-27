@@ -34,6 +34,36 @@ const ICON_RECALL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
 const ICON_BUY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>';
 
 // Mayhem-Augment-Angebot und Werte-Schmiede: Tier über jeder Karte (keine Siegquoten, die verbietet Riot)
+// Jungle-Route über der Minimap (erste Runde), nur solange Tab gedrückt ist: Linie und nummerierte Camps,
+// rote Seite punktgespiegelt. Camp-Lagen wie im Stats-Fenster in Prozent der Karte; Größe und Transparenz im ⚙
+const CAMP_XY = { Blue: [26, 47], Gromp: [14, 43], Wolves: [26, 57], Raptors: [47, 63], Red: [53, 73], Krugs: [57, 82] };
+let jroute = null;
+let tabHeld = false;
+let jrouteKey = '';
+function renderJungleRoute(j = jroute) {
+  jroute = j;
+  const svg = $('jroute');
+  // SVG-Elemente kennen die Eigenschaft „hidden“ nicht, nur das Attribut
+  const show = !!j && tabHeld && moduleOn('jungleRoute');
+  svg.toggleAttribute('hidden', !show);
+  if (!show) return;
+  Object.assign(svg.style, { left: `${j.x}px`, top: `${j.y}px`, width: `${j.size}px`, height: `${j.size}px` });
+  const size = settings?.jungleSize ?? 1;
+  svg.style.opacity = (1 - (settings?.jungleTransparency ?? 40) / 100).toFixed(2);
+  const key = `${j.side}|${j.route.join('-')}|${size}`;
+  if (key === jrouteKey) return;
+  jrouteKey = key;
+  const r = 2.3 * size;
+  const pts = j.route.map((c) => (j.side === 'red' ? CAMP_XY[c].map((v) => 100 - v) : CAMP_XY[c]));
+  svg.innerHTML = `<polyline points="${pts.map((p) => p.join(',')).join(' ')}" stroke-width="${(0.6 * size).toFixed(2)}"/>` +
+    pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${r.toFixed(2)}"/>` +
+      `<text x="${x}" y="${(y + r * 0.42).toFixed(2)}" font-size="${(r * 1.2).toFixed(2)}">${i + 1}</text>`).join('');
+}
+window.lol.onTabHeld((on) => {
+  tabHeld = on;
+  renderJungleRoute();
+});
+
 function renderAugments(list) {
   const box = $('aug');
   box.hidden = !list;
@@ -96,6 +126,7 @@ window.lol.onGame((g) => {
 });
 
 function renderGame(g) {
+  renderJungleRoute(g.jungleRoute);
   const small = isCompact();
   $('champ').textContent = g.champion;
   $('lvl').textContent = g.level;
@@ -315,6 +346,7 @@ const MODULES = [
   ['Weitere Overlays', [
     ['scoreboard', 'Tab: Itemwert je Spieler'],
     ['augments', 'Mayhem: Augment-Tiers'],
+    ['jungleRoute', 'Jungle-Route auf der Minimap'],
   ]],
 ];
 // [Schlüssel, Name, min, max, Schritt, Anzeige]
@@ -322,6 +354,8 @@ const SLIDERS = [
   ['scale', 'UI-Größe', 0.7, 1.5, 0.05, (v) => num(v, 2)],
   ['bgTransparency', 'Hintergrund-Transparenz', 0, 90, 5, (v) => `${v} %`],
   ['hoverTransparency', 'Hover-Transparenz', 0, 90, 5, (v) => `${v} %`],
+  ['jungleSize', 'Jungle-Route: Größe', 0.5, 2, 0.1, (v) => num(v, 1)],
+  ['jungleTransparency', 'Jungle-Route: Transparenz', 0, 90, 5, (v) => `${v} %`],
 ];
 let settings = null;
 const moduleOn = (key) => !settings || settings.modules[key] !== false;
@@ -370,6 +404,7 @@ function applySettings(s) {
   document.body.classList.toggle('compact', !!s.compact);
   // Kompakt-Modus und Fußzeile hängen an den Einstellungen: sofort neu zeichnen, nicht erst beim nächsten Abruf
   if (lastGame) renderGame(lastGame);
+  renderJungleRoute();
 
   const body = $('settingsBody');
   body.querySelectorAll('[data-mod]').forEach((el) => { el.checked = s.modules[el.dataset.mod] !== false; });

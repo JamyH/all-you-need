@@ -43,6 +43,7 @@ async function champSelect(lp) {
   return {
     key: me.championId || me.championPickIntent || 0,
     position: me.assignedPosition || '',
+    side: me.team === 2 ? 'red' : 'blue', // 1 = blaue Seite (unten links), 2 = rote
     // ohne Pick-Aktion (z. B. ARAM) zählt der zugeteilte Champion als fest
     locked: !!me.championId && (!myPick || myPick.completed),
     spells: [me.spell1Id, me.spell2Id], // D, F
