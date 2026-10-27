@@ -465,3 +465,29 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .radar-hint { margin: 4px 0 0; text-align: center; }
 .goal-new { margin: 10px 0 0; color: var(--text-2); font-size: 12px; }
 .danger-text { color: var(--loss); }
+
+/* Todes-Karte: Minimap mit Punkten je Tod (Farbe nach Spielphase), Zonen daneben */
+.dmap-grid { display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .dmap-grid { grid-template-columns: 1fr; } }
+.minimap { margin: 0; }
+.minimap svg { display: block; width: 100%; height: auto; border-radius: 10px; overflow: hidden; background: #0b0d10; }
+.mapimg { opacity: 0.55; }
+.dd { stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.3; }
+.dd.early { fill: #f2c14e; }
+.dd.mid { fill: #ff8a7a; }
+.dd.late { fill: #c084fc; }
+.minimap figcaption { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.lgd { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 6px; }
+.lgd.early { background: #f2c14e; }
+.lgd.mid { background: #ff8a7a; }
+.lgd.late { background: #c084fc; }
+.zones .wrow { grid-template-columns: 150px 1fr 70px; }
+.plan-card { margin-top: 12px; }
+.plan-card .rv-label b { font-size: 14px; }
+.m-bg { fill: #121a1d; }
+.m-river { stroke: rgba(138, 180, 248, 0.16); stroke-width: 12; }
+.m-lane { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 6; stroke-linejoin: round; }
+.m-lane.aram { stroke-width: 18; }
+.m-base.blue { fill: rgba(138, 180, 248, 0.18); }
+.m-base.red { fill: rgba(255, 138, 122, 0.16); }
+.lead .rv-row { grid-template-columns: 230px 1fr; }

@@ -25,6 +25,12 @@ Neu
   gestrichelt = davor, Werte an den Ecken; die Balken daneben bleiben als genaue Ablesung
 - Skill-Vergleich und Netzdiagramm schon ab 6 Spielen je Modus (neuere Hälfte gegen ältere, mit Hinweis „noch
   ungenau“); ab 15 Spielen wie bisher die letzten 10 gegen den Rest
+- Fortschritt Runde 3, aus den Spielverläufen des Clients: Wo du stirbst (Tode als Punkte auf einer schematischen
+  Karte, Anteil je Zone), Wer dich tötet (häufigste Killer, Tode gegen 2+ Gegner, Solo-Kills gegen Solo-Tode),
+  neuer Skill Teamplay (Kill-Beteiligung), Anteile im Team (Schaden, Gold, Tode), Vorsprung und Comeback (Team-Gold
+  bei 15 bzw. 10 min gegen das Ergebnis), Level 6 (Kluft), Objective-Beteiligung, Ermüdung (KDA und Tode nach
+  Spiel-Nr. in der Session), Lernkurve (n-tes Spiel auf einem Champion), Monatsvergleich und ein Trainingsplan mit
+  2–3 Aufgaben aus deinen Schwächen, den Farmy nach jedem Spiel selbst auswertet
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

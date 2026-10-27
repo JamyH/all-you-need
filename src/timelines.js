@@ -10,8 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 let file = null;
-// gameId -> { me, deaths: [s], dur, at10, at15, opp10, opp15, oppChamp, lane, enemies: [Champion-Keys] } oder { failed: true }.
-// Einträge ohne enemies (vor dem 27.10. spät) werden einmal neu geladen
+// gameId -> { v: 3, me, team, lane, dur, deaths: [s], deathsAt, kills, teamKills, share, goldDiff, lvl6, oppLvl6, objectives,
+// at10, at15, opp10, opp15, oppChamp, enemies: [Champion-Keys] } oder { failed: true }. Ältere Versionen werden neu geladen
 let data = {};
 
 function init(dir) {
@@ -58,12 +58,45 @@ function digest(details, tl, puuid, oppChampKey) {
     const theirs = details.participants.filter((p) => p.teamId !== me.teamId && laneOf(p.timeline) === lane);
     if (mine.length === 1 && theirs.length === 1) [opp] = theirs;
   }
-  const deaths = (tl.frames || []).flatMap((f) => f.events || [])
-    .filter((e) => e.type === 'CHAMPION_KILL' && e.victimId === me.participantId)
-    .map((e) => Math.round(e.timestamp / 1000));
+  const pid = me.participantId;
+  const events = (tl.frames || []).flatMap((f) => f.events || []);
+  const byId = new Map(details.participants.map((p) => [p.participantId, p]));
+  const teamOf = (id) => (byId.get(id) || {}).teamId || 0;
+  const kills = events.filter((e) => e.type === 'CHAMPION_KILL');
+  const myDeaths = kills.filter((e) => e.victimId === pid);
+  const deaths = myDeaths.map((e) => Math.round(e.timestamp / 1000));
+  // Tode mit Ort (Kartenkoordinaten 0–~15000), Killer-Champion (0 = Turm/Vasallen) und Zahl der beteiligten Gegner
+  const deathsAt = myDeaths.map((e) => ({ t: Math.round(e.timestamp / 1000), x: e.position ? e.position.x : null, y: e.position ? e.position.y : null,
+    killer: e.killerId > 0 ? (byId.get(e.killerId) || {}).championId || 0 : 0, n: (e.killerId > 0 ? 1 : 0) + (e.assistingParticipantIds || []).length }));
+  // eigene Kills: solo = ohne Helfer
+  const myKills = kills.filter((e) => e.killerId === pid).map((e) => ({ t: Math.round(e.timestamp / 1000), solo: !(e.assistingParticipantIds || []).length }));
+  // Anteile im Team (Schaden an Champions, Gold, Tode) und Kills des Teams für die Kill-Beteiligung
+  const team = details.participants.filter((p) => p.teamId === me.teamId);
+  const sum = (k) => team.reduce((a, p) => a + ((p.stats || {})[k] || 0), 0);
+  const ms = me.stats || {};
+  const share = (k) => (sum(k) ? (ms[k] || 0) / sum(k) : null);
+  // Gold-Differenz der Teams je Minute (dein Team minus Gegner)
+  const goldDiff = (tl.frames || []).map((f) => Object.values(f.participantFrames || {})
+    .reduce((a, p) => a + (teamOf(p.participantId) === me.teamId ? 1 : -1) * (p.totalGold || 0), 0));
+  // erste Minute mit Level 6 (Ulti), für dich und den Lane-Gegner
+  const lvl6 = (id) => {
+    const i = (tl.frames || []).findIndex((f) => ((f.participantFrames || {})[String(id)] || {}).level >= 6);
+    return i >= 0 ? i : null;
+  };
+  // Objectives: Drachen, Baron, Herold, Larven, Türme. team = wer es geholt hat (0 = unbekannt), mine = du warst
+  // Killer oder Helfer. Türme: das Team, das ihn zerstört hat, ist das Gegenteil des Turm-Teams
+  const objectives = events.filter((e) => e.type === 'ELITE_MONSTER_KILL' || (e.type === 'BUILDING_KILL' && e.buildingType === 'TOWER_BUILDING'))
+    .map((e) => ({
+      t: Math.round(e.timestamp / 1000),
+      type: e.type === 'BUILDING_KILL' ? 'TOWER' : e.monsterType,
+      team: e.type === 'BUILDING_KILL' ? (e.teamId === 100 ? 200 : e.teamId === 200 ? 100 : 0) : teamOf(e.killerId),
+      mine: e.killerId === pid || (e.assistingParticipantIds || []).includes(pid),
+    }));
   return {
-    me: me.participantId, lane, dur: details.gameDuration || 0, deaths,
-    at10: frameAt(tl, 10, me.participantId), at15: frameAt(tl, 15, me.participantId),
+    v: 3, me: pid, team: me.teamId, lane, dur: details.gameDuration || 0, deaths, deathsAt, kills: myKills,
+    teamKills: sum('kills'), share: { dmg: share('totalDamageDealtToChampions'), gold: share('goldEarned'), deaths: share('deaths') },
+    goldDiff, lvl6: lvl6(pid), oppLvl6: opp ? lvl6(opp.participantId) : null, objectives,
+    at10: frameAt(tl, 10, pid), at15: frameAt(tl, 15, pid),
     opp10: opp ? frameAt(tl, 10, opp.participantId) : null, opp15: opp ? frameAt(tl, 15, opp.participantId) : null,
     oppChamp: opp ? opp.championId : null,
     enemies: details.participants.filter((p) => p.teamId !== me.teamId).map((p) => p.championId),
@@ -78,7 +111,8 @@ function fill(gameIds, { fetch, puuid, opp = () => null, max = 25 }) {
   running = (async () => {
     let n = 0;
     for (const id of gameIds) {
-      if ((data[id] && (data[id].failed || data[id].enemies)) || n >= max) continue;
+      // v3 (28.10.): Tode mit Ort/Killer, Kills, Anteile, Gold je Minute, Objectives – ältere Einträge einmal neu
+      if ((data[id] && (data[id].failed || data[id].v >= 3)) || n >= max) continue;
       n++;
       try {
         const [details, tl] = await Promise.all([fetch(`/lol-match-history/v1/games/${id}`), fetch(`/lol-match-history/v1/game-timelines/${id}`)]);

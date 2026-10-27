@@ -1477,7 +1477,7 @@ ipcMain.handle('stats:progress', async () => {
   } catch {
     // Client aus: dann eben nur die schon gemerkten Spiele
   }
-  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null, goalHistory: config.goalHistory || [],
+  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null, goalHistory: config.goalHistory || [], plan: config.trainingPlan || null,
     timelines: timelines.all(), logs: gamelog.all() };
 });
 // Eigene Notizen je Champion (Reiter „Notizen“, Anzeige in „Build & Runen“)
@@ -1498,6 +1498,11 @@ ipcMain.handle('goal:set', (_e, goal) => {
   return config.goal;
 });
 ipcMain.handle('goal:history', () => config.goalHistory || []);
+// Trainingsplan (Fortschritt): Aufgaben und Startzeit; ob geschafft, rechnet das Fenster aus den Spielen aus
+ipcMain.handle('plan:set', (_e, plan) => {
+  saveConfig({ trainingPlan: plan || null });
+  return config.trainingPlan;
+});
 ipcMain.handle('goal:result', (_e, gameId, ok) => {
   const g = config.goal;
   if (!g || g.results.some((r) => String(r.gameId) === String(gameId))) return g;

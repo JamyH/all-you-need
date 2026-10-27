@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('lol', {
   noteSet: (key, text) => ipcRenderer.invoke('notes:set', key, text),
   noteLearn: (key, entry) => ipcRenderer.invoke('notes:learn', key, entry),
   goalSet: (goal) => ipcRenderer.invoke('goal:set', goal),
+  planSet: (plan) => ipcRenderer.invoke('plan:set', plan),
   goalResult: (gameId, ok) => ipcRenderer.invoke('goal:result', gameId, ok),
   summoner: () => ipcRenderer.invoke('stats:summoner'),
   champion: (id) => ipcRenderer.invoke('ddragon:champion', id),
