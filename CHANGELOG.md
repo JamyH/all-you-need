@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.8.0 – 2026-10-27
+
+Neu
+- Rollen-Quest unter dem Champion-Namen im Panel (Prozent und schmaler Balken): gelesen aus dem Ring um das
+  Quest-Symbol neben den Items (Anteil des türkisen Bogens)
+- Ward-Cooldown als Kachel neben Summonern und Items (Trinket-Bild, Taste 4, Restzeit bzw. „bereit“)
+- Beides nur auf Summoner's Rift und einzeln abschaltbar im ⚙
+- CS-Ziel im CS-Feld („6,1/min · Ziel 7,4“, ab Minute 5 grün/rot): dein Schnitt auf dem Champ aus der eigenen
+  Historie (ab 3 Spielen), sonst 8/min
+- Erste Runde im Jungle: Farmy schätzt das Ende der ersten Runde aus deinen CS (danach 20 s ohne neue CS), zeigt
+  es eine Weile unter dem Namen („3:16 · 24 CS · Bestzeit 3:05“) und merkt es sich je Champ (userdata/clears.json);
+  die Jungle-Karte in der Champ-Auswahl zeigt zuletzt/beste/Ø
+- Lane-Stand für Jungler (Gank-Priorität): je Lane Item-Wert-Differenz, Kills und Level gegen den Gegner, wie im
+  Tab-Scoreboard; keine Siegquoten im Spiel, keine Empfehlung
+- Deine besten Champs: in der Champ-Auswahl Top 3 für die zugeteilte Rolle aus deinen eigenen Spielen
+- Session: in der Seitenleiste des Stats-Fensters „Heute 3S 1N · Solo +18 LP“; nach 3 Niederlagen am Stück ein
+  Hinweis im Tray
+- Eigene Spielhistorie speichert jetzt auch K/D/A, CS, Dauer, Queue und Lane, dazu Sicht, Schaden, Gold und
+  erlittenen Schaden
+- Neuer Reiter „Fortschritt“ im Stats-Fenster (Kluft und ARAM getrennt, ab 15 Spielen): Skill-Bereiche Farmen,
+  Kämpfen, Überleben, Sicht und Schaden – deine letzten 10 Spiele gegen deinen eigenen Schnitt davor, mit Verlauf;
+  dein Fokus mit einem Tipp; Siegquote nach Spiel-Nr. am Tag, Tageszeit und Spiellänge; Champion-Pool. Nur deine
+  eigenen Spiele, kein Vergleich mit anderen Spielern. Dazu Objectives (Kluft) und Konstanz (Schwankung der KDA)
+- Rückblick in „Letztes Spiel“: was gut lief und was das Spiel gekostet hat (gegen deinen Schnitt auf derselben
+  Map), was du zuerst verbessern kannst, Rekorde und Top-10-%-Werte als Abzeichen
+- Spielprotokoll (Modul „Rückblick: Tode und Ulti mitlesen“): Farmy merkt sich je Spiel CS bei 10 min gegen die
+  mögliche CS, die Schadensarten deiner Tode aus dem Death Recap und wie lange deine Ulti bereit und ungenutzt war
+- Session-Ziel wie eine Challenge: im Reiter „Fortschritt“ aus Vorschlägen wählen (z. B. „Höchstens 5 Tode“),
+  im Spiel als Zeile im Panel, nach dem Spiel abgehakt, mit Quote und Serie
+- LP-Verlauf (Solo/Duo, sonst Flex) als Kurve im Reiter „Fortschritt“
+- Neuer Reiter „Notizen“: eigene Notizen je Champion und eine allgemeine, nur lokal gespeichert
+  (userdata/notes.json), Auto-Speichern beim Tippen, Löschen mit Nachfrage; in „Build & Runen“ steht die Notiz
+  zum gewählten Champion
+
+Behoben
+- Hexflash (Rune) statt Blitz: kaputtes Symbol im Panel und Cooldown blieb auf 0 hängen. Jetzt mit dem Bild der
+  Rune, und das blau-lila Symbol zählt nicht mehr als Cooldown
+- Verschiebe-Modus (Strg+Shift+E) fing die Maus auf dem ganzen Bildschirm ab: Im Spiel ließ sich nicht mehr laufen.
+  Jetzt fängt er nur über dem Panel, überall sonst gehen Klicks ans Spiel
+- Augment-Namen lesen konnte abbrechen, wenn die Texterkennung genau in dem Moment nach einer Minute Leerlauf
+  entladen wurde (Fehler „postMessage“ im Log). Entladen wartet jetzt, bis nichts mehr gelesen wird
+
+Entwicklerversion (FarmyDevBuild, nicht in den Releases)
+- Eigener Name und lila Icon, DEV-Plakette im Panel, Seite „Devtools“ im Stats-Fenster und Tray → Dev
+- Lese-Bereiche (Strg+Shift+D): lila Rahmen mit erkanntem Wert über allem, was Farmy liest, inkl. Ward und Quest
+- Spielzeit per OCR (Tray → Dev bzw. Devtools-Seite, Standard aus): liest die Uhr oben rechts vom Bildschirm und
+  verwirft dafür bewusst die Zeit der Live-API (im Practice Tool weichen beide ab); CS/min, CS-Ziel und Clear-Zeit
+  rechnen dann mit der Bildschirm-Uhr
+- Weitere Dev-Schalter (gespeichert in `devFlags`): **Perfekt-CS** im CS-Feld („max 107 · 84 %“, Wellen ab dem
+  Spawn-Ereignis der Live-API), **FPS/Ping** vom Bildschirm alle 5 s, Schnitt im perf.log, **Death Recap sammeln**
+  (ein Bild des Spielfensters je Tod in debug/deathrecap, Grundlage für eine spätere Auswertung), **Ulti
+  ungenutzt** (Sekunden mit bereiter eigener R, je Spiel in debug/ult-idle.log)
+
 ## 1.7.1 – 2026-10-27
 
 Neu

@@ -4,7 +4,7 @@
 
 *Formerly known as „All You Need“.*
 
-**Version 1.7** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
+**Version 1.8** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
@@ -68,6 +68,9 @@ often there is an allowed variant. Found something that is read wrong? Use the
 - Skill hint: which ability to level next (lolalytics skill order) while a point is unspent
 - Item cooldowns (Zhonya's, Stopwatch, Guardian Angel …) read from your item slots
 - Item value difference to your lane opponent and the enemy team
+- Ward trinket cooldown, role quest progress, CS goal per minute (your own average on the champion) and, for
+  junglers, your first clear time and a lane overview (item value, kills and level per lane – no win rates)
+- Session goal from the stats window (e.g. "at most 5 deaths") with your current value
 - In-game settings (⚙ in the panel header): switch every module on or off, compact mode, UI scale, background
   and hover transparency, click-through
 
@@ -94,6 +97,14 @@ often there is an allowed variant. Found something that is read wrong? Use the
   ([Meraki Analytics](https://github.com/meraki-analytics/lolstaticdata) data; no passives or crowd control)
 - Build order and rune page per champion; runes are applied automatically in champ select to a
   dedicated page called "Farmy" (your other pages are never touched)
+- **Review** after each game: what went well and what cost you the game compared with your own average, what to
+  improve first, CS at 10 minutes vs. the possible CS, which damage type killed you (read from the death recap),
+  how long your ultimate was ready but unused, records and top-10 % badges
+- **Progress**: your last 10 games against your own average in farming, fighting, survival, vision, damage,
+  objectives and consistency, with trend lines; your focus with a tip; win rate by game of the day, time of day and
+  game length; champion pool; LP history; session goals with streak – only your own games, no comparison with
+  other players
+- **Notes** per champion (and a general one), stored only on your PC and shown with the champion in champ select
 - Build and rune suggestions from [lolalytics.com](https://lolalytics.com) for your champion and role,
   loaded once when you lock in; your own builds and runes always take priority (can be switched off)
 - Several rune pages to choose from (lolalytics plus Riot's recommended pages for your role): apply one
