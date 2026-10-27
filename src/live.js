@@ -34,12 +34,19 @@ function spellName(spell) {
 // Data-Dragon-Bild zum Summoner: „GeneratedTip_SummonerSpell_SummonerFlash_DisplayName“ -> SummonerFlash.png.
 // Zerschmettern heißt nach dem Aufwerten des Jungle-Items anders (z. B. …SmiteAvatarOffensive), Teleport ab
 // Minute 14 „Unbegrenzte Teleportation“ (S12_SummonerTeleportUpgrade); für beide hat Data Dragon kein Bild,
-// also das Grundbild (ohne Bild sprang das Summoner-Feld im Panel hin und her)
+// also das Grundbild (ohne Bild sprang das Summoner-Feld im Panel hin und her).
+// Mit der Rune Hexflash meldet die Live-API statt Blitz „SummonerFlashPerksHextechFlashtraptionV2“, auch ohne
+// Data-Dragon-Bild (gemeldet 27.10.: kaputtes Symbol im Panel) → Bild der Rune
+const HEXFLASH_ICON = 'https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png';
 function spellIcon(spell) {
   const id = ((spell && spell.rawDisplayName) || '').match(/SummonerSpell_(\w+?)_DisplayName/);
   if (!id) return '';
+  if (/HextechFlash/i.test(id[1])) return HEXFLASH_ICON;
   return ddragon.iconUrl('spell', /Smite/i.test(id[1]) ? 'SummonerSmite' : /Teleport/i.test(id[1]) ? 'SummonerTeleport' : id[1]);
 }
+
+// Hexflash (Rune) ersetzt Blitz und ist blau-lila: sah sonst immer nach Cooldown aus („0“ im Panel)
+const BLUE_SPELLS = /Snowball|SummonerBoost|SummonerMana|HextechFlash/;
 
 // Rohdaten -> das, was das Overlay anzeigt. Hier kannst du eigene Werte ergänzen.
 function summarize(data) {
@@ -68,11 +75,11 @@ function summarize(data) {
     side: myTeam === 'CHAOS' ? 'red' : 'blue',
     smite: [me.summonerSpells?.summonerSpellOne, me.summonerSpells?.summonerSpellTwo]
       .some((sp) => /SummonerSmite/.test(sp?.rawDisplayName || '')),
-    // Summoner mit von Haus aus blauem Symbol (Markieren, Läuterung, Klarheit): strengere Cooldown-Erkennung
+    // Summoner mit von Haus aus blauem Symbol (Markieren, Läuterung, Klarheit, Hexflash): strengere Cooldown-Erkennung
     blueSpells: {
       // auch Varianten wie SummonerSnowURFSnowball_Mark (URF/Mayhem)
-      d: /Snowball|SummonerBoost|SummonerMana/.test(me.summonerSpells?.summonerSpellOne?.rawDisplayName || ''),
-      f: /Snowball|SummonerBoost|SummonerMana/.test(me.summonerSpells?.summonerSpellTwo?.rawDisplayName || ''),
+      d: BLUE_SPELLS.test(me.summonerSpells?.summonerSpellOne?.rawDisplayName || ''),
+      f: BLUE_SPELLS.test(me.summonerSpells?.summonerSpellTwo?.rawDisplayName || ''),
     },
     isDead: !!me.isDead,
     level: me.level,
@@ -140,6 +147,31 @@ function scoreboard(data) {
   });
   const sum = (list) => list.reduce((s, p) => s + itemValue(p), 0);
   return { myTeamLeft: me.team === 'ORDER', rows, teamDiff: sum(mine) - sum(theirs) };
+}
+
+// Lane-Stand je Lane (eigenes Team gegen Gegner) für die Gank-Priorität des Junglers: Item-Wert-Differenz, Kills,
+// Level-Differenz. Alles, was das Tab-Scoreboard ohnehin zeigt; Bot = Bottom + Support. Nur mit Positionen
+// (Summoner's Rift mit Rollen, nicht im Practice Tool)
+const LANES = [['TOP', 'Top', ['TOP']], ['MIDDLE', 'Mid', ['MIDDLE']], ['BOTTOM', 'Bot', ['BOTTOM', 'UTILITY']]];
+function lanes(data) {
+  const active = data.activePlayer || {};
+  const players = data.allPlayers || [];
+  const me = players.find((p) => sameName(p, active));
+  if (!me) return null;
+  const out = [];
+  for (const [, name, positions] of LANES) {
+    const side = (mine) => players.filter((p) => (p.team === me.team) === mine && positions.includes(p.position));
+    const ally = side(true), enemy = side(false);
+    if (!ally.length || !enemy.length) continue;
+    const sum = (list, f) => list.reduce((s, p) => s + f(p), 0);
+    out.push({
+      lane: name,
+      gold: sum(ally, itemValue) - sum(enemy, itemValue),
+      kills: [sum(ally, (p) => p.scores.kills), sum(enemy, (p) => p.scores.kills)],
+      level: Math.round((sum(ally, (p) => p.level) / ally.length - sum(enemy, (p) => p.level) / enemy.length) * 10) / 10,
+    });
+  }
+  return out.length ? out : null;
 }
 
 // XP von Level n auf n+1 (280, 380, 480 … bis 18)
@@ -320,4 +352,4 @@ function applySkills(summary, skillsFor) {
   return summary;
 }
 
-module.exports = { fetchGame, summarize, applyScreen, applyMana, applyBuild, applySkills, scoreboard, livePlayers };
+module.exports = { fetchGame, summarize, applyScreen, applyMana, applyBuild, applySkills, scoreboard, livePlayers, lanes };

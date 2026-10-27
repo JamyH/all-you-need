@@ -22,6 +22,8 @@ function lcu(leaguePath, endpoint, method = 'GET', body = undefined) {
 const gameflowPhase = (lp) => lcu(lp, '/lol-gameflow/v1/gameflow-phase').catch(() => null);
 const currentSummoner = (lp) => lcu(lp, '/lol-summoner/v1/current-summoner');
 const endOfGame = (lp) => lcu(lp, '/lol-end-of-game/v1/eog-stats-block');
+// Laufendes Spiel: gameData.gameId verknüpft Farmys Spielprotokoll mit der Historie
+const gameflowSession = (lp) => lcu(lp, '/lol-gameflow/v1/session');
 // Ready-Check nach „Spiel gefunden“: { state: 'InProgress' | …, playerResponse: 'None' | 'Accepted' | 'Declined' }.
 // Ohne laufenden Check antwortet der Client mit 404 -> null
 const readyCheck = (lp) => lcu(lp, '/lol-matchmaking/v1/ready-check').catch(() => null);
@@ -87,6 +89,13 @@ async function soloRank(lp, puuid) {
   return { tier: q.tier, division: q.division, lp: q.leaguePoints, wins: q.wins, losses: q.losses };
 }
 
+// Eigene Ränge in Solo/Duo und Flex (für die Session): { solo, flex }, je null wenn ungewertet
+async function ranks(lp, puuid) {
+  const r = await lcu(lp, `/lol-ranked/v1/ranked-stats/${puuid}`);
+  const pick = (q) => (q && q.tier && q.tier !== 'NONE' ? { tier: q.tier, division: q.division, lp: q.leaguePoints } : null);
+  return { solo: pick(r.queueMap && r.queueMap.RANKED_SOLO_5x5), flex: pick(r.queueMap && r.queueMap.RANKED_FLEX_SR) };
+}
+
 // Runen. Wir schreiben nur in eine eigene Seite namens PAGE_NAME; andere Seiten werden nie gelöscht oder überschrieben.
 // Eine Seite mit dem alten App-Namen (bis 1.5) wird weiterbenutzt und dabei umbenannt.
 const PAGE_NAME = 'Farmy';
@@ -146,6 +155,6 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 }
 
 module.exports = {
-  gameflowPhase, currentSummoner, endOfGame, matchHistory, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
+  gameflowPhase, gameflowSession, currentSummoner, endOfGame, matchHistory, ranks, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
   applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments,
 };

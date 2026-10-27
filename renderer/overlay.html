@@ -13,6 +13,12 @@
       <span><span id="grip" class="grip" title="Ziehen zum Verschieben">⠿</span><span id="champ">–</span><span id="lvl" class="lvl"></span></span>
       <span><span id="time" class="muted">0:00</span><span id="gear" class="gear" title="Overlay-Einstellungen">⚙</span></span>
     </div>
+    <div id="clear" class="quest-line" hidden><label>Erste Runde</label><b id="clearVal"></b></div>
+    <div id="goal" class="quest-line" hidden><label id="goalLabel"></label><b id="goalVal"></b></div>
+    <div id="quest" class="quest-line" hidden>
+      <label>Rollen-Quest</label><b id="questPct"></b>
+      <div class="questbar"><div id="questFill"></div></div>
+    </div>
     <div class="alerts">
       <div id="skill" class="alert skill" hidden></div>
       <div id="recall" class="alert recall" hidden></div>
@@ -39,6 +45,7 @@
       <small id="xpMinions"></small>
     </div>
     <div id="lane" class="lane"></div>
+    <div id="gank" class="gank" hidden></div>
     <div id="teamRow" class="row"><label>Team-Itemwert</label><b id="teamDiff">–</b></div>
     <div id="foot" class="foot"></div>
   </div>
@@ -48,6 +55,7 @@
   </div>
   <div id="aug" class="aug" hidden></div>
   <svg id="jroute" class="jroute" viewBox="0 0 100 100" hidden></svg>
+  <div id="dbg" class="dbg"></div>
   <div id="sb" class="sb" hidden>
     <div id="sbTeam" class="sb-team"></div>
     <div id="sbRows"></div>

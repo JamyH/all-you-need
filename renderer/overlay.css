@@ -54,7 +54,7 @@ body:not(.click-through) .panel { cursor: move; }
 
 /* im ⚙ abgeschaltete Module */
 .off-stats .grid, .off-skill #skill, .off-build #build, .off-build #recall, .off-mana #mana, .off-mana #noMana,
-.off-xp #xp, .off-lane #lane, .off-team #teamRow, .off-scoreboard #sb, .off-augments #aug { display: none !important; }
+.off-quest #quest, .off-goal #goal, .off-clear #clear, .off-gank #gank, .off-xp #xp, .off-lane #lane, .off-team #teamRow, .off-scoreboard #sb, .off-augments #aug { display: none !important; }
 
 .edit .panel { outline: 1px dashed var(--accent); }
 .edit-hint { display: none; font-size: 11px; color: var(--accent); margin-bottom: 6px; }
@@ -158,6 +158,9 @@ small { margin-left: 4px; font-size: 11px; }
 .grid > div { padding: 8px; border-radius: var(--r-tile); background: var(--tile); }
 .grid label { color: var(--muted); }
 .grid b { font-size: 16px; font-weight: 700; color: var(--text); }
+/* CS mit Ziel: Schnitt und Ziel je eine Zeile unter der Zahl (in einer Zeile ist die Kachel zu schmal und
+   „Ziel 7,4“ brach irgendwo um oder wurde abgeschnitten) */
+.grid small.target { display: block; margin: 2px 0 0; white-space: pre-line; line-height: 1.3; }
 #gold { color: var(--gold); }
 
 /* Mana: Leiste mit Markierung, wo die Combo-Kosten liegen */
@@ -316,6 +319,15 @@ small { margin-left: 4px; font-size: 11px; }
 .sb-row.bad { background: var(--bad); color: var(--bad-ink); border-color: transparent; }
 
 /* Mayhem: Tier-Badges über Augment- und Werte-Schmiede-Karten */
+/* FarmyDevBuild: DEV-Plakette und Lese-Bereiche */
+.dev-badge { margin-left: 6px; padding: 1px 5px; border-radius: 4px; background: #7c3aed; color: #fff;
+  font: 700 9px Inter, sans-serif; letter-spacing: .5px; vertical-align: 2px; }
+.dbg { position: fixed; inset: 0; pointer-events: none; }
+.dbg > div { position: fixed; outline: 1px solid #b06cff; background: rgba(176, 108, 255, .08); }
+.dbg span { position: absolute; left: 0; bottom: 100%; padding: 0 3px; background: #7c3aed; color: #fff;
+  font: 600 10px Inter, sans-serif; white-space: nowrap; }
+.dbg .below span { bottom: auto; top: 100%; }
+
 /* Jungle-Route auf der Minimap */
 .jroute { position: fixed; pointer-events: none; overflow: visible; }
 .jroute[hidden] { display: none; }
@@ -345,3 +357,30 @@ small { margin-left: 4px; font-size: 11px; }
 .aug-badge.grade-B b { color: var(--text); }
 .aug-badge.grade-C b, .aug-badge.grade-D b { color: var(--bad); }
 .aug-badge.grade-none b, .aug-badge.unknown { color: var(--muted); border-style: dashed; }
+
+/* Rollen-Quest, versteckt außerhalb von Summoner's Rift */
+#quest[hidden] { display: none !important; }
+/* Rollen-Quest: schmale Zeile direkt unter dem Champion-Namen */
+.quest-line { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 8px; margin: -2px 0 8px;
+  font-size: 11px; }
+.quest-line label { color: var(--text-2); }
+.quest-line b { color: var(--accent); font-size: 11px; }
+.questbar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.questbar div { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.quest-line.done .questbar div { width: 100%; }
+/* Session-Ziel: Stand in Grün (geschafft bzw. auf Kurs) oder Rot, in den ersten Minuten neutral */
+#goal[hidden] { display: none !important; }
+#goal b.bad { color: var(--bad); }
+#goal b.early { color: var(--text-2); }
+
+/* Gank-Priorität (Jungler): Lane-Stand je Lane */
+#clear[hidden], #gank[hidden] { display: none !important; }
+.gank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 8px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--line); font-size: 11px; }
+.gank > label { grid-column: 1 / -1; color: var(--text-2); }
+.gank span { display: flex; flex-direction: column; gap: 1px; }
+.gank i { font-style: normal; color: var(--text-2); }
+.gank b { font-size: 13px; }
+.gank small { color: var(--text-2); font-size: 10px; }
+#csm.good { color: var(--accent); }
+#csm.bad { color: #f87171; }

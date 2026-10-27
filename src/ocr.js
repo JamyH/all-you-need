@@ -70,8 +70,29 @@ function touch(kind) {
   clearTimeout(idle[kind]);
   idle[kind] = setTimeout(() => drop(kind), IDLE_MS);
 }
+// Laufende Aufträge je Worker: Entladen nur, wenn keiner läuft. Sonst beendete der Leerlauf-Timer (oder release
+// nach dem Spiel) den Worker mitten in einem Augment-Lesen → „Cannot read properties of null (postMessage)“.
+// Nach dem Auftrag stellt touch den Timer neu, entladen wird dann eine Minute später.
+const busy = { digits: 0, text: 0 };
+async function run(kind, png) {
+  busy[kind]++; // sofort zählen, noch vor dem ersten await, sonst bleibt eine Lücke für drop
+  clearTimeout(idle[kind]);
+  try {
+    const w = await (kind === 'digits' ? tesseract() : tesseractText());
+    if (!w) return null;
+    const { data } = await w.recognize(png);
+    return data.text;
+  } catch (e) {
+    console.warn('Tesseract:', e.message);
+    return null;
+  } finally {
+    busy[kind]--;
+    touch(kind);
+  }
+}
 async function drop(kind) {
   clearTimeout(idle[kind]);
+  if (busy[kind]) return;
   const p = kind === 'digits' ? worker : textWorker;
   if (kind === 'digits') worker = null;
   else textWorker = null;
@@ -101,12 +122,8 @@ async function readText(crop) {
   const bgra = Buffer.from(crop.data);
   for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
   const img = nativeImage.createFromBitmap(bgra, { width: crop.width, height: crop.height });
-  const w = await tesseractText();
-  if (!w) return '';
-  touch('text');
-  const { data } = await w.recognize(img.toPNG());
-  touch('text');
-  return data.text.trim();
+  const text = await run('text', img.toPNG());
+  return text ? text.trim() : '';
 }
 
 // Nur für die Kalibrier-Tools: ein Vollbild als nativeImage
@@ -138,12 +155,9 @@ async function recognize(crop, test, skip = () => false) {
     px[i + 3] = 255;
   }
   const img = nativeImage.createFromBitmap(px, { width, height }).resize({ width: width * 4, quality: 'best' });
-  const w = await tesseract();
-  if (!w) return null;
-  touch('digits');
-  const { data: res } = await w.recognize(img.toPNG());
-  touch('digits');
-  const digits = res.text.replace(/\D/g, '');
+  const text = await run('digits', img.toPNG());
+  if (text == null) return null;
+  const digits = text.replace(/\D/g, '');
   return digits ? Number(digits) : null;
 }
 
@@ -180,6 +194,18 @@ async function readCs(crop) {
   return digits.read(crop, isYellow, { ...T.white, ...T.yellow });
 }
 
+// Spieluhr oben rechts (FarmyDevBuild-Schalter „Spielzeit per OCR“) → Sekunden, null = nicht lesbar.
+// Gleiche Schrift wie CS, nur weiß: die gelben Muster passen. Der Doppelpunkt fällt als zu kleine Fläche weg,
+// aus „12:35“ wird 1235 → die letzten zwei Ziffern sind die Sekunden (ab einer Stunde „1:02:35“ → 10235)
+function readClock(crop) {
+  if (!complete(T.yellow)) return null;
+  const n = digits.read(crop, isWhite, T.yellow);
+  if (n == null || n % 100 >= 60) return null;
+  const h = Math.floor(n / 10000), m = Math.floor(n / 100) % 100;
+  if (h && m >= 60) return null;
+  return h ? h * 3600 + m * 60 + (n % 100) : Math.floor(n / 100) * 60 + (n % 100);
+}
+
 // Cooldown = blauer Uhrzeiger-Wisch, der mit der Zeit schrumpft. Bereite Icons haben 0–4 blaue Pixel,
 // deshalb reichen schon 15, damit die Zahl gelesen wird. Reiner Pixeltest, kostet praktisch nichts.
 // Cooldown: dunkles, blau getöntes Feld. Schon wenige blaue Pixel reichen, damit auch das Ende des Cooldowns
@@ -211,6 +237,54 @@ function centralDigits(crop) {
 // Nur eigene Erkennung: läuft jede Sekunde für bis zu sechs Slots, Tesseract wäre dafür zu teuer.
 const readItemCd = (crop) => (complete(T.white) ? digits.read(crop, isWhite, T.white, { central: true }) : null);
 
+// Ulti im Cooldown: weiße Restzeit mittig auf dem R-Symbol (wie bei den Summonern mit blauem Symbol).
+// Die Manakosten oben rechts liegen außerhalb der Mitte und zählen nicht
+const ultOnCooldown = (crop) => centralDigits(crop);
+
+// FPS und Ping oben rechts (weiß, kleiner als CS): die gelben CS-Muster passen auch hier, die weißen
+// Summoner-Muster nicht (getestet 27.10.: FPS 165 und Ping 5 richtig). Die Schrift ist hellgrau, nicht weiß
+const isLight = (r, g, b) => r > 150 && g > 150 && b > 150;
+const readHudNumber = (crop) => (complete(T.yellow) ? digits.read(crop, isLight, T.yellow) : null);
+
+// Death Recap: Anteile der Schadensarten aus dem Ring um den Gesamtschaden (orange = physisch, blau = magisch,
+// weiß = echt), 360 Punkte auf dem Ring. null, wenn kaum Ring zu sehen ist (Recap zugeklappt oder noch nicht da).
+// Geprüft 27.10. an zwei Toden: 86/0/14 (Irelia mit echtem Schaden) und 100/0/0 (Turm)
+function deathRing(img, cx, cy, r) {
+  const n = { phys: 0, magic: 0, true: 0 };
+  for (let a = 0; a < 360; a++) {
+    const x = Math.floor(cx + r * Math.sin((a * Math.PI) / 180));
+    const y = Math.floor(cy - r * Math.cos((a * Math.PI) / 180));
+    const i = (y * img.width + x) * 4, R = img.data[i], G = img.data[i + 1], B = img.data[i + 2];
+    if (R > 150 && R - B > 60) n.phys++;
+    else if (Math.min(R, G, B) > 170) n.true++;
+    else if (B > R + 40) n.magic++;
+  }
+  // unter 2 % ist es die weiße Trennlinie oben am Ring, kein Schaden
+  for (const k of Object.keys(n)) if (n[k] < 8) n[k] = 0;
+  const sum = n.phys + n.magic + n.true;
+  if (sum < 300) return null;
+  const pct = (v) => Math.round((v / sum) * 100);
+  return { phys: pct(n.phys), magic: pct(n.magic), true: pct(n.true) };
+}
+
+// Ausschnitt aus einem großen RGBA-Bild (z. B. dem ganzen Spielfenster)
+function subCrop(img, { x, y, width, height }) {
+  const data = Buffer.alloc(width * height * 4);
+  for (let row = 0; row < height; row++) {
+    const from = ((y + row) * img.width + x) * 4;
+    img.data.copy(data, row * width * 4, from, from + width * 4);
+  }
+  return { width, height, data };
+}
+
+// Gesamtschaden mitten im Ring: grau und in anderer Schrift als CS, die eigenen Muster treffen nur manchmal
+// (1170 ja, 584 nein) → sonst Tesseract, das läuft nur einmal je Tod
+async function readDeathTotal(crop) {
+  const grey = (r, g, b) => r > 100 && g > 100 && b > 80;
+  const own = complete(T.white) ? digits.read(crop, grey, T.white) ?? digits.read(crop, grey, T.yellow) : null;
+  return own ?? recognize(crop, grey);
+}
+
 // Summoner mit Ladungen (Zerschmettern) zeigen die Ladungszahl weiß unten rechts: wie bei den Items nur die
 // Restzeit in der Mitte lesen, sonst wird aus „1“ und „45“ eine 145
 async function readSpellCd(crop) {
@@ -219,6 +293,24 @@ async function readSpellCd(crop) {
     if (own != null) return own;
   }
   return recognize(crop, isWhite, (x, y) => x > crop.width * 0.65 && y > crop.height * 0.7);
+}
+
+// Rollen-Quest: Anteil des Rings, der türkis ist (0–1). Wo der Bogen beginnt, ist dafür egal. Abgetastet in 2°-Schritten
+// auf drei Radien um die Ausschnittmitte (Ring ~3 px breit), der beste zählt
+function readQuest(crop, r) {
+  const { width: W, data } = crop;
+  const c = (W - 1) / 2;
+  let best = 0;
+  for (const rr of [r - 0.7, r, r + 0.7]) {
+    let hit = 0;
+    for (let a = 0; a < 360; a += 2) {
+      const x = Math.round(c + rr * Math.cos((a * Math.PI) / 180)), y = Math.round(c + rr * Math.sin((a * Math.PI) / 180));
+      const p = (y * W + x) * 4;
+      if (data[p + 2] > 160 && data[p + 1] > 130 && data[p + 2] > data[p] + 60) hit++;
+    }
+    best = Math.max(best, hit / 180);
+  }
+  return best;
 }
 
 // Bereich, den der XP-Bogen braucht (für die Aufnahme-Anfrage)
@@ -261,6 +353,6 @@ function readXp(crop, arc) {
 }
 
 module.exports = {
-  init, release, augmentFrame, readText, captureScreen, fromNativeImage, readCs, spellOnCooldown, readSpellCd, readItemCd, xpBox, readXp,
+  init, release, augmentFrame, readText, captureScreen, fromNativeImage, readCs, readClock, readHudNumber, ultOnCooldown, deathRing, subCrop, readDeathTotal, spellOnCooldown, readSpellCd, readItemCd, xpBox, readXp, readQuest,
   isWhite, isYellow, recognizeTesseract: recognize,
 };

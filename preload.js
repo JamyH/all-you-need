@@ -2,11 +2,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('lol', {
   lang: ipcRenderer.sendSync('i18n:lang'), // Sprache der Oberfläche (de/en), fürs Übersetzen beim Laden
+  dev: ipcRenderer.sendSync('app:dev'), // Entwicklerversion: FarmyDevBuild mit lila Logo
+  devInfo: () => ipcRenderer.invoke('dev:info'),
+  devAction: (name) => ipcRenderer.invoke('dev:action', name),
 
   onGame: (cb) => ipcRenderer.on('game', (_e, d) => cb(d)),
   onEditMode: (cb) => ipcRenderer.on('edit-mode', (_e, on) => cb(on)),
   onScoreboard: (cb) => ipcRenderer.on('scoreboard-state', (_e, s) => cb(s)),
   onTabHeld: (cb) => ipcRenderer.on('tab-held', (_e, on) => cb(on)),
+  onDebugRegions: (cb) => ipcRenderer.on('debug-regions', (_e, list) => cb(list)),
   onPanelPos: (cb) => ipcRenderer.on('panel-pos', (_e, p) => cb(p)),
   panelMoved: (pos) => ipcRenderer.invoke('panel-moved', pos),
   uiHover: (over) => ipcRenderer.send('ui-hover', over),
@@ -18,6 +22,12 @@ contextBridge.exposeInMainWorld('lol', {
   settingsOpen: (on) => ipcRenderer.send('overlay:settingsOpen', on),
   endOfGame: () => ipcRenderer.invoke('stats:eog'),
   history: () => ipcRenderer.invoke('stats:history'),
+  progress: () => ipcRenderer.invoke('stats:progress'),
+  review: (gameId) => ipcRenderer.invoke('stats:review', gameId),
+  notes: () => ipcRenderer.invoke('notes:all'),
+  noteSet: (key, text) => ipcRenderer.invoke('notes:set', key, text),
+  goalSet: (goal) => ipcRenderer.invoke('goal:set', goal),
+  goalResult: (gameId, ok) => ipcRenderer.invoke('goal:result', gameId, ok),
   summoner: () => ipcRenderer.invoke('stats:summoner'),
   champion: (id) => ipcRenderer.invoke('ddragon:champion', id),
   ddVersion: () => ipcRenderer.invoke('ddragon:version'),
@@ -35,6 +45,9 @@ contextBridge.exposeInMainWorld('lol', {
   matchupState: () => ipcRenderer.invoke('matchup:state'),
   jungleRoutes: (champId) => ipcRenderer.invoke('jungle:routes', champId),
   jungleChoose: (champId, start) => ipcRenderer.invoke('jungle:choose', champId, start),
+  session: () => ipcRenderer.invoke('session:get'),
+  onSession: (cb) => ipcRenderer.on('session', (_e, s) => cb(s)),
+  bestChamps: (lane) => ipcRenderer.invoke('history:best', lane),
   onMatchupEnemies: (cb) => ipcRenderer.on('matchup:enemies', (_e, s) => cb(s)),
   popupMenu: (pos) => ipcRenderer.send('menu:popup', pos),
   applySpells: () => ipcRenderer.invoke('spells:apply'),

@@ -1,6 +1,27 @@
 const $ = (id) => document.getElementById(id);
 i18n.setLang(window.lol.lang);
 i18n.translatePage(document);
+// Entwicklerversion: Name und lila Logo, damit man sie von der installierten App unterscheidet
+if (window.lol.dev) {
+  document.title = 'FarmyDevBuild';
+  document.querySelector('.brand .logo').src = '../assets/icon-dev.png';
+  document.querySelector('.brand span').textContent = 'FarmyDevBuild';
+  // Meme: Klick aufs Logo legt 23× „Farmy“ in die Zwischenablage
+  const logo = document.querySelector('.brand .logo');
+  logo.style.cursor = 'pointer';
+  logo.style.webkitAppRegion = 'no-drag'; // die Seitenleiste ist Zieh-Fläche fürs Fenster, dort kämen Klicks nicht an
+  logo.title = '23× Farmy';
+  logo.addEventListener('click', async () => {
+    const name = document.querySelector('.brand span');
+    try {
+      await navigator.clipboard.writeText(Array(23).fill('Farmy').join(' '));
+      name.textContent = '23× Farmy kopiert';
+    } catch {
+      name.textContent = 'Zwischenablage gesperrt';
+    }
+    setTimeout(() => (name.textContent = 'FarmyDevBuild'), 1500);
+  });
+}
 const { t, num } = i18n;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const n = (v) => num(v);
@@ -39,7 +60,7 @@ async function renderEog() {
   const myTeam = (eog.teams || []).find((t) => t.isPlayerTeam);
   const won = myTeam ? myTeam.isWinningTeam : null;
 
-  let html = `<div class="summary">
+  let html = await reviewHtml(eog, ls, won) + `<div class="summary">
     <div class="tile"><label>${t('Ergebnis')}</label><b class="${won ? 'win' : 'loss'}">${won ? t('Sieg') : t('Niederlage')}</b></div>
     <div class="tile"><label>${t('Dauer')}</label><b>${dur(eog.gameLength || 0)}</b></div>
     <div class="tile"><label>KDA</label><b>${ls.CHAMPIONS_KILLED || 0}/${ls.NUM_DEATHS || 0}/${ls.ASSISTS || 0}</b></div>
@@ -70,6 +91,71 @@ async function renderEog() {
     html += '</table>';
   }
   el.innerHTML = html;
+}
+
+// Rückblick (wie ein Coach-Report): dieses Spiel gegen deinen Schnitt auf derselben Map, dazu Farmys Protokoll
+// (CS bei 10 min gegen Perfekt-CS, Schadensarten deiner Tode, Ulti ungenutzt), eigene Rekorde und das Session-Ziel
+async function reviewHtml(eog, ls, won) {
+  let r;
+  try {
+    r = await window.lol.review(eog.gameId);
+  } catch {
+    return '';
+  }
+  const map = eog.gameMode === 'CLASSIC' ? 11 : ['ARAM', 'KIWI'].includes(eog.gameMode) ? 12 : null;
+  const me = { cs: (ls.MINIONS_KILLED || 0) + (ls.NEUTRAL_MINIONS_KILLED || 0), k: ls.CHAMPIONS_KILLED || 0, d: ls.NUM_DEATHS || 0,
+    a: ls.ASSISTS || 0, vis: ls.VISION_SCORE || 0, dmg: ls.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS || 0, dur: eog.gameLength || 0 };
+  const base = (r.games || []).filter((g) => g.map === map && g.cs != null && String(g.id) !== String(eog.gameId));
+  const lines = [];
+  const chips = [];
+  const skills = base.length >= 5 ? SKILLS.filter((s) => !s.set && (!s.maps || s.maps.includes(map)) && me[s.needs || 'cs'] != null).map((s) => {
+    const list = base.filter((g) => !s.needs || g[s.needs] != null);
+    if (list.length < 5) return null;
+    const v = s.val(me), b = mean(list.map(s.val));
+    const better = b ? ((v - b) / b) * (s.lower ? -1 : 1) : 0;
+    // Rekord: besser als jedes bisherige Spiel (ab 10 Spielen), sonst unter deinen besten 10 %
+    const vals = list.map(s.val).sort((x, y) => (s.lower ? x - y : y - x));
+    const record = list.length >= 10 && (s.lower ? v < vals[0] : v > vals[0]);
+    const top = !record && list.length >= 10 && (s.lower ? v <= vals[Math.floor(vals.length * 0.1)] : v >= vals[Math.floor(vals.length * 0.1)]);
+    if (record) chips.push(`<span class="chip rec">${t('Rekord')}: ${t(s.label)}</span>`);
+    else if (top) chips.push(`<span class="chip">${t('Top 10 %')}: ${t(s.label)}</span>`);
+    return { ...s, v, b, better };
+  }).filter(Boolean) : [];
+  const pct = (x) => `${x > 0 ? '+' : ''}${Math.round(x * 100)} %`;
+  const good = skills.filter((s) => s.better > 0.05).sort((a, b) => b.better - a.better).slice(0, 2);
+  const bad = skills.filter((s) => s.better < -0.05).sort((a, b) => a.better - b.better).slice(0, 2);
+  if (good.length) lines.push(['good', t('Gut'), good.map((s) => `${t(s.label)} ${dec(s.v, s.digits)} ${t(s.unit)} (${pct(s.better)})`).join(' · ')]);
+  if (bad.length) lines.push(['bad', t('Hat gekostet'), bad.map((s) => `${t(s.label)} ${dec(s.v, s.digits)} ${t(s.unit)} (${pct(s.better)})`).join(' · ')]);
+  if (bad.length) lines.push(['', t('Zuerst verbessern'), t(bad[0].tip)]);
+  const log = r.log;
+  if (log && log.cs10 != null && log.perfect10) {
+    lines.push(['', t('CS bei 10 min'), t('{cs} von {max} möglich ({p} %)', { cs: log.cs10, max: log.perfect10, p: Math.round((log.cs10 / log.perfect10) * 100) })]);
+  }
+  const read = log ? log.deaths.filter((d) => d.phys != null) : [];
+  if (read.length) {
+    const w = (d) => d.total || 1;
+    const sum = read.reduce((a, d) => a + w(d), 0);
+    const mix = (k) => Math.round(read.reduce((a, d) => a + d[k] * w(d), 0) / sum);
+    const [ph, mg] = [mix('phys'), mix('magic')];
+    const hint = ph >= 60 ? t('Rüstung wäre eine Option.') : mg >= 60 ? t('Magieresistenz wäre eine Option.') : t('Gemischter Schaden.');
+    lines.push(['', t('Deine Tode'), `${t('{n} gelesen: {p} % physisch, {m} % magisch, {e} % echt.', { n: read.length, p: ph, m: mg, e: mix('true') })} ${hint}`]);
+  }
+  if (log && log.ult && log.ult.readySec >= 60) {
+    lines.push(['', t('Ulti'), t('{t} bereit und ungenutzt (längste Phase {l})', { t: dur(log.ult.readySec), l: dur(log.ult.longestSec) })]);
+  }
+  // Session-Ziel: nur, wenn es vor diesem Spiel gesetzt war; das Ergebnis zählt für Serie und Quote
+  const g = r.goal;
+  if (g && (!g.map || g.map === map) && g.since <= Date.now() - me.dur * 1000) {
+    const now = { deaths: me.d, csm: me.cs / gmins(me), kda: kdaOf(me), vision: me.vis / gmins(me) }[g.key];
+    const ok = g.key === 'deaths' ? now <= g.target : now >= g.target;
+    window.lol.goalResult(eog.gameId, ok).catch(() => {});
+    const f = (v) => (g.key === 'deaths' ? String(v) : dec(v, g.key === 'vision' ? 2 : 1));
+    lines.push([ok ? 'good' : 'bad', t('Session-Ziel'), `${t(GOAL_TEXT[g.key], { n: f(g.target) })}: ${f(now)} ${ok ? '✓' : '✗'}`]);
+  }
+  if (!lines.length && !chips.length) return '';
+  return `<div class="card review"><div class="card-head"><h2>${t('Rückblick')}</h2>${chips.join('')}</div>` +
+    lines.map(([cls, label, text]) => `<div class="rv-row"><span class="rv-label ${cls}">${label}</span><span>${esc(text)}</span></div>`).join('') +
+    (base.length < 5 ? `<p class="hint">${t('Vergleich mit deinem Schnitt ab 5 Spielen auf dieser Map.')}</p>` : '') + '</div>';
 }
 
 // --- Verlauf (Match-History des Clients) ---
@@ -180,6 +266,253 @@ function trendCard({ label, color, digits, values }) {
   </div>`;
 }
 
+// --- Fortschritt: deine letzten Spiele gegen deinen eigenen Schnitt, wie ein Coach, aber nur mit eigenen Daten
+// (Farmys gemerkte Spiele, nicht nur die 20 des Clients). Kein Vergleich mit anderen Spielern: Riot erlaubt
+// Nach-dem-Spiel-Analyse, und für „besser werden“ zählt ohnehin der Abstand zu dir selbst ---
+const RECENT = 10; // „zuletzt“ = die letzten 10 Spiele, verglichen mit allen davor
+const gmins = (g) => Math.max(g.dur / 60, 1);
+const SKILLS = [
+  { key: 'farm', label: 'Farmen', unit: 'CS/min', digits: 1, val: (g) => g.cs / gmins(g),
+    tip: 'Im Practice Tool 10 Minuten nur Last-Hits üben und beim Recall auf eine volle Welle achten.' },
+  { key: 'fight', label: 'Kämpfen', unit: 'KDA', digits: 2, val: (g) => (g.k + g.a) / Math.max(g.d, 1),
+    tip: 'Nur in Kämpfe gehen, wenn Summoner und Ulti bereit sind; Kills zählen mit, Assists auch.' },
+  { key: 'survive', label: 'Überleben', unit: 'Tode/10 min', digits: 1, lower: true, val: (g) => (g.d / gmins(g)) * 10,
+    tip: 'Vor jedem Schritt über die Flussmitte auf die Minimap schauen; ohne Sicht auf den Gegner-Jungler zurückhalten.' },
+  { key: 'vision', label: 'Sicht', unit: 'Sicht/min', digits: 2, needs: 'vis', val: (g) => g.vis / gmins(g),
+    tip: 'Trinket nie voll liegen lassen und bei jedem Recall eine Kontrollwarde kaufen.' },
+  { key: 'damage', label: 'Schaden', unit: 'Schaden/min', digits: 0, needs: 'dmg', val: (g) => g.dmg / gmins(g),
+    tip: 'In Kämpfen dranbleiben und alle Fähigkeiten loswerden, statt früh rauszulaufen.' },
+  { key: 'obj', label: 'Objectives', unit: 'Obj.-Schaden/min', digits: 0, needs: 'obj', maps: [11], val: (g) => g.obj / gmins(g),
+    tip: 'Nach einem gewonnenen Kampf oder Kill direkt Turm, Drache oder Herold nehmen statt zurück in die Lane.' },
+  // Konstanz: wie stark deine KDA von Spiel zu Spiel schwankt (Variationskoeffizient), weniger ist besser
+  { key: 'steady', label: 'Konstanz', unit: '% Schwankung', digits: 0, lower: true, set: (list) => cv(list.map(kdaOf)) * 100,
+    tip: 'Vor jedem Spiel denselben Plan: sicher farmen bis zum ersten Item-Spike, erst dann auf Kämpfe gehen.' },
+];
+const kdaOf = (g) => (g.k + g.a) / Math.max(g.d, 1);
+const cv = (a) => {
+  const m = mean(a);
+  return m ? Math.sqrt(mean(a.map((v) => (v - m) ** 2))) / m : 0;
+};
+// Skill → Session-Ziel (Schaden, Objectives, Konstanz zeigt die Live-API im Spiel nicht)
+const GOALS = {
+  survive: { key: 'deaths', text: 'Höchstens {n} Tode', make: (r) => Math.max(1, Math.floor(mean(r.map((g) => g.d)) * 0.85)) },
+  farm: { key: 'csm', text: '{n} CS/min', make: (r) => Math.round(mean(r.map((g) => g.cs / gmins(g))) * 1.08 * 10) / 10 },
+  fight: { key: 'kda', text: 'KDA {n}', make: (r) => Math.round(mean(r.map(kdaOf)) * 1.15 * 10) / 10 },
+  vision: { key: 'vision', text: '{n} Sicht/min', make: (r) => Math.round(mean(r.map((g) => g.vis / gmins(g))) * 1.1 * 100) / 100 },
+};
+const GOAL_TEXT = Object.fromEntries(Object.values(GOALS).map((x) => [x.key, x.text]));
+const PMODES = { 11: 'Kluft', 12: 'ARAM' };
+let progGames = [];
+let progLp = [];
+let progGoal = null;
+let progMap = 11;
+$('progress').addEventListener('click', async (e) => {
+  const g = e.target.closest('[data-goal]');
+  if (g) {
+    progGoal = await window.lol.goalSet(g.dataset.goal === 'none' ? null : { key: g.dataset.goal, target: Number(g.dataset.target), map: progMap });
+    drawProgress();
+    return;
+  }
+  const b = e.target.closest('[data-map]');
+  if (!b) return;
+  progMap = Number(b.dataset.map);
+  drawProgress();
+});
+
+async function renderProgress() {
+  let list;
+  try {
+    const r = await window.lol.progress();
+    [list, progLp, progGoal] = [r.games, r.lp || [], r.goal];
+  } catch {
+    list = [];
+  }
+  for (const id of new Set(list.map((g) => g.champ))) {
+    const c = await window.lol.champion(id).catch(() => null);
+    list.filter((g) => g.champ === id).forEach((g) => (g.c = c));
+  }
+  progGames = list;
+  if (!list.some((g) => g.map === progMap) && list.length) progMap = list[list.length - 1].map;
+  drawProgress();
+}
+
+const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+
+function drawProgress() {
+  const el = $('progress');
+  const maps = [...new Set(progGames.map((g) => g.map))].filter((m) => PMODES[m]);
+  // Einträge vor dem 27.10. haben teils nur Items (keine K/D/A, CS): die zählen hier nicht
+  const games = progGames.filter((g) => g.map === progMap && g.cs != null);
+  const seg = maps.length > 1 ? `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${maps.map((m) =>
+    `<button data-map="${m}" aria-pressed="${m === progMap}">${t(PMODES[m])}</button>`).join('')}</div>` : '';
+  if (games.length < RECENT + 5) {
+    el.innerHTML = seg + `<div class="msg">${t('Noch zu wenige Spiele für einen Vergleich ({n} von {need}). Farmy merkt sich jedes Spiel, schau nach ein paar Runden wieder rein.', { n: games.length, need: RECENT + 5 })}</div>`;
+    return;
+  }
+  const recent = games.slice(-RECENT), before = games.slice(0, -RECENT);
+  const skills = SKILLS.filter((s) => !s.maps || s.maps.includes(progMap)).map((s) => {
+    const has = (g) => !s.needs || g[s.needs] != null;
+    const r = recent.filter(has), b = before.filter(has);
+    if (r.length < 5 || b.length < 5) return { ...s, missing: true };
+    const agg = s.set || ((list) => mean(list.map(s.val)));
+    const now = agg(r), base = agg(b);
+    const delta = base ? (now - base) / base : 0;
+    const better = s.lower ? -delta : delta; // > 0 = besser als dein Schnitt
+    // gleitender Schnitt über 5 Spiele: zeigt die Richtung, nicht jedes Ausreißer-Spiel
+    const all = games.filter(has);
+    const rolling = all.map((_, i) => agg(all.slice(Math.max(0, i - 4), i + 1))).slice(4);
+    return { ...s, now, base, better, rolling };
+  });
+  const rated = skills.filter((s) => !s.missing);
+  const focus = rated.reduce((a, s) => (!a || s.better < a.better ? s : a), null);
+  const wr = (list) => Math.round((list.filter((g) => g.win).length / list.length) * 100);
+
+  const tiles = `<div class="summary">
+    <div class="tile"><label>${t('Spiele gemerkt')}</label><b>${games.length}</b></div>
+    <div class="tile"><label>${t('Siegquote zuletzt')}</label><b>${wr(recent)} %</b><small class="tile-sub">${t('sonst {n} %', { n: wr(before) })}</small></div>
+    <div class="tile"><label>${t('Stärke zuletzt')}</label><b>${t(rated.reduce((a, s) => (s.better > a.better ? s : a)).label)}</b></div>
+    <div class="tile"><label>${t('Fokus')}</label><b class="loss">${t(focus.label)}</b></div>
+  </div>`;
+
+  const focusCard = focus && focus.better < 0 ? `<div class="card focus-card">
+    <h2>${t('Dein Fokus: {skill}', { skill: t(focus.label) })}</h2>
+    <p>${t('Zuletzt {now} {unit}, sonst {base}.', { now: dec(focus.now, focus.digits), unit: t(focus.unit), base: dec(focus.base, focus.digits) })}
+    ${esc(t(focus.tip))}</p></div>` : '';
+
+  el.innerHTML = seg + tiles + focusCard + goalCard(recent, rated) + lpCard() +
+    `<h3 class="sec-title">${t('Skill-Bereiche · letzte {n} Spiele gegen deinen Schnitt davor', { n: RECENT })}</h3>` +
+    `<div class="skills">${skills.map(skillCard).join('')}</div>` +
+    `<h3 class="sec-title">${t('Wann du gewinnst')}</h3><div class="wins-grid">${winBlocks(games).join('')}</div>` +
+    `<h3 class="sec-title">${t('Champion-Pool')}</h3>${champPool(games)}`;
+}
+
+// Session-Ziel (wie eine Challenge): eins zur Zeit, im Spiel als Zeile im Panel, nach dem Spiel ✓/✗.
+// Vorschläge aus deinen schwächsten Bereichen, jeweils etwas besser als dein Schnitt zuletzt
+function goalCard(recent, rated) {
+  const fmtT = (key, v) => (key === 'deaths' ? String(v) : dec(v, key === 'vision' ? 2 : 1));
+  const g = progGoal;
+  let head = `<p class="hint">${t('Ein Ziel für die nächsten Spiele: Farmy zeigt es im Panel und hakt es nach jedem Spiel ab.')}</p>`;
+  if (g) {
+    const res = g.results || [];
+    let streak = 0;
+    for (const r of res) streak = r.ok ? streak + 1 : 0;
+    const last = res.slice(-5);
+    head = `<p><b>${t(GOAL_TEXT[g.key], { n: fmtT(g.key, g.target) })}</b>${g.map ? ` · ${t(PMODES[g.map] || '')}` : ''}</p>` +
+      `<p class="hint">${res.length ? t('{ok} von {n} der letzten Spiele geschafft · Serie {s}', { ok: last.filter((r) => r.ok).length, n: last.length, s: streak })
+        : t('Noch kein Spiel mit diesem Ziel.')} ${last.map((r) => (r.ok ? '✓' : '✗')).join(' ')}</p>`;
+  }
+  const options = rated.filter((s) => GOALS[s.key]).sort((a, b) => a.better - b.better).slice(0, 3).map((s) => {
+    const G = GOALS[s.key];
+    const target = G.make(recent);
+    return `<button class="ghost" data-goal="${G.key}" data-target="${target}">${t(G.text, { n: fmtT(G.key, target) })}</button>`;
+  });
+  if (g) options.push(`<button class="ghost" data-goal="none">${t('Kein Ziel')}</button>`);
+  return `<div class="card goal-card"><h2>${t('Session-Ziel')}</h2>${head}<div class="goal-opts">${options.join('')}</div></div>`;
+}
+
+// LP-Verlauf (Solo/Duo, sonst Flex): Rang als Zahl, gemerkt bei jeder Änderung
+const TIER_NAMES = ['Eisen', 'Bronze', 'Silber', 'Gold', 'Platin', 'Smaragd', 'Diamant', 'Meister', 'Großmeister', 'Challenger'];
+const rankName = (v) => {
+  const tier = Math.min(9, Math.floor(v / 400));
+  if (tier >= 7) return `${t(TIER_NAMES[tier])} ${v - 2800} LP`;
+  return `${t(TIER_NAMES[tier])} ${['IV', 'III', 'II', 'I'][Math.floor((v % 400) / 100)]} · ${v % 100} LP`;
+};
+function lpCard() {
+  for (const [q, label] of [['solo', 'Solo/Duo'], ['flex', 'Flex']]) {
+    const pts = progLp.filter((p) => p[q] != null);
+    if (pts.length < 2) continue;
+    const vals = pts.map((p) => p[q]);
+    const diff = vals[vals.length - 1] - vals[0];
+    const W = 400, H = 70, pad = 6, min = Math.min(...vals), span = Math.max(...vals) - min || 1;
+    const x = (i) => pad + (i * (W - 2 * pad)) / (vals.length - 1);
+    const y = (v) => H - pad - ((v - min) / span) * (H - 2 * pad);
+    const hits = pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p[q]).toFixed(1)}" r="6" fill="transparent"><title>${new Date(p.at).toLocaleDateString(i18n.locale())}: ${rankName(p[q])}</title></circle>`).join('');
+    return `<div class="card lp-card"><div class="card-head"><h2>${t('LP-Verlauf')} · ${label}</h2>` +
+      `<span><b>${rankName(vals[vals.length - 1])}</b> <small class="${diff >= 0 ? 'win' : 'loss'}">${diff >= 0 ? '+' : ''}${diff} LP</small></span></div>` +
+      `<svg class="spark lp" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('LP-Verlauf')}">` +
+      `<polyline points="${vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>${hits}</svg></div>`;
+  }
+  return '';
+}
+
+function skillCard(s) {
+  if (s.missing) {
+    return `<div class="skill"><label>${t(s.label)}</label><p class="hint">${t('Noch zu wenige Spiele mit diesem Wert')}</p></div>`;
+  }
+  const pct = Math.round(Math.abs(s.better) * 100);
+  const word = pct < 3 ? t('wie immer') : s.better > 0 ? t('{n} % besser', { n: pct }) : t('{n} % schlechter', { n: pct });
+  const cls = pct < 3 ? '' : s.better > 0 ? 'good' : 'bad';
+  const arrow = pct < 3 ? '→' : s.better > 0 ? '↑' : '↓';
+  return `<div class="skill">
+    <div class="trend-head"><label>${t(s.label)}</label><span class="delta ${cls}">${arrow} ${word}</span></div>
+    <div class="skill-val"><b>${dec(s.now, s.digits)}</b><small>${t(s.unit)} · Ø ${dec(s.base, s.digits)}</small></div>
+    ${spark(s.rolling, s)}
+  </div>`;
+}
+
+// Gleitender Schnitt als Linie, gestrichelt dein Gesamtschnitt; Hover zeigt den Wert je Spiel
+function spark(values, s) {
+  if (values.length < 2) return '';
+  const W = 200, H = 56, pad = 5;
+  const avg = mean(values);
+  const max = Math.max(...values), min = Math.min(...values), span = max - min || 1;
+  const x = (i) => pad + (i * (W - 2 * pad)) / (values.length - 1);
+  const y = (v) => H - pad - ((v - min) / span) * (H - 2 * pad);
+  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const hits = values.map((v, i) => `<rect x="${(x(i) - (W - 2 * pad) / values.length / 2).toFixed(1)}" y="0" width="${((W - 2 * pad) / values.length).toFixed(1)}" height="${H}" fill="transparent"><title>${t('Spiel {i}: Ø {v} {unit}', { i: i + 5, v: dec(v, s.digits), unit: t(s.unit) })}</title></rect>`).join('');
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('{label}: gleitender Schnitt über 5 Spiele', { label: t(s.label) })}">
+    <line x1="${pad}" x2="${W - pad}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+    <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(values[values.length - 1]).toFixed(1)}" r="3" fill="var(--accent)"></circle>${hits}
+  </svg>`;
+}
+
+// Siegquote nach Spiel-Nr. am Tag (Tilt?), Tageszeit und Spiellänge. Ein „Tag“ geht bis 5 Uhr morgens
+function winBlocks(games) {
+  const dayOf = (g) => new Date(g.at - 5 * 3600e3).toDateString();
+  const nth = new Map();
+  const count = {};
+  for (const g of games) {
+    const d = dayOf(g);
+    count[d] = (count[d] || 0) + 1;
+    nth.set(g, count[d]);
+  }
+  const blocks = [
+    [t('Spiel am Tag'), [['1.', (g) => nth.get(g) === 1], ['2.', (g) => nth.get(g) === 2], ['3.', (g) => nth.get(g) === 3], ['4.+', (g) => nth.get(g) >= 4]]],
+    [t('Tageszeit'), [[t('Morgens'), (g) => hour(g) >= 6 && hour(g) < 12], [t('Nachmittags'), (g) => hour(g) >= 12 && hour(g) < 18],
+      [t('Abends'), (g) => hour(g) >= 18], [t('Nachts'), (g) => hour(g) < 6]]],
+    [t('Spiellänge'), [['< 25 min', (g) => g.dur < 1500], ['25–35 min', (g) => g.dur >= 1500 && g.dur < 2100], ['> 35 min', (g) => g.dur >= 2100]]],
+  ];
+  return blocks.map(([title, rows]) => `<div class="card wins"><h2>${title}</h2>${rows.map(([label, test]) => {
+    const list = games.filter(test);
+    if (list.length < 3) return `<div class="wrow"><span>${label}</span><span class="hint">${t('zu wenig')}</span><small>${t('{n} Spiele', { n: list.length })}</small></div>`;
+    const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
+    return `<div class="wrow" title="${t('{w} % Siege aus {n} Spielen', { w, n: list.length })}"><span>${label}</span>` +
+      // SVG statt style="width": die CSP des Fensters blockt style-Attribute in innerHTML; Strich = 50 %
+      `<svg class="wtrack" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="8" rx="2" class="wbg"></rect>` +
+      `<rect width="${w}" height="8" rx="2" class="wfill"></rect><line x1="50" x2="50" y1="0" y2="8" class="wmid" vector-effect="non-scaling-stroke"></line></svg><small><b class="${w >= 50 ? 'win' : 'loss'}">${w} %</b> · ${list.length}</small></div>`;
+  }).join('')}</div>`);
+}
+const hour = (g) => new Date(g.at).getHours();
+
+function champPool(games) {
+  const by = new Map();
+  for (const g of games) {
+    const c = by.get(g.champ) || { c: g.c, games: [], };
+    c.games.push(g);
+    by.set(g.champ, c);
+  }
+  const rows = [...by.values()].sort((a, b) => b.games.length - a.games.length).slice(0, 8);
+  return `<div class="card"><table class="pool"><thead><tr><th>${t('Champion')}</th><th>${t('Spiele')}</th><th>${t('Siegquote')}</th><th>KDA</th><th>CS/min</th></tr></thead><tbody>` +
+    rows.map(({ c, games: list }) => {
+      const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
+      const kda = list.reduce((a, g) => a + g.k + g.a, 0) / Math.max(list.reduce((a, g) => a + g.d, 0), 1);
+      const csm = list.reduce((a, g) => a + g.cs, 0) / list.reduce((a, g) => a + gmins(g), 0);
+      return `<tr><td class="pool-champ">${c ? champImg(c) + esc(c.name) : '?'}</td><td>${list.length}</td>` +
+        `<td class="${w >= 50 ? 'win' : 'loss'}">${w} %</td><td>${dec(kda, 2)}</td><td>${dec(csm, 1)}</td></tr>`;
+    }).join('') + '</tbody></table></div>';
+}
+
 // --- Live-Spiel: alle 10 Spieler, aktualisiert alle 2 s solange der Tab offen ist ---
 const TIERS = { IRON: 'Eisen', BRONZE: 'Bronze', SILVER: 'Silber', GOLD: 'Gold', PLATINUM: 'Platin', EMERALD: 'Smaragd',
   DIAMOND: 'Diamant', MASTER: 'Meister', GRANDMASTER: 'Großmeister', CHALLENGER: 'Challenger' };
@@ -262,6 +595,7 @@ async function loadBuild() {
   $('autoAccept').checked = buildData.autoAccept;
   $('itemSetAuto').checked = buildData.itemSetAuto;
   selectChampion(champId || buildData.current);
+  renderNotes(); // braucht die Champion-Liste aus buildData
 }
 
 function selectChampion(id) {
@@ -275,7 +609,109 @@ function selectChampion(id) {
   renderOwnItems();
   renderMatchup();
   renderJungle();
+  renderNoteCard();
 }
+
+// --- Notizen: eigene Notizen je Champion plus eine allgemeine, nur lokal; speichert beim Tippen (600 ms Pause) ---
+const GENERAL = '_general';
+let notesData = {};
+let noteKey = GENERAL;
+let noteTimer = null;
+const champById = (id) => buildData && buildData.champions.find((c) => c.id === id);
+const noteName = (key) => (key === GENERAL ? t('Allgemein') : (champById(key) || { name: key }).name);
+
+async function renderNotes() {
+  notesData = await window.lol.notes().catch(() => ({}));
+  drawNoteList();
+  openNote(noteKey);
+  renderNoteCard();
+}
+function drawNoteList() {
+  const keys = Object.keys(notesData).sort((a, b) => notesData[b].at - notesData[a].at);
+  $('noteList').innerHTML = keys.length ? keys.map((k) => `<button class="note-item${k === noteKey ? ' active' : ''}" data-note="${esc(k)}">` +
+    `${k === GENERAL ? '<span class="champ-ph" aria-hidden="true"></span>' : champImg(champById(k))}` +
+    `<span><b>${esc(noteName(k))}</b><small>${esc(notesData[k].text.split('\n')[0].slice(0, 60))}</small></span></button>`).join('')
+    : `<p class="hint">${t('Noch keine Notizen. Wähl oben einen Champion.')}</p>`;
+}
+function openNote(key) {
+  flushNote();
+  noteKey = key;
+  const n = notesData[key];
+  $('noteTitle').textContent = noteName(key);
+  $('noteArea').value = n ? n.text : '';
+  $('noteState').textContent = n ? t('gespeichert {when}', { when: new Date(n.at).toLocaleString(i18n.locale(), { dateStyle: 'short', timeStyle: 'short' }) }) : '';
+  $('noteChamp').value = key === GENERAL ? '' : noteName(key);
+  resetDelete();
+  document.querySelectorAll('.note-item').forEach((b) => b.classList.toggle('active', b.dataset.note === key));
+}
+// Schlüssel und Text werden vor dem ersten await gelesen: ein Wechsel zum nächsten Champ kommt nicht dazwischen
+async function saveNote() {
+  noteTimer = null;
+  const key = noteKey;
+  notesData = await window.lol.noteSet(key, $('noteArea').value);
+  if (key === noteKey) {
+    $('noteState').textContent = notesData[key] ? t('gespeichert') : '';
+    $('noteDelete').hidden = !notesData[key];
+  }
+  drawNoteList();
+  renderNoteCard();
+}
+// Löschen in zwei Schritten (ohne Browser-Dialog): erster Klick fragt nach, zweiter innerhalb von 4 s löscht
+let deleteArmed = null;
+function resetDelete() {
+  clearTimeout(deleteArmed);
+  deleteArmed = null;
+  $('noteDelete').textContent = t('Löschen');
+  $('noteDelete').classList.remove('danger');
+  $('noteDelete').hidden = !notesData[noteKey];
+}
+$('noteDelete').addEventListener('click', async () => {
+  if (!deleteArmed) {
+    $('noteDelete').textContent = t('Wirklich löschen?');
+    $('noteDelete').classList.add('danger');
+    deleteArmed = setTimeout(resetDelete, 4000);
+    return;
+  }
+  clearTimeout(noteTimer);
+  noteTimer = null;
+  $('noteArea').value = '';
+  await saveNote();
+  $('noteState').textContent = t('gelöscht');
+  resetDelete();
+});
+function flushNote() {
+  if (!noteTimer) return;
+  clearTimeout(noteTimer);
+  saveNote();
+}
+$('noteArea').addEventListener('input', () => {
+  $('noteState').textContent = '…';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(saveNote, 600);
+});
+$('noteArea').addEventListener('blur', flushNote);
+window.addEventListener('beforeunload', flushNote);
+$('noteList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-note]');
+  if (b) openNote(b.dataset.note);
+});
+$('noteGeneral').addEventListener('click', () => openNote(GENERAL));
+$('noteChamp').addEventListener('change', () => {
+  const c = champByName.get($('noteChamp').value.trim().toLowerCase());
+  if (c) openNote(c.id);
+});
+// „Build & Runen“: Notiz zum gewählten Champion, „Bearbeiten“ springt in den Reiter „Notizen“
+function renderNoteCard() {
+  if (!champId) return;
+  const n = notesData[champId];
+  $('noteText').innerHTML = n ? esc(n.text) : `<span class="hint">${t('Noch keine Notiz zu diesem Champion.')}</span>`;
+  $('noteEdit').textContent = n ? t('Bearbeiten') : t('Notiz schreiben');
+}
+$('noteEdit').addEventListener('click', () => {
+  showTab('notes');
+  openNote(champId);
+  $('noteArea').focus();
+});
 
 // --- Matchup: Lane gewinnend oder verlierend und wer auf Level 1–3 vorne liegt (nur vor dem Spiel) ---
 const matchup = { enemies: [], position: '', manual: null };
@@ -337,7 +773,35 @@ window.lol.onMatchupEnemies((s) => {
   matchup.side = s.side;
   renderMatchup();
   renderJungle();
+  renderBest();
 });
+
+// Deine besten Champs für die zugeteilte Rolle (nur in der Champ-Auswahl mit Rollen)
+const LANE_NAME = { top: 'Top', jungle: 'Jungle', middle: 'Mid', bottom: 'Bot', utility: 'Support' };
+async function renderBest() {
+  const card = $('bestCard');
+  const lane = matchup.position;
+  if (!LANE_NAME[lane]) return (card.hidden = true);
+  const list = await window.lol.bestChamps(lane).catch(() => []);
+  card.hidden = false;
+  $('bestLane').textContent = LANE_NAME[lane];
+  $('bestList').innerHTML = list.length ? list.map((c) =>
+    `<div class="best-row"><span class="champ">${champImg({ id: c.id })}<b>${esc(c.name)}</b></span>` +
+    `<span>${t('{n} Spiele', { n: c.games })}</span><b class="${c.wins / c.games >= 0.5 ? 'win' : 'loss'}">${dec((c.wins / c.games) * 100, 0)} %</b>` +
+    `<span>KDA ${dec(c.kda, 2)}</span></div>`).join('')
+    : `<p class="hint">${t('Noch zu wenige eigene Spiele in dieser Rolle.')}</p>`;
+}
+
+// Session heute im Kopf der Seitenleiste: Siege/Niederlagen und LP seit dem ersten Blick heute
+function renderSession(s) {
+  const el = $('session');
+  if (!s || s.wins + s.losses === 0) return (el.textContent = '');
+  const lp = [['Solo', s.lp.solo], ['Flex', s.lp.flex]].filter(([, v]) => v).map(([q, v]) => `${q} ${v > 0 ? '+' : ''}${v} LP`);
+  el.innerHTML = `${t('Heute')} <b class="win">${s.wins}S</b> <b class="loss">${s.losses}N</b>${lp.length ? ` · ${lp.join(' · ')}` : ''}` +
+    (s.streak >= 3 ? ` · <span class="loss">${t('{n} Niederlagen am Stück', { n: s.streak })}</span>` : '');
+}
+window.lol.onSession(renderSession);
+window.lol.session().then(renderSession);
 window.lol.matchupState().then((s) => {
   if (!s) return;
   matchup.enemies = s.enemies;
@@ -345,6 +809,7 @@ window.lol.matchupState().then((s) => {
   matchup.side = s.side;
   renderMatchup();
   renderJungle();
+  renderBest();
 });
 
 // --- Jungle-Route: erste Runde je Startcamp als nummerierte Mini-Karte (nur vor dem Spiel) ---
@@ -362,6 +827,7 @@ function jungleMap(route, side) {
     `<path class="lane" d="M8 92 L8 8 L92 8 M8 92 L92 92 L92 8 M8 92 L92 8"/><path class="river" d="M6 6 L94 94"/>` +
     `<polyline points="${line}"/>${dots}</svg>`;
 }
+const fmtClear = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 async function renderJungle() {
   const card = $('jungleCard');
   const forChamp = champId;
@@ -386,7 +852,9 @@ async function renderJungle() {
     return `<div class="jroute">${jungleMap(r.route, side)}<div><b>${t('Start {camp}', { camp: t(CAMP_NAME[r.route[0]]) })}${r.variant ? ` (${esc(r.variant)})` : ''}` +
       `${r.camps < 6 ? ` · ${t('{n} Camps', { n: r.camps })}` : ' · Full Clear'}</b>` +
       `<ol>${r.route.map((c) => `<li>${t(CAMP_NAME[c])}</li>`).join('')}</ol><small>${meta}</small>${video}${pick}</div></div>`;
-  }).join('') + `<p class="hint">${side === 'red' ? t('Rote Seite (oben rechts)') : t('Blaue Seite (unten links)')}</p>`;
+  }).join('') + `<p class="hint">${side === 'red' ? t('Rote Seite (oben rechts)') : t('Blaue Seite (unten links)')}</p>` +
+    (d.clears ? `<p class="clears">${t('Deine erste Runde mit dem Champ')}: <b>${fmtClear(d.clears.last)}</b> · ` +
+      `${t('beste')} <b>${fmtClear(d.clears.best)}</b> · Ø ${fmtClear(d.clears.avg)} (${d.clears.count}×)</p>` : '');
   $('jungleList').querySelectorAll('[data-link]').forEach((a) => (a.onclick = (e) => (e.preventDefault(), window.lol.openSource(a.dataset.link))));
   $('jungleList').querySelectorAll('[data-start]').forEach((b) => (b.onclick = async () => {
     await window.lol.jungleChoose(forChamp, b.dataset.start);
@@ -664,7 +1132,7 @@ async function loadAll() {
     state.lastElementChild.textContent = t('Client nicht verbunden');
   }
   // allSettled: ein Teil mit Fehler (z. B. Client gerade weg) soll die anderen und die Reiterwahl nicht aufhalten
-  const results = await Promise.allSettled([renderLive(), renderEog(), renderHistory(), loadBuild()]);
+  const results = await Promise.allSettled([renderLive(), renderEog(), renderHistory(), loadBuild(), renderProgress()]);
   results.forEach((r) => r.status === 'rejected' && console.warn('Laden:', r.reason && r.reason.message));
   const inGame = results[0].status === 'fulfilled' && results[0].value;
   // läuft gerade ein Spiel, direkt den Live-Tab zeigen
@@ -678,6 +1146,8 @@ const PAGES = {
   live: ['Live-Spiel', 'Alle 10 Spieler mit Rang, Items und Werten, sobald ein Spiel läuft'],
   eog: ['Letztes Spiel', 'Auswertung direkt nach dem Spiel'],
   history: ['Verlauf', 'Deine letzten Spiele'],
+  progress: ['Fortschritt', 'Deine letzten Spiele gegen deinen eigenen Schnitt'],
+  notes: ['Notizen', 'Eigene Notizen je Champion, nur auf deinem PC'],
   build: ['Build & Runen', 'Eigene Einstellungen haben immer Vorrang vor Vorschlägen'],
 };
 let shownTab = null; // schon von außen gewählter Reiter (z. B. Champ-Auswahl → Build & Runen)
@@ -691,6 +1161,46 @@ function showTab(tab) {
 }
 document.querySelectorAll('nav button[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 window.lol.onShowTab(showTab); // Champ-Auswahl öffnet direkt „Build & Runen“
+
+// FarmyDevBuild: eigene Seite „Devtools“ mit Zustand und allen Dev-Werkzeugen (gleiche Aktionen wie Tray → Dev)
+if (window.lol.dev) {
+  PAGES.dev = ['Devtools', 'Nur in FarmyDevBuild · Strg+Shift+D schaltet die Lese-Bereiche'];
+  const nav = document.createElement('button');
+  nav.dataset.tab = 'dev';
+  nav.className = 'dev-nav';
+  nav.innerHTML = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>Devtools';
+  nav.addEventListener('click', () => showTab('dev'));
+  document.querySelector('nav').append(nav);
+  const page = document.createElement('section');
+  page.id = 'dev';
+  page.hidden = true;
+  const tools = [
+    ['regions', 'Lese-Bereiche an/aus'], ['flag:clockOcr', 'Spielzeit per OCR an/aus'], ['flag:perfectCs', 'Perfekt-CS an/aus'],
+    ['flag:fps', 'FPS/Ping-Log an/aus'], ['flag:deathRecap', 'Death Recap an/aus'], ['flag:ultIdle', 'Ulti ungenutzt an/aus'],
+    ['restart', 'Neu starten'], ['devtoolsOverlay', 'DevTools: Overlay'],
+    ['devtoolsStats', 'DevTools: Stats-Fenster'], ['debugDir', 'Debug-Ordner öffnen'], ['testUpdate', 'Update-Meldung testen'],
+  ];
+  page.innerHTML = '<div class="card dev-card"><h2>Status</h2><div id="devInfo" class="dev-grid"></div></div>' +
+    `<div class="card dev-card"><h2>Werkzeuge</h2><div class="dev-tools">${tools.map(([k, label]) =>
+      `<button class="ghost" data-dev="${k}">${label}</button>`).join('')}</div></div>`;
+  document.querySelector('main').append(page);
+  page.querySelectorAll('[data-dev]').forEach((b) => b.addEventListener('click', async () => {
+    await window.lol.devAction(b.dataset.dev);
+    renderDevInfo();
+  }));
+  const ROWS = [['version', 'Version'], ['dataDir', 'Datenordner'], ['game', 'Spiel'], ['focused', 'League vorne'],
+    ['gameArea', 'Spielfenster'], ['factors', 'Skalierung'], ['minimap', 'Minimap'], ['regions', 'Lese-Bereiche'], ['clock', 'Spielzeit'], ['flags', 'Dev-Schalter an'], ['deaths', 'Tode (Recap)'], ['hud', 'FPS / Ping'], ['ult', 'Ulti ungenutzt'], ['update', 'Updater']];
+  async function renderDevInfo() {
+    const d = await window.lol.devInfo();
+    if (!d) return;
+    d.regions = d.regions ? 'an' : 'aus';
+    $('devInfo').innerHTML = ROWS.map(([k, label]) => `<span>${label}</span><b>${esc(d[k])}</b>`).join('');
+  }
+  // nur aktualisieren, solange die Seite offen ist
+  setInterval(() => !page.hidden && renderDevInfo(), 2000);
+  nav.addEventListener('click', renderDevInfo);
+}
 $('reload').addEventListener('click', loadAll);
 loadAll();
 

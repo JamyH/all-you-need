@@ -1,10 +1,15 @@
 // Baut aus den SVGs in assets/ die Icon-Dateien: assets/icon.png (256) und assets/icon.ico (16–256).
 // Kleine Größen nutzen eigene, vereinfachte SVG-Varianten. Start: npx electron tools/build-icon.js
+// Mit --dev: lila Variante assets/icon-dev.png/.ico für die Entwicklerversion (FarmyDevBuild), damit man sie
+// im Tray und in der Taskleiste von der installierten App unterscheidet
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
+const DEV = process.argv.includes('--dev');
+// Gold und Türkis -> Lila (nur für --dev)
+const DEV_COLORS = { '#C8AA6E': '#A970FF', '#785A28': '#5B2E9E', '#F0E6D2': '#EBDCFF', '#0AC8B9': '#C77DFF' };
 const SIZES = [
   [16, 'icon-16.svg'], [24, 'icon-32.svg'], [32, 'icon-32.svg'], [48, 'icon-48.svg'],
   [64, 'icon.svg'], [128, 'icon.svg'], [256, 'icon.svg'],
@@ -12,7 +17,8 @@ const SIZES = [
 
 // Offscreen-Fenster mit transparentem Hintergrund, damit die runden Ecken echte Transparenz bekommen
 async function renderPng(svgFile, size) {
-  const svg = fs.readFileSync(path.join(ASSETS, svgFile), 'utf8');
+  let svg = fs.readFileSync(path.join(ASSETS, svgFile), 'utf8');
+  if (DEV) for (const [from, to] of Object.entries(DEV_COLORS)) svg = svg.split(from).join(to);
   const win = new BrowserWindow({
     width: size, height: size, show: false, frame: false, transparent: true, backgroundColor: '#00000000',
     webPreferences: { offscreen: true },
@@ -55,8 +61,9 @@ app.on('window-all-closed', () => {});
 app.whenReady().then(async () => {
   const pngs = [];
   for (const [size, file] of SIZES) pngs.push([size, await renderPng(file, size)]);
-  fs.writeFileSync(path.join(ASSETS, 'icon.png'), pngs.find(([s]) => s === 256)[1]);
-  fs.writeFileSync(path.join(ASSETS, 'icon.ico'), buildIco(pngs));
-  console.log('icon.png + icon.ico mit', pngs.map(([s]) => s).join(', '), 'px');
+  const name = DEV ? 'icon-dev' : 'icon';
+  fs.writeFileSync(path.join(ASSETS, `${name}.png`), pngs.find(([s]) => s === 256)[1]);
+  fs.writeFileSync(path.join(ASSETS, `${name}.ico`), buildIco(pngs));
+  console.log(`${name}.png + ${name}.ico mit`, pngs.map(([s]) => s).join(', '), 'px');
   app.quit();
 });

@@ -59,6 +59,26 @@ function renderJungleRoute(j = jroute) {
     pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${r.toFixed(2)}"/>` +
       `<text x="${x}" y="${(y + r * 0.42).toFixed(2)}" font-size="${(r * 1.2).toFixed(2)}">${i + 1}</text>`).join('');
 }
+// FarmyDevBuild: „DEV“ im Panel-Kopf und die Lese-Bereiche als lila Rahmen (Strg+Shift+D)
+if (window.lol.dev) {
+  const badge = document.createElement('span');
+  badge.className = 'dev-badge';
+  badge.textContent = 'DEV';
+  $('lvl').after(badge);
+}
+// Lage per CSSOM statt style-Attribut: die CSP des Overlays (style-src ohne 'unsafe-inline') blockt Inline-Styles
+window.lol.onDebugRegions((list) => {
+  $('dbg').replaceChildren(...(list || []).map((r) => {
+    const box = document.createElement('div');
+    if (r.y < 16) box.className = 'below'; // am oberen Rand: Beschriftung unter den Rahmen, sonst außerhalb des Bildschirms
+    Object.assign(box.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` });
+    const label = document.createElement('span');
+    label.textContent = `${r.label}: ${r.value}`;
+    box.append(label);
+    return box;
+  }));
+});
+
 window.lol.onTabHeld((on) => {
   tabHeld = on;
   renderJungleRoute();
@@ -134,7 +154,14 @@ function renderGame(g) {
   $('kda').textContent = g.kda;
   $('kdaRatio').textContent = g.kdaRatio;
   $('cs').textContent = g.cs;
-  $('csm').textContent = `${g.csPerMin}/min`;
+  // CS-Ziel: Schnitt gegen Ziel pro Minute (eigener Schnitt auf dem Champ oder Vorgabe)
+  // (kompakt ist die Kachel zu schmal für „Ziel“: dort nur „6,1 / 7,4“)
+  const ct = g.csTarget;
+  const pm = num(Number(g.csPerMin), 1);
+  // Dev „Perfekt-CS“: noch eine Zeile „max 107 · 84 %“ (nur im normalen Panel)
+  const max = g.csMax != null && !small ? `\nmax ${g.csMax} · ${g.csMax ? Math.round((g.cs / g.csMax) * 100) : 0} %` : '';
+  $('csm').textContent = (!ct ? `${pm}/min` : small ? `${pm} / ${num(ct.perMin, 1)}` : `${pm}/min\n${t('Ziel')} ${num(ct.perMin, 1)}`) + max;
+  $('csm').className = ct || max ? 'target' + (ct && g.gameTime > 300 ? (Number(g.csPerMin) >= ct.perMin ? ' good' : ' bad') : '') : '';
   // ohne OCR liefert Riot CS nur in 10er-Schritten
   if (!g.csExact) $('cs').textContent = `${g.cs}+`;
 
@@ -171,7 +198,9 @@ function renderGame(g) {
   }
 
   // Summoner D/F, danach Item-Cooldowns (Taste 1–7 wie im Spiel)
-  const spellsNew = setHtml($('spells'), [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : [])]
+  // Ward (Trinket, Taste 4) dahinter, nur auf Summoner's Rift
+  const spellsNew = setHtml($('spells'), [...(moduleOn('spells') ? g.spells || [] : []), ...(moduleOn('items') ? g.itemCds || [] : []),
+    ...(g.ward ? [g.ward] : [])]
     .map(small ? ringHtml : tileHtml)
     .join(''));
   // Bild fehlt bei Data Dragon (z. B. Sonder-Summoner)? Dann nur die Taste
@@ -211,6 +240,36 @@ function renderGame(g) {
   } else {
     setHtml($('lane'), '');
   }
+
+  // Erste Runde im Jungle: gemessene Zeit (eine Weile nach dem Ende), bestes bisheriges zum Vergleich
+  $('clear').hidden = !g.clear;
+  if (g.clear) $('clearVal').textContent = `${fmtTime(g.clear.time)} · ${g.clear.cs} CS` + (g.clear.best != null ? ` · ${t('Bestzeit')} ${fmtTime(g.clear.best)}` : '');
+
+  // Gank-Priorität (nur Jungler): Lane-Stand je Lane wie im Tab-Scoreboard, ohne Empfehlung
+  $('gank').hidden = !g.lanes;
+  if (g.lanes) {
+    setHtml($('gank'), `<label>${t('Lane-Stand')}</label>` + g.lanes.map((l) =>
+      `<span><i>${l.lane}</i><b class="${cls(l.gold)}">${signed(l.gold)} g</b><small>${l.kills[0]}:${l.kills[1]}${l.level ? ` · Lvl ${l.level > 0 ? '+' : ''}${num(l.level, 1)}` : ''}</small></span>`).join(''));
+  }
+
+  // Session-Ziel (im Stats-Fenster unter „Fortschritt“ gesetzt): Stand gegen das Ziel, „✓“/„✗“ steht im Text
+  $('goal').hidden = !g.goal;
+  if (g.goal) {
+    const G = g.goal;
+    const fmt = (v) => (G.key === 'deaths' ? String(v) : num(v, G.key === 'vision' ? 2 : 1));
+    $('goalLabel').textContent = t({ deaths: 'Ziel: höchstens {n} Tode', csm: 'Ziel: {n} CS/min', kda: 'Ziel: KDA {n}',
+      vision: 'Ziel: {n} Sicht/min' }[G.key], { n: fmt(G.target) });
+    $('goalVal').textContent = `${fmt(G.now)} ${G.early ? '' : G.ok ? '✓' : '✗'}`.trim();
+    $('goalVal').className = G.early ? 'early' : G.ok ? '' : 'bad';
+  }
+
+  // Rollen-Quest (Ring-Fortschritt vom HUD, nur Summoner's Rift): schmale Zeile unter dem Namen
+  $('quest').hidden = g.quest == null;
+  if (g.quest != null) {
+    $('questPct').textContent = g.quest >= 0.99 ? t('fertig') : `${Math.round(g.quest * 100)} %`;
+    $('questFill').style.width = `${Math.round(g.quest * 100)}%`;
+  }
+  $('quest').classList.toggle('done', g.quest != null && g.quest >= 0.99);
 
   const team = $('teamDiff');
   team.textContent = `${signed(g.teamItemDiff)} g`;
@@ -342,11 +401,18 @@ const MODULES = [
     ['xp', 'XP bis Level-Up'],
     ['lane', 'Lane-Gegner'],
     ['team', 'Team-Itemwert'],
+    ['ward', 'Ward-Cooldown'],
+    ['csTarget', 'CS-Ziel'],
+    ['clear', 'Erste Runde (Jungle)'],
+    ['gank', 'Lane-Stand (Jungle)'],
+    ['quest', 'Rollen-Quest'],
+    ['goal', 'Session-Ziel'],
   ]],
   ['Weitere Overlays', [
     ['scoreboard', 'Tab: Itemwert je Spieler'],
     ['augments', 'Mayhem: Augment-Tiers'],
     ['jungleRoute', 'Jungle-Route auf der Minimap'],
+    ['review', 'Rückblick: Tode und Ulti mitlesen'],
   ]],
 ];
 // [Schlüssel, Name, min, max, Schritt, Anzeige]

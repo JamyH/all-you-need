@@ -4,7 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 let file = null;
-let games = {}; // gameId -> { champ (Key), map, items, win, at }
+// gameId -> { champ (Key), map, items, win, at, k, d, a, cs, dur (s), queue, lane, vis, dmg, gold, taken, obj, turrets }
+// k…lane seit 27.10. (CS-Ziel, beste Champs, Session), vis…taken seit 27.10. abends (Reiter „Fortschritt“);
+// ältere Einträge werden beim nächsten Import ergänzt, soweit der Client sie noch liefert (letzte 20)
+let games = {};
 
 function init(dir) {
   file = path.join(dir, 'item-history.json');
@@ -21,7 +24,9 @@ function add(matchHistory) {
   for (const g of matchHistory?.games?.games || []) {
     const p = g.participants?.[0];
     // nur echte Spiele: Practice Tool und Custom Games verfälschen die Statistik
-    if (!p || games[g.gameId] || g.gameType !== 'MATCHED_GAME') continue;
+    if (!p || g.gameType !== 'MATCHED_GAME') continue;
+    const old = games[g.gameId];
+    if (old && old.obj != null) continue;
     const s = p.stats || {};
     games[g.gameId] = {
       champ: p.championId,
@@ -29,6 +34,17 @@ function add(matchHistory) {
       items: [s.item0, s.item1, s.item2, s.item3, s.item4, s.item5].filter(Boolean),
       win: !!s.win,
       at: g.gameCreation,
+      k: s.kills || 0, d: s.deaths || 0, a: s.assists || 0,
+      cs: (s.totalMinionsKilled || 0) + (s.neutralMinionsKilled || 0),
+      dur: g.gameDuration || 0,
+      queue: g.queueId,
+      lane: laneOf(p.timeline || {}),
+      vis: s.visionScore || 0,
+      dmg: s.totalDamageDealtToChampions || 0,
+      gold: s.goldEarned || 0,
+      taken: s.totalDamageTaken || 0,
+      obj: s.damageDealtToObjectives || 0,
+      turrets: s.turretKills || 0,
     };
     added++;
   }
@@ -52,4 +68,43 @@ function topItems(champKey, map, finished) {
   return { games: list.length, items: [...count.values()].sort((a, b) => b.count - a.count || b.wins - a.wins) };
 }
 
-module.exports = { init, add, topItems };
+// Lane wie in der Champ-Auswahl (assignedPosition): top, jungle, middle, bottom, utility; '' wenn unbekannt
+function laneOf(t) {
+  if (t.lane === 'TOP') return 'top';
+  if (t.lane === 'JUNGLE') return 'jungle';
+  if (t.lane === 'MIDDLE' || t.lane === 'MID') return 'middle';
+  if (t.lane === 'BOTTOM' || t.lane === 'BOT') return /SUPPORT/.test(t.role || '') ? 'utility' : 'bottom';
+  return '';
+}
+
+// Spiele auf Summoner's Rift mit Statistik (Dauer ab 5 min, Remakes zählen nicht)
+const rift = () => Object.values(games).filter((g) => g.map === 11 && g.cs != null && g.dur >= 300);
+
+// Eigener CS-Schnitt pro Minute auf einem Champ (ab 3 Spielen), sonst null
+function csPerMin(champKey) {
+  const list = rift().filter((g) => g.champ === champKey);
+  if (list.length < 3) return null;
+  return list.reduce((sum, g) => sum + g.cs, 0) / list.reduce((sum, g) => sum + g.dur / 60, 0);
+}
+
+// Beste eigene Champs für eine Rolle: ab 2 Spielen, nach Siegquote (bei Gleichstand mehr Spiele). Höchstens n
+function bestChamps(lane, n = 3) {
+  const by = new Map();
+  for (const g of rift().filter((x) => x.lane === lane)) {
+    const c = by.get(g.champ) || { champ: g.champ, games: 0, wins: 0, k: 0, d: 0, a: 0 };
+    c.games++;
+    if (g.win) c.wins++;
+    c.k += g.k; c.d += g.d; c.a += g.a;
+    by.set(g.champ, c);
+  }
+  return [...by.values()].filter((c) => c.games >= 2)
+    .sort((a, b) => b.wins / b.games - a.wins / a.games || b.games - a.games).slice(0, n);
+}
+
+// Spiele seit einem Zeitpunkt (ms), älteste zuerst: für die Session (heute)
+const since = (at) => Object.values(games).filter((g) => g.at >= at).sort((a, b) => a.at - b.at);
+
+// Alle gemerkten Spiele, älteste zuerst (Reiter „Fortschritt“)
+const all = () => Object.entries(games).map(([id, g]) => ({ id, ...g })).sort((a, b) => a.at - b.at);
+
+module.exports = { init, add, topItems, csPerMin, bestChamps, since, all };

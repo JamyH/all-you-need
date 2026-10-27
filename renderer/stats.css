@@ -312,3 +312,86 @@ td .sub { display: block; color: var(--muted); font-size: 11px; }
   .client-state { justify-content: center; }
   .page-head, main, footer { padding-left: 20px; padding-right: 20px; }
 }
+
+/* FarmyDevBuild: Devtools-Seite (lila Akzent) */
+nav .dev-nav { color: #c4a5ff; }
+nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
+.dev-card { margin-bottom: 14px; border-color: rgba(124, 58, 237, .45); }
+.dev-card h2 { color: #c4a5ff; }
+.dev-grid { display: grid; grid-template-columns: 140px 1fr; gap: 6px 16px; font-size: 13px; }
+.dev-grid span { color: var(--muted); }
+.dev-grid b { font-weight: 600; font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
+.dev-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.dev-tools button:hover { border-color: #7c3aed; color: #c4a5ff; }
+
+/* Session in der Seitenleiste, beste Champs, eigene Clear-Zeiten */
+.session { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.session b { font-weight: 700; }
+.best { margin-bottom: 14px; }
+.best[hidden] { display: none; }
+.best-row { display: grid; grid-template-columns: minmax(150px, 1fr) 80px 60px 80px; align-items: center; gap: 12px;
+  margin-top: 8px; padding: 8px 12px; border-radius: 9px; background: var(--tile); font-size: 13px; }
+.jungle .clears { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+
+/* Fortschritt: Skill-Bereiche gegen den eigenen Schnitt, Siegquote nach Umständen, Champion-Pool */
+.tile-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.sec-title { margin: 22px 0 10px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.focus-card { margin-bottom: 4px; border-color: rgba(255, 138, 122, 0.35); }
+.focus-card p { margin: 0; color: var(--text-2); }
+.skills { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.skill { padding: 14px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.skill .hint { margin: 8px 0 0; }
+.skill-val { margin-top: 4px; }
+.skill-val b { font-size: 20px; font-weight: 700; }
+.skill-val small { margin-left: 6px; font-size: 12px; color: var(--muted); }
+.delta { font-size: 12px; color: var(--text-2); }
+.delta.good { color: var(--win); }
+.delta.bad { color: var(--loss); }
+.spark { display: block; width: 100%; height: 56px; margin-top: 8px; }
+.wins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.wrow { display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; gap: 10px; padding: 5px 0; }
+.wrow span { color: var(--text-2); }
+.wrow small { text-align: right; color: var(--muted); }
+.wtrack { width: 100%; height: 8px; }
+.wbg { fill: rgba(255, 255, 255, 0.06); }
+.wfill { fill: var(--accent); }
+.wmid { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1; }
+.pool { width: 100%; border-collapse: collapse; }
+.pool th { padding: 0 8px 8px; font-size: 12px; font-weight: 500; color: var(--muted); text-align: right; }
+.pool td { padding: 6px 8px; border-top: 1px solid var(--line); text-align: right; }
+.pool th:first-child, .pool td:first-child { text-align: left; }
+.pool-champ { display: flex; align-items: center; gap: 8px; }
+.pool-champ img { width: 24px; height: 24px; border-radius: 6px; }
+
+/* Rückblick (Letztes Spiel), Session-Ziel und LP-Verlauf (Fortschritt) */
+.review { margin-bottom: 16px; }
+.review .card-head { flex-wrap: wrap; justify-content: flex-start; }
+.rv-row { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); color: var(--text-2); }
+.rv-label { color: var(--muted); }
+.rv-label.good { color: var(--win); }
+.rv-label.bad { color: var(--loss); }
+.chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--tile-hi); color: var(--text-2); font-size: 12px; }
+.chip.rec { background: rgba(242, 193, 78, 0.16); color: var(--gold); }
+.goal-card, .lp-card { margin-top: 12px; }
+.goal-card p { margin: 0 0 6px; }
+.goal-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.spark.lp { height: 70px; }
+
+/* Notizen: Liste links, Textfeld rechts; Notiz-Karte in „Build & Runen“ */
+.notes-cols { display: grid; grid-template-columns: minmax(200px, 280px) 1fr; gap: 16px; align-items: start; }
+.notes-list #noteList { display: flex; flex-direction: column; gap: 4px; }
+.note-item { display: flex; align-items: center; gap: 10px; width: 100%; height: auto; padding: 8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text); text-align: left; }
+.note-item:hover { background: var(--tile-hi); }
+.note-item.active { background: var(--accent-soft); }
+.note-item img, .note-item .champ-ph { width: 28px; height: 28px; border-radius: 6px; flex: none; }
+.note-item span { display: flex; flex-direction: column; min-width: 0; }
+.note-item small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#noteArea { box-sizing: border-box; width: 100%; min-height: 320px; padding: 12px; resize: vertical; border: 1px solid var(--line-2);
+  border-radius: 8px; background: var(--tile); color: var(--text); font: inherit; line-height: 1.5; }
+#noteArea:focus { outline: none; border-color: var(--accent); }
+.note-card { margin-bottom: 16px; }
+.note-text { white-space: pre-wrap; color: var(--text-2); }
+.note-actions { display: flex; align-items: center; gap: 10px; }
+#noteDelete.danger { border-color: var(--loss); color: var(--loss); }
+#noteDelete[hidden] { display: none; } /* button hat display: inline-flex, sonst wirkt hidden nicht */

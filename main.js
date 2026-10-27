@@ -47,12 +47,15 @@ const lolalytics = require('./src/lolalytics');
 const early = require('./src/early');
 const meraki = require('./src/meraki');
 const history = require('./src/history');
+const gamelog = require('./src/gamelog');
+const notes = require('./src/notes');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
 const jungle = require('./src/jungle');
 const minimap = require('./src/minimap');
 const gamewindow = require('./src/gamewindow');
 const updater = require('./src/updater');
+const clears = require('./src/clears');
 const anvil = require('./src/anvil');
 const keys = require('./src/keys');
 const riot = require('./src/riot');
@@ -93,11 +96,18 @@ const overlaySettings = () => ({
 });
 // Modul an? Ausgeschaltete Module sparen auch die Bildschirm-Erkennung (Cooldowns, Augments, Scoreboard)
 const moduleOn = (key) => overlaySettings().modules[key] !== false;
+// Spiel-Rückblick: Death Recap und eigene Ulti mitlesen, fürs Spielprotokoll (Reiter „Letztes Spiel“)
+const reviewOn = () => moduleOn('review');
 
-const APP_ICON = path.join(__dirname, 'assets', 'icon.ico');
+// Entwicklerversion (aus dem Quellcode): eigener Name und lila Icon, damit man sie von der installierten App
+// unterscheidet (Tray, Taskleiste, Meldungen, Stats-Fenster)
+const DEV = !app.isPackaged;
+const APP_NAME = DEV ? 'FarmyDevBuild' : 'Farmy';
+const APP_ICON = path.join(__dirname, 'assets', DEV ? 'icon-dev.ico' : 'icon.ico');
+const APP_PNG = path.join(__dirname, 'assets', DEV ? 'icon-dev.png' : 'icon.png');
 // eigener Eintrag in der Taskleiste statt „Electron“ (gleiche ID wie die Verknüpfungen des Installers)
 // Die ID bleibt aus der Zeit als „All You Need“: so ersetzt der Installer die alte Installation, statt daneben zu landen
-app.setAppUserModelId('com.jamyh.allyouneed');
+app.setAppUserModelId(DEV ? 'com.jamyh.allyouneed.dev' : 'com.jamyh.allyouneed');
 
 let overlay = null;
 let stats = null;
@@ -161,7 +171,8 @@ function captureMouse() {
   overlay.setIgnoreMouseEvents(false);
 }
 setInterval(() => {
-  if (!overlay || !overlay.isVisible()) return;
+  // beim Beenden (z. B. Dev → Neu starten) ist das Fenster schon zerstört, der Takt läuft noch
+  if (!overlay || overlay.isDestroyed() || !overlay.isVisible()) return;
   const p = screen.getCursorScreenPoint();
   const b = overlay.getBounds();
   const x = p.x - b.x, y = p.y - b.y;
@@ -171,7 +182,14 @@ setInterval(() => {
     panelHover = hover;
     overlay.webContents.send('panel-hover', hover);
   }
-  if (editMode || uiCaptured) return;
+  if (uiCaptured) return;
+  // Verschiebe-Modus: nur über dem Panel fangen (zum Ziehen; das Panel wandert mit der Maus mit), sonst gehen die
+  // Klicks ans Spiel. Vorher fing das ganze Overlay die Maus, und im Spiel konnte man nicht mehr laufen
+  if (editMode) {
+    if (!inRect(hitRects.panel, x, y, 60)) setPassThrough(false);
+    else if (forwarding !== null) captureMouse();
+    return;
+  }
   const zones = [hitRects.grip, hitRects.gear, settingsOpen && hitRects.settings, !overlaySettings().clickThrough && hitRects.panel];
   setPassThrough(zones.some((r) => inRect(r, x, y, GRIP_MARGIN)));
 }, 150);
@@ -234,7 +252,7 @@ function openStats(opts = {}) {
     minHeight: 520,
     // ohne Windows-Rahmen wie das Overlay; Verschieben über Seitenleiste und Kopf, eigene Knöpfe oben rechts
     frame: false,
-    title: 'Farmy',
+    title: APP_NAME,
     icon: APP_ICON,
     autoHideMenuBar: true,
     backgroundColor: '#0f1115',
@@ -257,7 +275,7 @@ function openStats(opts = {}) {
     if (config.closedHint || !tray) return;
     tray.displayBalloon({
       iconType: 'custom',
-      icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+      icon: nativeImage.createFromPath(APP_PNG),
       title: t('Farmy läuft weiter'),
       content: t('Das Overlay bleibt aktiv. Beenden über Rechtsklick aufs Icon hier unten rechts.'),
     });
@@ -319,7 +337,7 @@ function warnFullscreen() {
   if (setup.readWindowMode(config.leaguePath) !== 0 || !tray) return;
   tray.displayBalloon({
     iconType: 'custom',
-    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    icon: nativeImage.createFromPath(APP_PNG),
     title: t('League läuft im Vollbild'),
     content: t('Dort ist das Overlay nicht zu sehen. Im Spiel: Einstellungen → Video → Fenstermodus „Randlos“.'),
   });
@@ -341,7 +359,7 @@ function perfSample() {
     mb: Math.round(m.memory.workingSetSize / 1024),
   }));
   const row = { t: new Date().toISOString(), procs, ...(first ? {} : { mainJs: Math.round(((cpu.user + cpu.system) / 1e4 / secs) * 10) / 10 }),
-    heapMb: Math.round(process.memoryUsage().heapUsed / 1048576) };
+    heapMb: Math.round(process.memoryUsage().heapUsed / 1048576), ...hudPerf() };
   try {
     fs.mkdirSync(DEBUG_DIR, { recursive: true });
     fs.appendFileSync(path.join(DEBUG_DIR, 'perf.log'), JSON.stringify(row) + '\n');
@@ -350,9 +368,52 @@ function perfSample() {
   }
 }
 
+// Session-Ziel im Panel: aktueller Stand gegen das Ziel (nur auf der Map, für die es gesetzt wurde)
+// key: deaths (höchstens), csm, kda, vision (Sicht/min) jeweils mindestens
+function goalNow(s) {
+  const g = config.goal;
+  if (!g || !moduleOn('goal') || (g.map && g.map !== s.map)) return null;
+  const [k, d, a] = String(s.kda).split('/').map(Number);
+  const mins = Math.max(s.gameTime / 60, 1);
+  const now = { deaths: d, csm: Number(s.csPerMin), kda: (k + a) / Math.max(d, 1), vision: (s.wardScore || 0) / mins }[g.key];
+  if (now == null || Number.isNaN(now)) return null;
+  const ok = g.key === 'deaths' ? now <= g.target : now >= g.target;
+  // Raten wie CS/min sind die ersten Minuten noch nicht aussagekräftig
+  return { key: g.key, target: g.target, now, ok, early: g.key !== 'deaths' && s.gameTime < 300 };
+}
+
+// Dev „FPS/Ping ins perf.log“: Schnitt und Minimum der gelesenen Werte seit der letzten Zeile (alle 5 s gelesen)
+let hudSamples = { fps: [], ping: [] };
+function hudPerf() {
+  const { fps, ping } = hudSamples;
+  hudSamples = { fps: [], ping: [] };
+  if (!fps.length && !ping.length) return {};
+  const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null);
+  return { fps: avg(fps), fpsMin: fps.length ? Math.min(...fps) : null, ping: avg(ping) };
+}
+
+// Dev „Perfekt-CS“: alle Vasallen der Wellen, die bis jetzt an der Lane angekommen sind. Wellen alle 30 s ab dem
+// ersten Spawn (Live-API-Ereignis „MinionsSpawning“, sonst 1:05), rund 30 s Laufweg; je Welle 3 Nahkampf + 3 Fernkampf,
+// Kanone jede 3. Welle bis 14:00, jede 2. bis 25:00, danach jede. Näherung: Quellen nennen auch 15 bzw. 20 min.
+// Ergibt 107 bei 10:00 (der übliche Richtwert)
+function perfectCs(t, spawn) {
+  let cs = 0;
+  for (let n = 0, s = spawn; s + 30 <= t; n++, s += 30) cs += 6 + (s >= 1500 || (s >= 840 ? n % 2 === 1 : n % 3 === 2) ? 1 : 0);
+  return cs;
+}
+// Spawn in angezeigter Zeit: mit „Spielzeit per OCR“ weicht die Uhr von der API-Zeit ab (Practice Tool)
+function minionSpawn(data, apiTime) {
+  const ev = ((data.events || {}).Events || []).find((e) => e.EventName === 'MinionsSpawning');
+  return ev ? ev.EventTime - (apiTime - data.gameData.gameTime) : 65;
+}
+
 async function pollGame() {
   const data = await live.fetchGame();
   if (data) gameMode = data.gameData.mapNumber === 12 ? 'aram' : 'sr';
+  const apiTime = data ? data.gameData.gameTime : 0;
+  // Dev-Schalter „Spielzeit per OCR“: bewusst nur die Uhr vom Bildschirm, die Zeit der Live-API wird verworfen
+  // (Practice Tool: dort springt bzw. steht die Uhr). Alles Weitere (CS/min, Clear-Zeit …) rechnet damit
+  if (data && clockOcr()) data.gameData.gameTime = screenState.clock ?? 0;
   const summary = data
     ? live.applySkills(
         live.applyBuild(live.applyMana(live.applyScreen(live.summarize(data), screenState, config.minionXp), config.mana), buildFor),
@@ -361,12 +422,21 @@ async function pollGame() {
     : null;
   if (summary && !gameRunning) {
     refreshLayout(); // Spielstart: HUD-Skalierung könnte sich geändert haben
+    screenState.quest = screenState.ward = screenState.clock = null; // Rollen-Quest, Ward und Uhr gelten je Spiel
+    deaths = [];
+    if (data.gameData.gameMode !== 'PRACTICETOOL') {
+      gamelog.start({ champ: Number(ddragon.championKey(summary.championId)), map: summary.map, mode: data.gameData.gameMode,
+        at: Date.now() - apiTime * 1000 });
+      lcu.gameflowSession(config.leaguePath).then((x) => gamelog.setGameId(x && x.gameData && x.gameData.gameId)).catch(() => {});
+    }
     closeUnusedStats();
     warnFullscreen();
     if (screenReading) capture.start().catch((e) => console.warn('Bildschirmaufnahme:', e.message));
     startTabWatch(); // Tastenkürzel immer; Tab-Scoreboard nur mit Bildschirm-Erkennung (Prüfung dort)
   }
   if (!summary && gameRunning) {
+    gamelog.finish(reviewOn() ? { ult: { readySec: Math.round(ultIdle.total), longestSec: Math.round(ultIdle.longest) } } : {});
+    logUltIdle();
     stopTabWatch();
     capture.stop();
     ocr.release().catch(() => {});
@@ -384,6 +454,19 @@ async function pollGame() {
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (summary) summary.augments = screenState.augments || null;
   if (summary) summary.jungleRoute = jungleRouteFor(summary);
+  if (summary) summary.quest = summary.map === 11 && moduleOn('quest') ? screenState.quest : null;
+  if (summary) addRiftExtras(summary, data);
+  if (summary && summary.map === 11 && devFlag('perfectCs')) summary.csMax = perfectCs(summary.gameTime, minionSpawn(data, apiTime));
+  if (summary) gamelog.tick(summary, summary.map === 11 ? perfectCs(600, minionSpawn(data, apiTime)) : null);
+  if (summary) summary.goal = goalNow(summary);
+  // Ward (Trinket-Slot, Taste 4) als Kachel wie Summoner und Items; null = aus
+  if (summary) {
+    const trinket = summary.map === 11 && moduleOn('ward') && summary.myItems.find((it) => it.slot === 6);
+    summary.ward = trinket ? { key: '4', name: trinket.name, icon: ddragon.iconUrl('item', trinket.id),
+      ready: screenState.ward == null, cd: screenState.ward ?? null } : null;
+  }
+  // Lese-Bereiche (Dev) jede Sekunde, auch wenn das Lesen gerade pausiert (z. B. Stats-Fenster vorne)
+  if (summary && debugRegions) sendDebugRegions();
   // Debug-Abzug nur in der Entwicklerversion (100 KB alle 5 s wären für Nutzer nur Schreiblast)
   if (data && !app.isPackaged && Date.now() - lastDump > 5000) {
     lastDump = Date.now();
@@ -409,6 +492,28 @@ async function pollGame() {
 // (das Overlay selbst taucht in der Aufnahme nicht auf)
 const hwnd = (w) => (w && !w.isDestroyed() ? Number(w.getNativeWindowHandle().readBigUInt64LE()) : 0);
 const gameFocused = (withStats = true) => gamewindow.focused([hwnd(overlay), withStats && hwnd(stats)].filter(Boolean));
+
+// Summoner's Rift: CS-Ziel, erste Runde im Jungle (Clear-Zeit) und Lane-Stand für die Gank-Priorität
+let clearShown = null; // { time, cs, until (Spielzeit) }: fertig gemessene Runde, eine Weile im Panel
+function addRiftExtras(summary, data) {
+  if (summary.map !== 11) return;
+  // CS-Ziel: eigener Schnitt auf dem Champ (ab 3 Spielen), sonst config.csTarget (Standard 8/min)
+  if (moduleOn('csTarget')) {
+    const own = history.csPerMin(Number(ddragon.championKey(summary.championId)));
+    summary.csTarget = { perMin: Math.round((own || config.csTarget || 8) * 10) / 10, own: !!own };
+  }
+  if (!summary.smite) return;
+  // Clear-Zeit: aus den genauen CS (Bildschirm), sonst API
+  if (moduleOn('clear')) {
+    const done = clears.track(summary.championId, summary.gameTime, summary.cs);
+    if (done) clearShown = { ...done, until: summary.gameTime + 90 };
+    if (clearShown && summary.gameTime < clearShown.until) {
+      const st = clears.stats(summary.championId);
+      summary.clear = { time: clearShown.time, cs: clearShown.cs, best: st && st.count > 1 ? st.best : null };
+    } else clearShown = null;
+  }
+  if (moduleOn('gank')) summary.lanes = live.lanes(data);
+}
 
 // Jungle-Route auf der Minimap: nur mit Smite auf Summoner's Rift; das Overlay zeigt sie nur, solange Tab gedrückt ist.
 // Zeigt einen vorher festgelegten Plan (Startcamp aus dem Stats-Fenster, sonst die neueste Route),
@@ -456,6 +561,16 @@ async function findMinimap() {
 let gameRunning = false;
 let screenReading = false; // Bildschirm-Erkennung eingeschaltet (config.ocr.enabled) und bereit
 let screenState = { cs: null, xp: null, spells: {}, items: {} };
+// FarmyDevBuild-Schalter (Tray → Dev und Devtools-Seite), gespeichert in config.devFlags
+const DEV_FLAGS = [
+  ['clockOcr', 'Spielzeit per OCR (statt Live-API)'],
+  ['perfectCs', 'Perfekt-CS im CS-Feld'],
+  ['fps', 'FPS/Ping ins perf.log'],
+  ['deathRecap', 'Death Recap auswerten'],
+  ['ultIdle', 'Ulti ungenutzt zählen'],
+];
+const devFlag = (k) => DEV && !!(config.devFlags || {})[k];
+const clockOcr = () => devFlag('clockOcr');
 let lastItems = []; // Inventar aus der Live-API, damit die Bildschirm-Abfrage nur belegte Item-Slots liest
 let meDead = false; // tot: Bildschirm grau, Cooldown-Erkennung der Summoner unzuverlässig
 let blueSpells = {}; // { d, f }: Summoner mit blauem Symbol, siehe ocr.spellOnCooldown
@@ -567,6 +682,80 @@ async function readAugmentOffer(augCrops) {
 
 let ocrBusy = false;
 let lastCsRead = 0;
+let lastFpsRead = 0;
+
+// Dev „Ulti ungenutzt“: Sekunden, in denen R gelernt war, du gelebt hast und R bereit war (keine Restzeit auf dem
+// Symbol). Nur deine eigene Ulti. Am Spielende eine Zeile in debug/ult-idle.log
+let ultIdle = { total: 0, streak: 0, longest: 0, at: 0 };
+function trackUlt(crop) {
+  const now = Date.now();
+  const dt = ultIdle.at ? Math.min(5, (now - ultIdle.at) / 1000) : 0; // Lücken (anderes Fenster vorne) nicht zählen
+  ultIdle.at = now;
+  const r = lastData && lastData.activePlayer.abilities && lastData.activePlayer.abilities.R;
+  const ready = !!r && r.abilityLevel > 0 && !meDead && !ocr.ultOnCooldown(crop);
+  if (ready) {
+    ultIdle.total += dt;
+    ultIdle.streak += dt;
+    ultIdle.longest = Math.max(ultIdle.longest, ultIdle.streak);
+  } else ultIdle.streak = 0;
+  screenState.ultReady = ready;
+}
+function logUltIdle() {
+  const u = ultIdle;
+  ultIdle = { total: 0, streak: 0, longest: 0, at: 0 };
+  if (!devFlag('ultIdle') || !u.total) return;
+  try {
+    fs.mkdirSync(DEBUG_DIR, { recursive: true });
+    fs.appendFileSync(path.join(DEBUG_DIR, 'ult-idle.log'), JSON.stringify({ t: new Date().toISOString(), champion: lastChampion,
+      readySec: Math.round(u.total), longestSec: Math.round(u.longest) }) + '\n');
+  } catch {
+    // nur Beiwerk
+  }
+}
+
+// Dev „Death Recap“: einmal je Tod, 3 s danach, ein Bild des Spielfensters (zum Nachprüfen, debug/deathrecap/)
+// und daraus Gesamtschaden und Schadensarten (Ring im Recap oben links) → deaths (je Spiel) und debug/deaths.log
+let deadSince = 0;
+let deathSaved = false;
+let deaths = [];
+// „3 Tode · 81 % physisch · 5 % magisch · 14 % echt“, gewichtet mit dem Gesamtschaden, soweit gelesen
+function deathSummary() {
+  const read = deaths.filter((d) => d.phys != null);
+  if (!read.length) return deaths.length ? `${deaths.length} Tode, Recap nicht lesbar` : 'noch keine Tode';
+  const w = (d) => d.total || 1;
+  const sum = read.reduce((a, d) => a + w(d), 0);
+  const share = (k) => Math.round(read.reduce((a, d) => a + d[k] * w(d), 0) / sum);
+  return `${deaths.length} Tode · ${share('phys')} % physisch · ${share('magic')} % magisch · ${share('true')} % echt`;
+}
+async function saveDeathRecap() {
+  if (!meDead) {
+    deadSince = 0;
+    deathSaved = false;
+    return;
+  }
+  if (!deadSince) deadSince = Date.now();
+  if (deathSaved || Date.now() - deadSince < 3000) return;
+  deathSaved = true;
+  const [img] = await capture.grab([gameArea]);
+  if (!img) return;
+  // Bild nur in der Entwicklerversion mit Dev-Schalter (zum Nachprüfen der Erkennung)
+  const name = devFlag('deathRecap') ? `${new Date().toISOString().replace(/[:.]/g, '-')}_${lastChampion || 'x'}.png` : null;
+  if (name) {
+    const bgra = Buffer.from(img.data);
+    for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
+    const dir = path.join(DEBUG_DIR, 'deathrecap');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFile(path.join(dir, name), nativeImage.createFromBitmap(bgra, { width: img.width, height: img.height }).toPNG(), () => {});
+  }
+  const d = L.deathRecap;
+  const ring = ocr.deathRing(img, d.cx, d.cy, d.r);
+  const total = ring ? await ocr.readDeathTotal(ocr.subCrop(img, d.total)) : null;
+  const death = { t: new Date().toISOString(), gameTime: lastData ? Math.round(lastData.gameData.gameTime) : null,
+    champion: lastChampion, total, ...(ring || { phys: null, magic: null, true: null }), image: name };
+  deaths.push(death);
+  gamelog.death({ gameTime: death.gameTime, total, phys: death.phys, magic: death.magic, true: death.true });
+  if (name) fs.appendFile(path.join(DEBUG_DIR, 'deaths.log'), JSON.stringify(death) + '\n', () => {});
+}
 async function pollScreen() {
   // anderes Fenster vorne: dort steht nicht das Spiel, Lesen ergäbe Unsinn (z. B. Summoner „bereit“)
   if (!gameRunning || ocrBusy || !gameFocused(false)) return;
@@ -579,12 +768,33 @@ async function pollScreen() {
     const items = moduleOn('items') ? lastItems.filter((it) => it.slot < 6) : [];
     const regions = [...slots.map(([, r]) => r), ...items.map((it) => L.items[it.slot])];
     if (readCs) regions.push(L.cs, ocr.xpBox(L.xpArc));
+    // Rollen-Quest und Ward-Slot nur auf Summoner's Rift (ARAM hat beides nicht); vor den Augments, die hinten
+    // abgeschnitten werden
+    const rift = !!lastData && lastData.gameData.mapNumber === 11;
+    const questIdx = rift && moduleOn('quest') ? regions.push(L.quest) - 1 : -1;
+    const wardIdx = rift && (moduleOn('ward') || debugRegions) ? regions.push(L.items[6]) - 1 : -1;
+    const clockIdx = clockOcr() ? regions.push(L.clock) - 1 : -1;
+    const fpsIdx = devFlag('fps') && Date.now() - lastFpsRead >= 5000 ? regions.push(L.fps, L.ping) - 2 : -1;
+    const ultIdx = devFlag('ultIdle') || reviewOn() ? regions.push(L.ult) - 1 : -1;
     // Mayhem: Augment-Angebote kommen auch lebend (z. B. Stufe 7 auf der Lane), daher immer nachsehen. Der
     // Rahmen-Check kostet fast nichts, Texterkennung läuft nur bei offenem Angebot und geänderter Karte
     const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI' && moduleOn('augments');
     if (watchAugments) regions.push(...L.augments.map((a) => a.frame), ...L.augments.map((a) => a.name));
     const crops = await capture.grab(regions);
     const augCrops = watchAugments ? crops.splice(crops.length - 6, 6) : null;
+    if (questIdx >= 0) screenState.quest = ocr.readQuest(crops[questIdx], L.quest.r);
+    if (clockIdx >= 0) screenState.clock = ocr.readClock(crops[clockIdx]) ?? screenState.clock; // unlesbar: letzte Zeit
+    if (fpsIdx >= 0) {
+      lastFpsRead = Date.now();
+      screenState.fps = ocr.readHudNumber(crops[fpsIdx]);
+      screenState.ping = ocr.readHudNumber(crops[fpsIdx + 1]);
+      if (screenState.fps != null) hudSamples.fps.push(screenState.fps);
+      if (screenState.ping != null) hudSamples.ping.push(screenState.ping);
+    }
+    if (ultIdx >= 0) trackUlt(crops[ultIdx]);
+    if (devFlag('deathRecap') || reviewOn()) await saveDeathRecap();
+    // Restzeit mittig wie bei den Items; die Ladungszahl unten rechts (Gelbe Ward) zählt nicht
+    if (wardIdx >= 0) screenState.ward = ocr.readItemCd(crops[wardIdx]);
     if (augCrops) await readAugmentOffer(augCrops);
     else screenState.augments = null;
 
@@ -635,6 +845,42 @@ async function pollScreen() {
   } finally {
     ocrBusy = false;
   }
+}
+
+// FarmyDevBuild: alle Stellen, die Farmy gerade liest, als lila Rahmen mit erkanntem Wert ins Overlay
+// (Strg+Shift+D oder Dev-Menü). Spart das Rätselraten bei fremden Auflösungen und falschen Timern
+let debugRegions = false;
+function toggleDebugRegions() {
+  debugRegions = DEV && !debugRegions;
+  if (!debugRegions) overlay.webContents.send('debug-regions', null);
+  else if (gameRunning && L) sendDebugRegions(); // sofort, nicht erst beim nächsten Abruf
+  refreshTrayMenu();
+}
+// zuletzt gelesene Werte; gleiche Auswahl wie pollScreen (belegte Item-Slots, Augment-Karten nur im Mayhem)
+function sendDebugRegions() {
+  const items = lastItems.filter((it) => it.slot < 6);
+  const watchAugments = !!lastData && lastData.gameData.gameMode === 'KIWI';
+  const box = (label, r, value) => ({ label, value: value == null ? '–' : String(value),
+    x: toDip(r.x), y: toDip(r.y), width: toDip(r.width), height: toDip(r.height) });
+  const spell = (s) => (!s ? '–' : s.ready ? 'bereit' : s.cd != null ? `${Math.max(0, Math.round(s.cd - (Date.now() - s.at) / 1000))} s` : 'Cooldown');
+  // Minimap auch ohne Jungle-Route suchen, damit man die Erkennung prüfen kann
+  if (!minimapFound && Date.now() - minimapTriedAt > 5000 && gameFocused(false)) findMinimap();
+  const m = minimapFound || L.minimap;
+  const list = [
+    box('Spielfenster', gameArea, `${gameArea.width}×${gameArea.height}`),
+    box('CS', L.cs, screenState.cs),
+    ...(clockOcr() ? [box('Uhr', L.clock, screenState.clock == null ? null : `${Math.floor(screenState.clock / 60)}:${String(screenState.clock % 60).padStart(2, '0')}`)] : []),
+    ...(devFlag('fps') ? [box('FPS', L.fps, screenState.fps), box('Ping', L.ping, screenState.ping)] : []),
+    ...(devFlag('ultIdle') ? [box('R', L.ult, `${screenState.ultReady ? 'bereit' : '–'} · ${Math.round(ultIdle.total)} s`)] : []),
+    box('XP', ocr.xpBox(L.xpArc), screenState.xp == null ? null : `${Math.round(screenState.xp * 100)} %`),
+    box('Quest', L.quest, screenState.quest == null ? null : `${Math.round(screenState.quest * 100)} %`),
+    ...Object.entries(L.spells).map(([k, r]) => box(k.toUpperCase(), r, spell(screenState.spells[k]))),
+    ...items.map((it) => box(`Item ${it.slot + 1}`, L.items[it.slot], (screenState.items[it.slot] || {}).cd)),
+    box('Ward', L.items[6], screenState.ward == null ? 'bereit' : `${screenState.ward} s`),
+    box('Minimap', { x: m.x, y: m.y, width: m.size, height: m.size }, minimapFound ? 'gefunden' : 'geschätzt'),
+    ...(watchAugments ? L.augments.map((a, i) => box(`Karte ${i + 1}`, a.name, (augmentCache[i] || {}).text)) : []),
+  ];
+  overlay.webContents.send('debug-regions', list);
 }
 
 // Tab-Scoreboard: die Tab-Taste steuert Ein- und Ausblenden sofort (Taste wird nur gelesen, das Spiel
@@ -853,11 +1099,48 @@ async function importHistory() {
     const h = await lcu.matchHistory(config.leaguePath, 20);
     if (history.add(h)) notifyStats('history:items');
     historyImported = true;
+    updateSession().catch((e) => console.warn('Session:', e.message));
     await refreshAugmentNames();
   } catch (e) {
     // Client noch nicht bereit, beim nächsten Abfragen erneut
   }
 }
+
+// Session (heute): Siege/Niederlagen aus der eigenen Historie, LP seit dem ersten Blick heute (Solo und Flex).
+// Nach 3 Niederlagen am Stück einmal ein Hinweis im Tray
+const TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+const DIVS = ['IV', 'III', 'II', 'I'];
+// Rang als Zahl, damit Auf- und Abstiege mitzählen (eine Division = 100 LP; ab Master nur noch LP)
+const lpScore = (r) => (!r ? null : TIERS.indexOf(r.tier) * 400 + (TIERS.indexOf(r.tier) >= 7 ? 0 : DIVS.indexOf(r.division) * 100) + r.lp);
+let sessionInfo = null;
+let streakWarned = 0;
+async function updateSession() {
+  const today = new Date().toDateString();
+  const dayStart = new Date(new Date().toDateString()).getTime();
+  const me = await lcu.currentSummoner(config.leaguePath);
+  const r = await lcu.ranks(config.leaguePath, me.puuid);
+  const now = { solo: lpScore(r.solo), flex: lpScore(r.flex) };
+  gamelog.trackLp(now);
+  if (!config.session || config.session.day !== today) saveConfig({ session: { day: today, start: now } });
+  const games = history.since(dayStart);
+  let streak = 0;
+  for (const g of games) streak = g.win ? 0 : streak + 1;
+  const delta = (q) => (now[q] != null && config.session.start[q] != null ? now[q] - config.session.start[q] : null);
+  sessionInfo = { wins: games.filter((g) => g.win).length, losses: games.filter((g) => !g.win).length, streak,
+    lp: { solo: delta('solo'), flex: delta('flex') } };
+  notifyStats('session', sessionInfo);
+  if (streak >= 3 && streak !== streakWarned && tray) {
+    streakWarned = streak;
+    tray.displayBalloon({ iconType: 'custom', icon: nativeImage.createFromPath(APP_PNG),
+      title: t('{n} Niederlagen am Stück', { n: streak }), content: t('Kurz durchatmen? Eine Pause hilft oft mehr als das nächste Spiel.') });
+  }
+}
+ipcMain.handle('session:get', () => sessionInfo);
+// Beste eigene Champs für eine Rolle (Champ-Auswahl): Data-Dragon-ID, Spiele, Siege, KDA
+ipcMain.handle('history:best', (_e, lane) => history.bestChamps(lane).map((c) => {
+  const champ = ddragon.champion(c.champ);
+  return { id: champ.id, name: champ.name, games: c.games, wins: c.wins, kda: (c.k + c.a) / Math.max(1, c.d) };
+}));
 
 // Deutsche Augment-Namen aus dem Client, einmal pro App-Start (neue Augments kommen mit Patches)
 let augmentNamesFresh = false;
@@ -1045,6 +1328,7 @@ ipcMain.handle('matchup:state', () => matchupState);
 ipcMain.handle('jungle:routes', async (_e, champId) => ({
   ...(await jungle.routes(ddragon.champion(ddragon.championKey(champId)).name)),
   chosen: (config.jungleStart || {})[champId] || null,
+  clears: clears.stats(champId), // eigene gemessene erste Runden mit diesem Champ
 }));
 // Startcamp für die Minimap merken (je Champion)
 ipcMain.handle('jungle:choose', (_e, champId, start) => saveConfig({ jungleStart: { ...(config.jungleStart || {}), [champId]: start } }));
@@ -1156,6 +1440,31 @@ ipcMain.handle('stats:history', async () => {
   history.add(h);
   return h;
 });
+// Reiter „Fortschritt“: alle selbst gemerkten Spiele (nicht nur die 20 des Clients); vorher die neuesten übernehmen
+ipcMain.handle('stats:progress', async () => {
+  try {
+    history.add(await lcu.matchHistory(config.leaguePath, 20));
+  } catch {
+    // Client aus: dann eben nur die schon gemerkten Spiele
+  }
+  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null };
+});
+// Eigene Notizen je Champion (Reiter „Notizen“, Anzeige in „Build & Runen“)
+ipcMain.handle('notes:all', () => notes.all());
+ipcMain.handle('notes:set', (_e, key, text) => notes.set(key, text));
+// „Letztes Spiel“: Farmys Protokoll zu diesem Spiel, dazu die Historie als Vergleich
+ipcMain.handle('stats:review', (_e, gameId) => ({ log: gamelog.get(gameId), games: history.all(), goal: config.goal || null }));
+// Session-Ziel (wie eine Challenge): eins zur Zeit, Ergebnis je Spiel für Serie und Quote
+ipcMain.handle('goal:set', (_e, goal) => {
+  saveConfig({ goal: goal ? { ...goal, since: Date.now(), results: [] } : null });
+  return config.goal;
+});
+ipcMain.handle('goal:result', (_e, gameId, ok) => {
+  const g = config.goal;
+  if (!g || g.results.some((r) => String(r.gameId) === String(gameId))) return g;
+  saveConfig({ goal: { ...g, results: [...g.results, { gameId, ok, at: Date.now() }].slice(-50) } });
+  return config.goal;
+});
 ipcMain.handle('stats:summoner', async () => lcu.currentSummoner(config.leaguePath));
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));
 ipcMain.handle('ddragon:version', () => ddragon.getVersion());
@@ -1190,7 +1499,7 @@ async function quitLeague() {
   const { before, left } = await riot.quitAll();
   tray.displayBalloon({
     iconType: 'custom',
-    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    icon: nativeImage.createFromPath(APP_PNG),
     title: t('League komplett beenden'),
     content: !before.length ? t('League lief gar nicht.')
       : left.length ? t('Noch nicht beendet: {list}. Dann bitte im Task-Manager.', { list: left.join(', ') })
@@ -1233,11 +1542,72 @@ function appMenu() {
     { type: 'separator' },
     { label: t('League komplett beenden …'), click: () => quitLeague().catch((e) => console.warn('League beenden:', e.message)) },
     { type: 'separator' },
-    { label: `Farmy ${app.getVersion()}`, enabled: false },
+    { label: `${APP_NAME} ${app.getVersion()}`, enabled: false },
     ...updateMenu(),
+    ...devMenu(),
     { label: t('Beenden'), click: () => app.quit() },
   ]);
 }
+// Nur FarmyDevBuild: Werkzeuge zum Entwickeln (nicht übersetzt, sieht nur der Entwickler). Dieselben Aktionen
+// im Tray-Untermenü „Dev“ und auf der Devtools-Seite im Stats-Fenster
+const devTools = (w) => w && !w.isDestroyed() && w.webContents.openDevTools({ mode: 'detach' });
+const DEV_ACTIONS = {
+  regions: () => toggleDebugRegions(),
+  restart: () => { app.relaunch(); app.exit(0); },
+  devtoolsOverlay: () => devTools(overlay),
+  devtoolsStats: () => { openStats(); devTools(stats); },
+  debugDir: () => { fs.mkdirSync(DEBUG_DIR, { recursive: true }); shell.openPath(DEBUG_DIR); },
+  testUpdate: () => { updateNotified = null; updateChanged({ status: 'ready', version: '9.9.9' }); },
+  ...Object.fromEntries(DEV_FLAGS.map(([k]) => [`flag:${k}`, () => {
+    saveConfig({ devFlags: { ...config.devFlags, [k]: !devFlag(k) } });
+    if (k === 'clockOcr') screenState.clock = null;
+    refreshTrayMenu();
+  }])),
+};
+function devMenu() {
+  if (!DEV) return [];
+  return [{
+    label: 'Dev',
+    submenu: [
+      { label: 'Lese-Bereiche zeigen', type: 'checkbox', checked: debugRegions, accelerator: DEV_HOTKEYS.debugRegions, click: DEV_ACTIONS.regions },
+      ...DEV_FLAGS.map(([k, label]) => ({ label, type: 'checkbox', checked: devFlag(k), click: DEV_ACTIONS[`flag:${k}`] })),
+      { type: 'separator' },
+      { label: 'Neu starten', click: DEV_ACTIONS.restart },
+      { type: 'separator' },
+      { label: 'DevTools: Overlay', click: DEV_ACTIONS.devtoolsOverlay },
+      { label: 'DevTools: Stats-Fenster', click: DEV_ACTIONS.devtoolsStats },
+      { label: 'Debug-Ordner öffnen', click: DEV_ACTIONS.debugDir },
+      { label: 'Update-Meldung testen', click: DEV_ACTIONS.testUpdate },
+    ],
+  }];
+}
+ipcMain.handle('dev:action', (_e, name) => DEV && DEV_ACTIONS[name] && DEV_ACTIONS[name]());
+// Zustand für die Devtools-Seite
+ipcMain.handle('dev:info', () => {
+  if (!DEV) return null;
+  const m = minimapFound;
+  return {
+    version: `${APP_NAME} ${app.getVersion()} · Electron ${process.versions.electron}`,
+    dataDir: DATA_DIR,
+    gameArea: gameWindowText(),
+    factors: L ? `Auflösung ×${L.factors.res} · HUD ×${L.factors.hud}` : '–',
+    game: gameRunning ? `läuft (${lastData ? lastData.gameData.gameMode : '?'})` : 'kein Spiel',
+    focused: gameRunning ? (gameFocused(false) ? 'ja' : 'nein – Overlay aus, nichts wird gelesen') : '–',
+    minimap: m ? `gefunden: ${m.size} px bei ${m.x}/${m.y}` : 'noch nicht gesucht oder nicht gefunden',
+    regions: debugRegions,
+    clock: clockOcr() ? `OCR (${screenState.clock == null ? 'noch nicht gelesen' : `${screenState.clock} s`})` : 'Live-API',
+    flags: DEV_FLAGS.filter(([k]) => devFlag(k)).map(([, label]) => label).join(' · ') || 'keine',
+    deaths: devFlag('deathRecap') ? deathSummary() : '–',
+    hud: devFlag('fps') ? `FPS ${screenState.fps ?? '–'} · Ping ${screenState.ping ?? '–'} ms` : '–',
+    ult: devFlag('ultIdle') ? `${Math.round(ultIdle.total)} s bereit ungenutzt (längste Phase ${Math.round(ultIdle.longest)} s)` : '–',
+    update: updater.state().status,
+  };
+});
+const gameWindowText = () => {
+  const w = gamewindow.rect();
+  return w ? `${w.width}×${w.height} bei ${w.x}/${w.y}` : 'kein Spielfenster (ganzer Bildschirm)';
+};
+
 // Update-Eintrag im Tray: fertig geladen -> neu starten; portable -> Release-Seite; sonst nichts
 function updateMenu() {
   const u = updater.state();
@@ -1255,7 +1625,7 @@ async function manualUpdateCheck() {
     dev: [t('Entwicklerversion'), t('Updates gibt es nur für die installierte Version.')],
     error: [t('Update-Suche fehlgeschlagen'), t('GitHub nicht erreichbar. Später nochmal versuchen.')],
   }[r.result];
-  tray.displayBalloon({ iconType: 'custom', icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')), title: text[0], content: text[1] });
+  tray.displayBalloon({ iconType: 'custom', icon: nativeImage.createFromPath(APP_PNG), title: text[0], content: text[1] });
 }
 // Meldung einmal je neuer Version, sobald sie fertig geladen (bzw. bei portable: verfügbar) ist
 let updateNotified = null;
@@ -1265,7 +1635,7 @@ function updateChanged(u) {
   updateNotified = `${u.status}|${u.version}`;
   tray.displayBalloon({
     iconType: 'custom',
-    icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+    icon: nativeImage.createFromPath(APP_PNG),
     title: t('Farmy {version} ist da', { version: u.version }),
     content: u.status === 'ready'
       ? t('Wird beim Beenden installiert. Sofort: Tray-Menü → „Neu starten und aktualisieren“.')
@@ -1276,7 +1646,7 @@ function updateChanged(u) {
 function refreshTrayMenu() {
   if (!tray) return;
   tray.setContextMenu(appMenu());
-  tray.setToolTip(t('Farmy {version} läuft', { version: app.getVersion() }));
+  tray.setToolTip(DEV ? `${APP_NAME} ${app.getVersion()}` : t('Farmy {version} läuft', { version: app.getVersion() }));
 }
 
 // Sprache umschalten: Namen aus Data Dragon neu laden, Menü neu bauen und beide Fenster neu laden
@@ -1289,6 +1659,10 @@ async function setLanguage(lang) {
   if (overlay && !overlay.isDestroyed()) overlay.webContents.reload();
   if (stats && !stats.isDestroyed()) stats.webContents.reload();
 }
+// Entwicklerversion? Fürs Stats-Fenster (Name und lila Logo in der Seitenleiste)
+ipcMain.on('app:dev', (e) => {
+  e.returnValue = DEV;
+});
 ipcMain.on('i18n:lang', (e) => {
   e.returnValue = i18n.lang();
 });
@@ -1303,7 +1677,7 @@ function createTray() {
   if (!config.welcomed) {
     tray.displayBalloon({
       iconType: 'custom',
-      icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')),
+      icon: nativeImage.createFromPath(APP_PNG),
       title: t('Farmy läuft'),
 
       content: t('Du findest es hier unten rechts im Infobereich. Rechtsklick aufs Icon für Einstellungen und Beenden.'),
@@ -1325,7 +1699,11 @@ const HOTKEYS = {
   editMode: hotkeyOnce('editMode', () => setEditMode(!editMode)),
   openStats: hotkeyOnce('openStats', () => openStats({ toggle: true })),
 };
-const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ accelerator: config.hotkeys[name], run }));
+// FarmyDevBuild: Lese-Bereiche ein/aus (fest, nicht in config.json)
+const DEV_HOTKEYS = { debugRegions: 'Ctrl+Shift+D' };
+if (DEV) HOTKEYS.debugRegions = hotkeyOnce('debugRegions', () => toggleDebugRegions());
+const hotkeyFor = (name) => config.hotkeys[name] || DEV_HOTKEYS[name];
+const hotkeyActions = () => Object.entries(HOTKEYS).map(([name, run]) => ({ accelerator: hotkeyFor(name), run }));
 
 app.whenReady().then(async () => {
   // Sprache der Oberfläche: gespeicherte Wahl, beim ersten Start die von Windows (Deutsch, sonst Englisch)
@@ -1336,9 +1714,12 @@ app.whenReady().then(async () => {
   lolalytics.init(app.getPath('userData'));
   meraki.init(app.getPath('userData'));
   history.init(app.getPath('userData'));
+  gamelog.init(app.getPath('userData'));
+  notes.init(app.getPath('userData'));
   augments.init(app.getPath('userData'));
   arammayhem.init(app.getPath('userData'));
   jungle.init(app.getPath('userData'));
+  clears.init(app.getPath('userData'));
   refreshLayout();
   createOverlay();
   createTray();
@@ -1352,7 +1733,7 @@ app.whenReady().then(async () => {
   // kein Fenster beim Start: die App läuft im Hintergrund (Overlay + Tray), das Stats-Fenster nur auf Wunsch
 
   for (const [name, run] of Object.entries(HOTKEYS)) {
-    if (!globalShortcut.register(config.hotkeys[name], run)) console.warn(`Tastenkürzel ${config.hotkeys[name]} ist belegt`);
+    if (!globalShortcut.register(hotkeyFor(name), run)) console.warn(`Tastenkürzel ${hotkeyFor(name)} ist belegt`);
   }
 
   setInterval(pollGame, config.pollMs);
