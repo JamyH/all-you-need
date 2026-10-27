@@ -1098,12 +1098,20 @@ async function updateBench(sel) {
 
 // Endbuilds der letzten Spiele in den eigenen Verlauf übernehmen (Client kennt nur 20)
 let historyImported = false;
+let backfilled = false; // alte Einträge einmal je Start aus den Spieldetails ergänzen
 async function importHistory() {
   try {
     const h = await lcu.matchHistory(config.leaguePath, 20);
     if (history.add(h)) notifyStats('history:items');
     historyImported = true;
     fillTimelines().then((n) => n && notifyStats('progress:update')).catch((e) => console.warn('Spielverläufe:', e.message));
+    if (!backfilled) {
+      backfilled = true;
+      lcu.currentSummoner(config.leaguePath)
+        .then((me) => history.backfill((id) => lcu.get(config.leaguePath, `/lol-match-history/v1/games/${id}`), me.puuid))
+        .then((n) => n && notifyStats('progress:update'))
+        .catch((e) => console.warn('Alte Spiele ergänzen:', e.message));
+    }
     updateSession().catch((e) => console.warn('Session:', e.message));
     await refreshAugmentNames();
   } catch (e) {

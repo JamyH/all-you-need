@@ -396,11 +396,16 @@ async function renderProgress() {
     list.filter((g) => g.champ === id).forEach((g) => (g.c = c));
   }
   progGames = list;
-  // Start mit dem Modus des letzten Spiels (genaueste Gruppe), eine eigene Wahl bleibt, solange es Spiele dafür gibt
+  // Start: Modus des letzten Spiels, wenn es dort genug Spiele für Skill-Verläufe und Fokus gibt; sonst der Modus mit
+  // den meisten Spielen (vorher startete es z. B. in Swiftplay mit 2 Spielen, und alle Graphen fehlten).
+  // Eine eigene Wahl bleibt, solange es Spiele dafür gibt
   const complete = list.filter((g) => g.cs != null);
   const last = complete[complete.length - 1];
   if (last && !(progQueue && complete.some((g) => inQueue(g, PQUEUES.find((x) => x[0] === progQueue))))) {
-    progQueue = (PQUEUES.slice(1).find((q) => inQueue(last, q)) || PQUEUES.find((q) => q[2] === last.map) || PQUEUES[0])[0];
+    const count = (q) => complete.filter((g) => inQueue(g, q)).length;
+    const own = PQUEUES.slice(1).find((q) => inQueue(last, q));
+    const biggest = PQUEUES.reduce((a, q) => (count(q) > count(a) ? q : a), PQUEUES[0]);
+    progQueue = (own && count(own) >= RECENT + 5 ? own : biggest)[0];
   }
   drawProgress();
   renderNoteCard(); // Plan-Karte braucht Fokus und Session-Ziel
@@ -440,8 +445,11 @@ function drawProgress() {
   const roles = progMap === 11 ? ROLES.filter(([r]) => inMode.some((g) => roleOf(g) === r)) : [];
   if (!roles.some(([r]) => r === progRole)) progRole = 'all';
   const games = progRole === 'all' ? inMode : inMode.filter((g) => roleOf(g) === progRole);
-  const seg = `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${groups.map((q) =>
-    `<button data-queue="${q[0]}" aria-pressed="${q === queue}">${t(q[1])}</button>`).join('')}</div>` +
+  // alle Modi zeigen, auch ohne Spiele (ausgegraut): sonst fragt man sich, wo z. B. Solo/Duo geblieben ist
+  const seg = `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${PQUEUES.map((q) => {
+    const count = complete.filter((g) => inQueue(g, q)).length;
+    return `<button data-queue="${q[0]}" aria-pressed="${q === queue}"${count ? '' : ` disabled title="${esc(t('Noch keine Spiele, seit Farmy mitschreibt'))}"`}>${t(q[1])} <small>${count}</small></button>`;
+  }).join('')}</div>` +
     (roles.length ? `<div class="seg roles" role="group" aria-label="${t('Rolle')}">${[['all', 'Alle Rollen'], ...roles].map(([r, label]) =>
       `<button data-role="${r}" aria-pressed="${r === progRole}">${t(label)} <small>${r === 'all' ? inMode.length : inMode.filter((g) => roleOf(g) === r).length}</small></button>`).join('')}</div>` +
       `<p class="hint role-hint">${t('Rolle ab jetzt aus dem Spiel; bei älteren Spielen laut Client, bei Blind und Swiftplay nicht immer genau.')}</p>` : '');

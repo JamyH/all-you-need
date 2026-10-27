@@ -27,29 +27,56 @@ function add(matchHistory) {
     if (!p || g.gameType !== 'MATCHED_GAME') continue;
     const old = games[g.gameId];
     if (old && old.obj != null) continue;
-    const s = p.stats || {};
-    games[g.gameId] = {
-      champ: p.championId,
-      map: g.mapId,
-      items: [s.item0, s.item1, s.item2, s.item3, s.item4, s.item5].filter(Boolean),
-      win: !!s.win,
-      at: g.gameCreation,
-      k: s.kills || 0, d: s.deaths || 0, a: s.assists || 0,
-      cs: (s.totalMinionsKilled || 0) + (s.neutralMinionsKilled || 0),
-      dur: g.gameDuration || 0,
-      queue: g.queueId,
-      lane: laneOf(p.timeline || {}),
-      vis: s.visionScore || 0,
-      dmg: s.totalDamageDealtToChampions || 0,
-      gold: s.goldEarned || 0,
-      taken: s.totalDamageTaken || 0,
-      obj: s.damageDealtToObjectives || 0,
-      turrets: s.turretKills || 0,
-    };
+    games[g.gameId] = entry(g, p);
     added++;
   }
   if (added) fs.writeFileSync(file, JSON.stringify(games));
   return added;
+}
+
+// Ein Spiel (Kopf aus dem Verlauf oder den Spieldetails) und dein Teilnehmer daraus → gemerkter Eintrag
+function entry(g, p) {
+  const s = p.stats || {};
+  return {
+    champ: p.championId,
+    map: g.mapId,
+    items: [s.item0, s.item1, s.item2, s.item3, s.item4, s.item5].filter(Boolean),
+    win: !!s.win,
+    at: g.gameCreation,
+    k: s.kills || 0, d: s.deaths || 0, a: s.assists || 0,
+    cs: (s.totalMinionsKilled || 0) + (s.neutralMinionsKilled || 0),
+    dur: g.gameDuration || 0,
+    queue: g.queueId,
+    lane: laneOf(p.timeline || {}),
+    vis: s.visionScore || 0,
+    dmg: s.totalDamageDealtToChampions || 0,
+    gold: s.goldEarned || 0,
+    taken: s.totalDamageTaken || 0,
+    obj: s.damageDealtToObjectives || 0,
+    turrets: s.turretKills || 0,
+  };
+}
+
+// Alte Einträge (vor dem 27.10. nur Items, ohne K/D/A, CS, Queue) aus den Spieldetails des Clients ergänzen.
+// Der Verlauf liefert nur die letzten 20 Spiele, die Details zu einer bekannten Spiel-ID aber auch ältere.
+// fetch(gameId) → /lol-match-history/v1/games/{id}; puuid findet dich unter den 10 Teilnehmern
+async function backfill(fetch, puuid) {
+  let n = 0;
+  for (const [id, old] of Object.entries(games)) {
+    if (old.cs != null && old.obj != null) continue;
+    try {
+      const d = await fetch(id);
+      const ident = (d.participantIdentities || []).find((x) => x.player && x.player.puuid === puuid);
+      const p = ident && (d.participants || []).find((x) => x.participantId === ident.participantId);
+      if (!p) continue;
+      games[id] = entry(d, p);
+      n++;
+    } catch {
+      // Client kennt das Spiel nicht mehr: Eintrag bleibt, wie er ist
+    }
+  }
+  if (n) fs.writeFileSync(file, JSON.stringify(games));
+  return n;
 }
 
 // Meistgebaute fertige Items eines Champs auf einer Map: [{ id, count, wins }], häufigste zuerst.
@@ -107,4 +134,4 @@ const since = (at) => Object.values(games).filter((g) => g.at >= at).sort((a, b)
 // Alle gemerkten Spiele, älteste zuerst (Reiter „Fortschritt“)
 const all = () => Object.entries(games).map(([id, g]) => ({ id, ...g })).sort((a, b) => a.at - b.at);
 
-module.exports = { init, add, topItems, csPerMin, bestChamps, since, all };
+module.exports = { init, add, backfill, topItems, csPerMin, bestChamps, since, all };

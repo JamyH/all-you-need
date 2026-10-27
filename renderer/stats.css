@@ -418,3 +418,4 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .wrow.phase { grid-template-columns: 92px 1fr 240px; }
 .wbad { fill: var(--loss); }
 .duel p { margin: 0 0 8px; color: var(--text-2); }
+.seg button:disabled { opacity: 0.4; cursor: default; }

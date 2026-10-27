@@ -352,6 +352,7 @@
     'ADC': 'ADC',
     'Support': 'Support',
     'Rolle ab jetzt aus dem Spiel; bei älteren Spielen laut Client, bei Blind und Swiftplay nicht immer genau.': 'Role is taken from the game from now on; for older games from the client, which is not always accurate for Blind and Swiftplay.',
+    'Noch keine Spiele, seit Farmy mitschreibt': 'No games yet since Farmy started tracking',
     // Build & Runen
     'Champion wählen…': 'Choose champion…',
     'ARAM-Bank': 'ARAM bench',
