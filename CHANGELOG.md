@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1 – 2026-10-27
+
+Neu
+- „Nach Updates suchen“ im Tray- und ☰-Menü: prüft sofort und sagt immer Bescheid (aktuell, lädt, nicht
+  erreichbar)
+
 ## 1.7.0 – 2026-10-27
 
 Neu
