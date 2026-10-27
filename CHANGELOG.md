@@ -23,6 +23,8 @@ Neu
   Vielseitigkeit, Rekorde (bestes Spiel je Wert, längste Siegesserie) und Ziel-Verlauf (frühere Session-Ziele)
 - Skill-Profil als Netzdiagramm (wie das Skill-Hexagon bei Mobalytics): je Skill eine Ecke, Fläche = zuletzt,
   gestrichelt = davor, Werte an den Ecken; die Balken daneben bleiben als genaue Ablesung
+- Skill-Vergleich und Netzdiagramm schon ab 6 Spielen je Modus (neuere Hälfte gegen ältere, mit Hinweis „noch
+  ungenau“); ab 15 Spielen wie bisher die letzten 10 gegen den Rest
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

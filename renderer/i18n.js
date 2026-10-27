@@ -420,6 +420,8 @@
     'Ziel entfernen': 'Remove goal',
     'Neues Ziel wählen:': 'Pick a new goal:',
     'Ziel wählen:': 'Pick a goal:',
+    'Erst {n} Spiele in dieser Auswahl: Vergleich der letzten {k} mit den {m} davor, noch ungenau. Ab 15 Spielen: letzte 10 gegen den Rest.': 'Only {n} games in this selection: comparing the last {k} with the {m} before, still rough. From 15 games: last 10 vs. the rest.',
+    'davor → zuletzt, 0–100 gemessen an deinen eigenen Abschnitten zu {w} Spielen': 'before → recent, 0–100 measured against your own {w}-game stretches',
     // Build & Runen
     'Champion wählen…': 'Choose champion…',
     'ARAM-Bank': 'ARAM bench',

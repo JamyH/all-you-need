@@ -378,7 +378,9 @@ const inQueue = (g, q) => g.map === q[2] && (!q[3] || q[3].includes(g.queue));
 const roleOf = (g) => (progLogs.find((l) => String(l.gameId) === String(g.id)) || {}).position || g.lane || '';
 let progQueue = null;
 let progRole = 'all';
-let progRange = 'all'; // 'all' | 50 | 20: nur die letzten N Spiele der Auswahl
+let progRange = 'all';
+let progK = RECENT; // Größe von „zuletzt“ in der aktuellen Auswahl (10, bei wenigen Spielen die Hälfte)
+let progW = 5; // Abschnittslänge der Verläufe (5, bei wenigen Spielen 3) // 'all' | 50 | 20: nur die letzten N Spiele der Auswahl
 let progDetail = null; // aufgeklappte Skill-Details (Skill-Key)
 let progChamp = null; // Champion-Profil (Champion-Key)
 let progGoalHistory = [];
@@ -452,25 +454,30 @@ async function renderProgress() {
 
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 
+const MIN_COMPARE = 6; // ab so vielen Spielen gibt es den Skill-Vergleich (dann Hälfte gegen Hälfte)
+const splitOf = (n) => (n >= RECENT + 5 ? RECENT : Math.floor(n / 2));
 // Skill-Bereiche: letzte 10 Spiele gegen alle davor; focus = der Bereich, der zuletzt am meisten nachgelassen hat
 function rateSkills(games, map) {
-  const recent = games.slice(-RECENT), before = games.slice(0, -RECENT);
+  // ab 15 Spielen die letzten 10 gegen den Rest; darunter (ab 6) die neuere Hälfte gegen die ältere, Abschnitte zu 3
+  const k = splitOf(games.length);
+  const w = k === RECENT ? 5 : 3;
+  const recent = games.slice(-k), before = games.slice(0, -k);
   const skills = SKILLS.filter((s) => !s.maps || s.maps.includes(map)).map((s) => {
     const has = (g) => !s.needs || g[s.needs] != null;
     const r = recent.filter(has), b = before.filter(has);
-    if (r.length < 5 || b.length < 5) return { ...s, missing: true };
+    if (r.length < 3 || b.length < 3) return { ...s, missing: true };
     const agg = s.set || ((list) => mean(list.map(s.val)));
     const now = agg(r), base = agg(b);
     const delta = base ? (now - base) / base : 0;
     const better = s.lower ? -delta : delta; // > 0 = besser als dein Schnitt
     // gleitender Schnitt über 5 Spiele: zeigt die Richtung, nicht jedes Ausreißer-Spiel
     const all = games.filter(has);
-    const rolling = all.map((_, i) => agg(all.slice(Math.max(0, i - 4), i + 1))).slice(4);
+    const rolling = all.map((_, i) => agg(all.slice(Math.max(0, i - w + 1), i + 1))).slice(w - 1);
     return { ...s, now, base, better, rolling, tip: map === 12 && s.tipAram ? s.tipAram : s.tip };
   });
   const rated = skills.filter((s) => !s.missing);
   const focus = rated.reduce((a, s) => (!a || s.better < a.better ? s : a), null);
-  return { recent, before, skills, rated, focus };
+  return { recent, before, skills, rated, focus, k, w };
 }
 
 function drawProgress() {
@@ -508,12 +515,16 @@ function drawProgress() {
     `<h3 class="sec-title">${t('Wann du gewinnst')}</h3><div class="wins-grid">${winBlocks(games).join('')}</div>` +
     `<h3 class="sec-title">${t('Champion-Pool')}</h3>${champPool(games)}${champProfile(games, progMap)}` +
     `<h3 class="sec-title">${t('Rekorde')}</h3>${recordsCard(games, progMap)}`;
-  if (games.length < RECENT + 5) {
+  if (games.length < MIN_COMPARE) {
     el.innerHTML = seg + weekCard(games) + lpCard() +
-      `<div class="msg">${t('Noch zu wenige Spiele für einen Vergleich ({n} von {need}). Farmy merkt sich jedes Spiel, schau nach ein paar Runden wieder rein.', { n: games.length, need: RECENT + 5 })}</div>` + rest;
+      `<div class="msg">${t('Noch zu wenige Spiele für einen Vergleich ({n} von {need}). Farmy merkt sich jedes Spiel, schau nach ein paar Runden wieder rein.', { n: games.length, need: MIN_COMPARE })}</div>` + rest;
     return;
   }
-  const { recent, before, skills, rated, focus } = rateSkills(games, progMap);
+  const { recent, before, skills, rated, focus, k, w } = rateSkills(games, progMap);
+  progK = k;
+  progW = w;
+  // wenige Spiele: Vergleich gilt, ist aber noch wackelig – das steht dann dabei
+  const few = k < RECENT ? `<p class="hint few">${t('Erst {n} Spiele in dieser Auswahl: Vergleich der letzten {k} mit den {m} davor, noch ungenau. Ab 15 Spielen: letzte 10 gegen den Rest.', { n: games.length, k, m: games.length - k })}</p>` : '';
   const wr = (list) => Math.round((list.filter((g) => g.win).length / list.length) * 100);
 
   const tiles = `<div class="summary">
@@ -529,7 +540,7 @@ function drawProgress() {
     ${esc(t(focus.tip))}</p></div>` : '';
 
   el.innerHTML = seg + tiles + weekCard(games) + focusCard + goalCard(recent, rated) + lpCard() +
-    `<h3 class="sec-title">${t('Skill-Bereiche · letzte {n} Spiele gegen deinen Schnitt davor', { n: RECENT })}</h3>` +
+    `<h3 class="sec-title">${t('Skill-Bereiche · letzte {n} Spiele gegen deinen Schnitt davor', { n: k })}</h3>${few}` +
     `<div class="skills">${skills.map(skillCard).join('')}</div>` + detailCard(skills, games) +
     `<h3 class="sec-title">${t('Skill-Profil')}</h3>${profileCard(rated)}` + rest;
 }
@@ -710,7 +721,7 @@ function profileCard(rated) {
   const rows = rated.map((s) => ({ s, now: score(s, s.now), before: score(s, s.base) })).filter((x) => x.now != null && x.before != null);
   if (!rows.length) return '';
   return `<div class="card profile"><div class="card-head"><h2>${t('Skill-Profil')}</h2>` +
-    `<span class="hint">${t('davor → zuletzt, 0–100 gemessen an deinen eigenen Fünf-Spiele-Abschnitten')}</span></div>` +
+    `<span class="hint">${t('davor → zuletzt, 0–100 gemessen an deinen eigenen Abschnitten zu {w} Spielen', { w: progW })}</span></div>` +
     `<div class="pgrid">${rows.length >= 3 ? radarSvg(rows) : ''}<div class="pbars">` +
     rows.map(({ s, now, before }) => `<div class="wrow prow" title="${esc(t('{label}: zuletzt {now}, davor {before}', { label: t(s.label), now, before }))}"><span>${t(s.label)}</span>` +
       `<svg class="ptrack" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect y="4" width="100" height="2" rx="1" class="wbg"></rect>` +
@@ -748,7 +759,7 @@ function radarSvg(rows) {
   return `<figure class="radar"><svg viewBox="-20 0 360 310" role="img" aria-label="${esc(t('Skill-Profil als Netzdiagramm: zuletzt gegen davor'))}">` +
     `${rings}${axes}<polygon points="${poly(rows.map((r) => r.before))}" class="rbefore"></polygon>` +
     `<polygon points="${poly(rows.map((r) => r.now))}" class="rnow"></polygon>${dots}${labels}</svg>` +
-    `<figcaption><span class="lg now"></span>${t('letzte {n} Spiele', { n: RECENT })} <span class="lg before"></span>${t('die Spiele davor')}</figcaption>` +
+    `<figcaption><span class="lg now"></span>${t('letzte {n} Spiele', { n: progK })} <span class="lg before"></span>${t('die Spiele davor')}</figcaption>` +
     `<p class="hint radar-hint">${t('Weiter außen = besser, gemessen an dir selbst. Fläche innerhalb der Linie: zuletzt schwächer als sonst.')}</p></figure>`;
 }
 
@@ -933,7 +944,7 @@ function skillCard(s) {
   return `<div class="skill click${progDetail === s.key ? ' open' : ''}" data-skill="${s.key}" role="button" tabindex="0" title="${esc(t('Details zu {label}', { label: t(s.label) }))}">
     <div class="trend-head"><label>${t(s.label)}</label><span class="delta ${cls}">${arrow} ${word}</span></div>
     <div class="skill-val"><b>${dec(s.now, s.digits)}</b><small>${t(s.unit)} · Ø ${dec(s.base, s.digits)}</small></div>
-    ${spark(s.rolling, s)}
+    ${spark(s.rolling, s, progW)}
   </div>`;
 }
 
