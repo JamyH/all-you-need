@@ -15,6 +15,7 @@ Neu
   Champions landet (dort einzeln löschbar)
 - Fortschritt zeigt alle Modi, auch ohne Spiele (ausgegraut mit 0), und startet im Modus mit genug Spielen für die
   Skill-Verläufe; ältere gemerkte Spiele bekommen fehlende Werte (Objectives, Sicht …) aus den Spieldetails des Clients
+- ARAM: Farmen und Sicht werden dort nicht mehr bewertet (kein sinnvoller Maßstab), eigener Tipp fürs Überleben
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

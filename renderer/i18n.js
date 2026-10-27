@@ -353,6 +353,8 @@
     'Support': 'Support',
     'Rolle ab jetzt aus dem Spiel; bei älteren Spielen laut Client, bei Blind und Swiftplay nicht immer genau.': 'Role is taken from the game from now on; for older games from the client, which is not always accurate for Blind and Swiftplay.',
     'Noch keine Spiele, seit Farmy mitschreibt': 'No games yet since Farmy started tracking',
+    'Nicht als Erster vorne stehen, solange deine Tanks noch nicht drin sind, und Gesundheitspakete erst nehmen, wenn du sie brauchst.':
+      "Don't be the first one in front while your tanks aren't in yet, and only take health packs when you need them.",
     // Build & Runen
     'Champion wählen…': 'Choose champion…',
     'ARAM-Bank': 'ARAM bench',

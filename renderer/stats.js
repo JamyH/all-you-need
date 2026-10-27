@@ -126,7 +126,7 @@ async function reviewHtml(eog, ls, won) {
   const bad = skills.filter((s) => s.better < -0.05).sort((a, b) => a.better - b.better).slice(0, 2);
   if (good.length) lines.push(['good', t('Gut'), good.map((s) => `${t(s.label)} ${dec(s.v, s.digits)} ${t(s.unit)} (${pct(s.better)})`).join(' · ')]);
   if (bad.length) lines.push(['bad', t('Hat gekostet'), bad.map((s) => `${t(s.label)} ${dec(s.v, s.digits)} ${t(s.unit)} (${pct(s.better)})`).join(' · ')]);
-  if (bad.length) lines.push(['', t('Zuerst verbessern'), t(bad[0].tip)]);
+  if (bad.length) lines.push(['', t('Zuerst verbessern'), t(map === 12 && bad[0].tipAram ? bad[0].tipAram : bad[0].tip)]);
   const log = r.log;
   if (log && log.cs10 != null && log.perfect10) {
     lines.push(['', t('CS bei 10 min'), t('{cs} von {max} möglich ({p} %)', { cs: log.cs10, max: log.perfect10, p: Math.round((log.cs10 / log.perfect10) * 100) })]);
@@ -313,13 +313,15 @@ function trendCard({ label, color, digits, values }) {
 const RECENT = 10; // „zuletzt“ = die letzten 10 Spiele, verglichen mit allen davor
 const gmins = (g) => Math.max(g.dur / 60, 1);
 const SKILLS = [
-  { key: 'farm', label: 'Farmen', unit: 'CS/min', digits: 1, val: (g) => g.cs / gmins(g),
+  // Farmen und Sicht nur auf der Kluft: im ARAM gibt es kaum CS-Druck und fast nichts zu warden
+  { key: 'farm', label: 'Farmen', unit: 'CS/min', digits: 1, maps: [11], val: (g) => g.cs / gmins(g),
     tip: 'Im Practice Tool 10 Minuten nur Last-Hits üben und beim Recall auf eine volle Welle achten.' },
   { key: 'fight', label: 'Kämpfen', unit: 'KDA', digits: 2, val: (g) => (g.k + g.a) / Math.max(g.d, 1),
     tip: 'Nur in Kämpfe gehen, wenn Summoner und Ulti bereit sind; Kills zählen mit, Assists auch.' },
   { key: 'survive', label: 'Überleben', unit: 'Tode/10 min', digits: 1, lower: true, val: (g) => (g.d / gmins(g)) * 10,
-    tip: 'Vor jedem Schritt über die Flussmitte auf die Minimap schauen; ohne Sicht auf den Gegner-Jungler zurückhalten.' },
-  { key: 'vision', label: 'Sicht', unit: 'Sicht/min', digits: 2, needs: 'vis', val: (g) => g.vis / gmins(g),
+    tip: 'Vor jedem Schritt über die Flussmitte auf die Minimap schauen; ohne Sicht auf den Gegner-Jungler zurückhalten.',
+    tipAram: 'Nicht als Erster vorne stehen, solange deine Tanks noch nicht drin sind, und Gesundheitspakete erst nehmen, wenn du sie brauchst.' },
+  { key: 'vision', label: 'Sicht', unit: 'Sicht/min', digits: 2, needs: 'vis', maps: [11], val: (g) => g.vis / gmins(g),
     tip: 'Trinket nie voll liegen lassen und bei jedem Recall eine Kontrollwarde kaufen.' },
   { key: 'damage', label: 'Schaden', unit: 'Schaden/min', digits: 0, needs: 'dmg', val: (g) => g.dmg / gmins(g),
     tip: 'In Kämpfen dranbleiben und alle Fähigkeiten loswerden, statt früh rauszulaufen.' },
@@ -427,7 +429,7 @@ function rateSkills(games, map) {
     // gleitender Schnitt über 5 Spiele: zeigt die Richtung, nicht jedes Ausreißer-Spiel
     const all = games.filter(has);
     const rolling = all.map((_, i) => agg(all.slice(Math.max(0, i - 4), i + 1))).slice(4);
-    return { ...s, now, base, better, rolling };
+    return { ...s, now, base, better, rolling, tip: map === 12 && s.tipAram ? s.tipAram : s.tip };
   });
   const rated = skills.filter((s) => !s.missing);
   const focus = rated.reduce((a, s) => (!a || s.better < a.better ? s : a), null);
