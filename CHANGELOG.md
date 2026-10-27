@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1 – 2026-10-27
+
+Behoben
+- Live-Spiel: fehlendes Champion-Bild, wenn die Live-API den Namen im Format „Character_Aatrox_Name“ liefert
+- Session in der Seitenleiste stand auf drei Zeilen; auf Englisch jetzt „W/L“ statt „S/N“
+- Fortschritt: „1 Spiel“ statt „1 Spiele“, „4+“ statt „4.+“, durchgehende Linien im Champion-Pool; im ARAM keine
+  CS- und Sicht-Ziele mehr als Session-Ziel (dort nicht sinnvoll)
+
 ## 1.8.0 – 2026-10-27
 
 Neu
