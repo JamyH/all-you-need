@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.7.0 – 2026-10-27
+
+Neu
+- Automatische Updates: Farmy prüft beim Start und alle 6 Stunden die GitHub-Releases, lädt neue Versionen
+  still im Hintergrund und installiert sie beim Beenden (sofort: Tray-Menü „Neu starten und aktualisieren“).
+  Die portable Version zeigt nur einen Hinweis mit Download. Gilt ab dieser Version; wer noch 1.6.x hat,
+  lädt einmal von Hand
+- Jungle-Route: In der Champ-Auswahl zeigt das Build-Tab für Jungler die erste Runde je Startcamp als Mini-Karte
+  mit nummerierten Camps, Clear-Zeit, Smites, Patch und Video (Phylaris' Jungle Clear Compilation; ohne Eintrag
+  die Standard-Full-Clear). Per „Auf der Minimap“ wählst du die Route fürs Spiel
+- Overlay: Die gewählte Route steht auf der Minimap, solange Tab gedrückt ist (nur mit Smite auf Summoner's Rift).
+  Größe und Transparenz im ⚙ einstellbar, ganz abschaltbar. Die Minimap sucht Farmy selbst auf dem Bildschirm
+  (schwarzer Kartenrand), passt also bei jeder Minimap-Größe, Auflösung und mit „Minimap links“
+
+Bildschirm-Erkennung
+- Fenstermodus und kleinere Spielauflösung: Farmy sucht das Spielfenster und rechnet alle Stellen (CS, Summoner,
+  Items, XP, Augment-Karten, Scoreboard, Minimap) relativ dazu, statt vom ganzen Bildschirm auszugehen. Verschiebt
+  oder vergrößert man das Fenster, zieht Farmy nach ein paar Sekunden nach
+- Alt-Tab: Liegt ein anderes Fenster vorne, blendet Farmy das Overlay aus und liest den Bildschirm nicht mehr
+  (vorher hing das Panel über anderen Programmen und las deren Pixel, z. B. Summoner fälschlich „bereit“).
+  Farmys eigene Fenster (⚙, Stats-Fenster) zählen wie das Spiel
+- Markieren (ARAM-Schneeball), Läuterung und Klarheit galten wegen ihres blauen Symbols immer als „im Cooldown“
+  und bekamen eine erfundene Restzeit: Für sie zählt jetzt nur, ob die weiße Restzeit im Feld steht (stimmt auch
+  gegen Ende des Cooldowns und während des Schneeball-Sprungs)
+- Summoner-Timer bei 1080p: Die nur 1 px breite „1“ galt als Störpixel (aus 115 wurde 5), und dreistellige
+  Zeiten verloren ihre linke Ziffer. Außerdem blieb ein einmal zu niedrig gelesener Timer hängen (Abgleich nahm
+  nur sinkende Werte an, der Timer stand dann bei 0:00): Liest Farmy zweimal hintereinander einen höheren Wert,
+  gilt jetzt dieser
+
 ## 1.6.1 – 2026-10-26
 
 Leistung
