@@ -956,13 +956,13 @@ function champPool(games) {
     by.set(g.champ, c);
   }
   const rows = [...by.values()].sort((a, b) => b.games.length - a.games.length).slice(0, 8);
-  return `<div class="card">${versatility(games)}<table class="pool"><thead><tr><th>${t('Champion')}</th><th>${t('Spiele')}</th><th>${t('Siegquote')}</th><th>KDA</th><th>CS/min</th></tr></thead><tbody>` +
+  return `<div class="card">${versatility(games)}<table class="pool"><thead><tr><th>${t('Champion')}</th><th>${t('Spiele')}</th><th>${t('Siegquote')}</th><th>KDA</th>${progMap === 11 ? '<th>CS/min</th>' : ''}</tr></thead><tbody>` +
     rows.map(({ c, games: list }) => {
       const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
       const kda = list.reduce((a, g) => a + g.k + g.a, 0) / Math.max(list.reduce((a, g) => a + g.d, 0), 1);
       const csm = list.reduce((a, g) => a + g.cs, 0) / list.reduce((a, g) => a + gmins(g), 0);
       return `<tr class="click${String(progChamp) === String(list[0].champ) ? ' open' : ''}"${list.length >= 3 ? ` data-prof="${list[0].champ}"` : ''}><td><span class="pool-champ">${c ? champImg(c) + esc(c.name) : '?'}</span></td><td>${list.length}</td>` +
-        `<td class="${w >= 50 ? 'win' : 'loss'}">${w} %</td><td>${dec(kda, 2)}</td><td>${dec(csm, 1)}</td></tr>`;
+        `<td class="${w >= 50 ? 'win' : 'loss'}">${w} %</td><td>${dec(kda, 2)}</td>${progMap === 11 ? `<td>${dec(csm, 1)}</td>` : ''}</tr>`; // CS/min nur auf der Kluft
     }).join('') + '</tbody></table></div>';
 }
 
