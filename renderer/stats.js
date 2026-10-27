@@ -549,13 +549,15 @@ function goalCard(recent, rated) {
       `<p class="hint">${res.length ? t('{ok} von {n} der letzten Spiele geschafft · Serie {s}', { ok: last.filter((r) => r.ok).length, n: last.length, s: streak })
         : t('Noch kein Spiel mit diesem Ziel.')} ${last.map((r) => (r.ok ? '✓' : '✗')).join(' ')}</p>`;
   }
-  const options = rated.filter((s) => GOALS[s.key] && (progMap === 11 || !['farm', 'vision'].includes(s.key))).sort((a, b) => a.better - b.better).slice(0, 3).map((s) => {
-    const G = GOALS[s.key];
-    const target = G.make(recent);
-    return `<button class="ghost" data-goal="${G.key}" data-target="${target}">${t(G.text, { n: fmtT(G.key, target) })}</button>`;
-  });
-  if (g) options.push(`<button class="ghost" data-goal="none">${t('Kein Ziel')}</button>`);
-  return `<div class="card goal-card"><h2>${t('Session-Ziel')}</h2>${head}<div class="goal-opts">${options.join('')}</div>${goalHistoryHtml()}</div>`;
+  // Vorschläge für ein neues Ziel; das gerade aktive Ziel wird nicht nochmal vorgeschlagen
+  const options = rated.filter((s) => GOALS[s.key] && (progMap === 11 || !['farm', 'vision'].includes(s.key))).sort((a, b) => a.better - b.better).slice(0, 3)
+    .map((s) => ({ G: GOALS[s.key], target: GOALS[s.key].make(recent) }))
+    .filter(({ G, target }) => !(g && g.key === G.key && g.target === target && (!g.map || g.map === progMap)))
+    .map(({ G, target }) => `<button class="ghost" data-goal="${G.key}" data-target="${target}">${t(G.text, { n: fmtT(G.key, target) })}</button>`);
+  const remove = g ? `<button class="ghost danger-text" data-goal="none">${t('Ziel entfernen')}</button>` : '';
+  return `<div class="card goal-card"><div class="card-head"><h2>${t('Session-Ziel')}</h2>${remove}</div>${head}` +
+    (options.length ? `<p class="goal-new">${g ? t('Neues Ziel wählen:') : t('Ziel wählen:')}</p><div class="goal-opts">${options.join('')}</div>` : '') +
+    `${goalHistoryHtml()}</div>`;
 }
 
 // LP-Verlauf (Solo/Duo, sonst Flex): Rang als Zahl, gemerkt bei jeder Änderung

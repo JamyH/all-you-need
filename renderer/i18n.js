@@ -417,6 +417,9 @@
     'letzte {n} Spiele': 'last {n} games',
     'die Spiele davor': 'the games before',
     'Weiter außen = besser, gemessen an dir selbst. Fläche innerhalb der Linie: zuletzt schwächer als sonst.': 'Further out = better, measured against yourself. Area inside the line: weaker than usual recently.',
+    'Ziel entfernen': 'Remove goal',
+    'Neues Ziel wählen:': 'Pick a new goal:',
+    'Ziel wählen:': 'Pick a goal:',
     // Build & Runen
     'Champion wählen…': 'Choose champion…',
     'ARAM-Bank': 'ARAM bench',
