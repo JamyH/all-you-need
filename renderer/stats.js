@@ -709,12 +709,44 @@ function profileCard(rated) {
   if (!rows.length) return '';
   return `<div class="card profile"><div class="card-head"><h2>${t('Skill-Profil')}</h2>` +
     `<span class="hint">${t('davor → zuletzt, 0–100 gemessen an deinen eigenen Fünf-Spiele-Abschnitten')}</span></div>` +
+    `<div class="pgrid">${rows.length >= 3 ? radarSvg(rows) : ''}<div class="pbars">` +
     rows.map(({ s, now, before }) => `<div class="wrow prow" title="${esc(t('{label}: zuletzt {now}, davor {before}', { label: t(s.label), now, before }))}"><span>${t(s.label)}</span>` +
       `<svg class="ptrack" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect y="4" width="100" height="2" rx="1" class="wbg"></rect>` +
       `<line x1="${before}" x2="${now}" y1="5" y2="5" class="${now >= before ? 'pup' : 'pdown'}" vector-effect="non-scaling-stroke"></line></svg>` +
       `<small><span class="muted">${before}</span> → <b class="${now >= before ? 'win' : 'loss'}">${now}</b></small></div>`).join('') +
     // Punkte als HTML über dem SVG wären genauer; Kreise im gestauchten SVG würden zu Ellipsen, daher nur die Strecke
-    `<p class="hint">${t('Grün: besser als in den Spielen davor, Rot: schlechter.')}</p></div>`;
+    `<p class="hint">${t('Grün: besser als in den Spielen davor, Rot: schlechter.')}</p></div></div></div>`;
+}
+
+// Netzdiagramm (wie das Skill-Hexagon bei Mobalytics): je Skill eine Achse von der Mitte (0) nach außen (100).
+// Fläche = zuletzt, gestrichelt = davor. Gleiche Werte wie die Balken daneben, die bleiben als genaue Ablesung
+function radarSvg(rows) {
+  const n = rows.length, cx = 160, cy = 150, R = 105;
+  const pt = (i, v) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [cx + Math.cos(a) * R * (v / 100), cy + Math.sin(a) * R * (v / 100)];
+  };
+  const poly = (vals) => vals.map((v, i) => pt(i, v).map((x) => x.toFixed(1)).join(',')).join(' ');
+  const rings = [25, 50, 75, 100].map((v) => `<polygon points="${poly(rows.map(() => v))}" class="rgrid"></polygon>`).join('');
+  const axes = rows.map((_, i) => {
+    const [x, y] = pt(i, 100);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rgrid"></line>`;
+  }).join('');
+  const labels = rows.map(({ s, now }, i) => {
+    const [x, y] = pt(i, 122);
+    const anchor = Math.abs(x - cx) < 8 ? 'middle' : x > cx ? 'start' : 'end';
+    return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${anchor}" class="rlabel">${esc(t(s.label))}</text>` +
+      `<text x="${x.toFixed(1)}" y="${(y + 18).toFixed(1)}" text-anchor="${anchor}" class="rvalue">${now}</text>`;
+  }).join('');
+  // Punkte mit Hover: Wert zuletzt und davor
+  const dots = rows.map(({ s, now, before }, i) => {
+    const [x, y] = pt(i, now);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="rdot"><title>${esc(t('{label}: zuletzt {now}, davor {before}', { label: t(s.label), now, before }))}</title></circle>`;
+  }).join('');
+  return `<figure class="radar"><svg viewBox="-20 0 360 310" role="img" aria-label="${esc(t('Skill-Profil als Netzdiagramm: zuletzt gegen davor'))}">` +
+    `${rings}${axes}<polygon points="${poly(rows.map((r) => r.before))}" class="rbefore"></polygon>` +
+    `<polygon points="${poly(rows.map((r) => r.now))}" class="rnow"></polygon>${dots}${labels}</svg>` +
+    `<figcaption><span class="lg now"></span>${t('zuletzt')} <span class="lg before"></span>${t('davor')}</figcaption></figure>`;
 }
 
 // Skill-Details („Metric Allocation“): woraus der Wert besteht, bestes und schlechtestes Spiel, Verlauf je Spiel

@@ -446,3 +446,19 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .erow small { color: var(--muted); text-align: right; }
 .ghist { margin-top: 12px; }
 .ghist h3 { margin: 0 0 4px; font-size: 13px; color: var(--text-2); }
+
+/* Skill-Netzdiagramm neben den Profil-Balken; schmal untereinander */
+.pgrid { display: grid; grid-template-columns: minmax(260px, 360px) 1fr; gap: 16px; align-items: center; }
+@media (max-width: 900px) { .pgrid { grid-template-columns: 1fr; } }
+.radar { margin: 0; }
+.radar svg { display: block; width: 100%; height: auto; overflow: visible; }
+.rgrid { fill: none; stroke: rgba(255, 255, 255, 0.09); stroke-width: 1; }
+.rbefore { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.rnow { fill: rgba(94, 234, 212, 0.18); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.rdot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.rlabel { fill: var(--text-2); font-size: 12px; }
+.rvalue { fill: var(--text); font-size: 12px; font-weight: 700; }
+.radar figcaption { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.lg { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-left: 8px; }
+.lg.now { background: var(--accent); }
+.lg.before { border-top: 2px dashed var(--muted); height: 0; }

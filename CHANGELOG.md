@@ -21,6 +21,8 @@ Neu
   Spiel, Verlauf je Spiel), Siege gegen Niederlagen, Gegen wen du verlierst (Siegquote gegen gegnerische Champions),
   Nach Niederlagen (Siegquote im Folgespiel, Hinweis nach 2 Niederlagen am Stück), Champion-Profil per Klick im Pool,
   Vielseitigkeit, Rekorde (bestes Spiel je Wert, längste Siegesserie) und Ziel-Verlauf (frühere Session-Ziele)
+- Skill-Profil als Netzdiagramm (wie das Skill-Hexagon bei Mobalytics): je Skill eine Ecke, Fläche = zuletzt,
+  gestrichelt = davor, Werte an den Ecken; die Balken daneben bleiben als genaue Ablesung
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

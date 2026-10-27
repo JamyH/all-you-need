@@ -411,6 +411,9 @@
     'Siege am Stück': 'wins in a row',
     'Frühere Ziele': 'Earlier goals',
     '{ok} von {n} geschafft': '{ok} of {n} done',
+    'Skill-Profil als Netzdiagramm: zuletzt gegen davor': 'Skill profile as a radar chart: recent vs. before',
+    'zuletzt': 'recent',
+    'davor': 'before',
     // Build & Runen
     'Champion wählen…': 'Choose champion…',
     'ARAM-Bank': 'ARAM bench',
