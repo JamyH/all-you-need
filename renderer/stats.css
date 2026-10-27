@@ -462,3 +462,4 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .lg { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-left: 8px; }
 .lg.now { background: var(--accent); }
 .lg.before { border-top: 2px dashed var(--muted); height: 0; }
+.radar-hint { margin: 4px 0 0; text-align: center; }

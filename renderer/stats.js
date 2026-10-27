@@ -746,7 +746,8 @@ function radarSvg(rows) {
   return `<figure class="radar"><svg viewBox="-20 0 360 310" role="img" aria-label="${esc(t('Skill-Profil als Netzdiagramm: zuletzt gegen davor'))}">` +
     `${rings}${axes}<polygon points="${poly(rows.map((r) => r.before))}" class="rbefore"></polygon>` +
     `<polygon points="${poly(rows.map((r) => r.now))}" class="rnow"></polygon>${dots}${labels}</svg>` +
-    `<figcaption><span class="lg now"></span>${t('zuletzt')} <span class="lg before"></span>${t('davor')}</figcaption></figure>`;
+    `<figcaption><span class="lg now"></span>${t('letzte {n} Spiele', { n: RECENT })} <span class="lg before"></span>${t('die Spiele davor')}</figcaption>` +
+    `<p class="hint radar-hint">${t('Weiter außen = besser, gemessen an dir selbst. Fläche innerhalb der Linie: zuletzt schwächer als sonst.')}</p></figure>`;
 }
 
 // Skill-Details („Metric Allocation“): woraus der Wert besteht, bestes und schlechtestes Spiel, Verlauf je Spiel
