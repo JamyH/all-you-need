@@ -395,3 +395,26 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .note-actions { display: flex; align-items: center; gap: 10px; }
 #noteDelete.danger { border-color: var(--loss); color: var(--loss); }
 #noteDelete[hidden] { display: none; } /* button hat display: inline-flex, sonst wirkt hidden nicht */
+.seg.roles { display: flex; width: fit-content; margin: -8px 0 6px; }
+.seg button small { margin-left: 4px; opacity: 0.7; }
+.role-hint { margin: 0 0 14px; }
+
+/* Tagebuch im Rückblick und im Notizen-Reiter, Plan-Karte, Wochenbericht, Tode je Phase, Lane-Duell */
+.learn { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.learn label { display: block; margin-bottom: 6px; color: var(--text-2); }
+#learnText { box-sizing: border-box; width: 100%; min-height: 64px; padding: 10px; resize: vertical; border: 1px solid var(--line-2);
+  border-radius: 8px; background: var(--tile); color: var(--text); font: inherit; }
+#learnText:focus { outline: none; border-color: var(--accent); }
+.learn-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.journal h3 { margin: 16px 0 6px; font-size: 13px; color: var(--text-2); }
+.j-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; align-items: start; padding: 6px 0; border-top: 1px solid var(--line); }
+.j-meta { color: var(--muted); font-size: 12px; }
+.j-text { white-space: pre-wrap; color: var(--text-2); }
+.j-del { height: 26px; padding: 0 8px; }
+.plan { margin-top: 8px; }
+.week { margin-top: 12px; }
+.week-foot { margin: 10px 0 0; color: var(--text-2); }
+.deaths-head { margin: 0 0 8px; color: var(--text-2); }
+.wrow.phase { grid-template-columns: 92px 1fr 240px; }
+.wbad { fill: var(--loss); }
+.duel p { margin: 0 0 8px; color: var(--text-2); }

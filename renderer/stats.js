@@ -140,6 +140,21 @@ async function reviewHtml(eog, ls, won) {
     const hint = ph >= 60 ? t('Rüstung wäre eine Option.') : mg >= 60 ? t('Magieresistenz wäre eine Option.') : t('Gemischter Schaden.');
     lines.push(['', t('Deine Tode'), `${t('{n} gelesen: {p} % physisch, {m} % magisch, {e} % echt.', { n: read.length, p: ph, m: mg, e: mix('true') })} ${hint}`]);
   }
+  // Gold beim Tod, live gemessen: viel Gold beim Sterben heißt meist zu spät zum Shop
+  if (log && log.died && log.died.length) {
+    const golds = log.died.map((d) => d.gold);
+    const rich = golds.filter((g) => g >= RICH_GOLD).length;
+    const often = rich * 2 >= golds.length && rich >= 2;
+    lines.push([often ? 'bad' : '', t('Gold beim Tod'), t('Ø {g} g · {r} von {n} Toden mit {min}+ g in der Tasche.', { g: n(Math.round(mean(golds))), r: rich, n: golds.length, min: n(RICH_GOLD) }) +
+      (often ? ` ${t('Vor riskanten Kämpfen erst einkaufen.')}` : '')]);
+  }
+  // Spielverlauf aus dem Client: wann du gestorben bist und wie die Lane bei 10/15 min stand
+  const tl = r.tl;
+  if (tl && tl.deaths.length) lines.push(['', t('Tode bei'), tl.deaths.map(dur).join(', ')]);
+  if (tl && tl.opp10) {
+    const oc = await window.lol.champion(tl.oppChamp).catch(() => null);
+    lines.push(['', t('Lane-Duell'), duelText(tl, oc)]);
+  }
   if (log && log.ult && log.ult.readySec >= 60) {
     lines.push(['', t('Ulti'), t('{t} bereit und ungenutzt (längste Phase {l})', { t: dur(log.ult.readySec), l: dur(log.ult.longestSec) })]);
   }
@@ -152,10 +167,36 @@ async function reviewHtml(eog, ls, won) {
     const f = (v) => (g.key === 'deaths' ? String(v) : dec(v, g.key === 'vision' ? 2 : 1));
     lines.push([ok ? 'good' : 'bad', t('Session-Ziel'), `${t(GOAL_TEXT[g.key], { n: f(g.target) })}: ${f(now)} ${ok ? '✓' : '✗'}`]);
   }
-  if (!lines.length && !chips.length) return '';
+  // Tagebuch: „Was nehme ich mit?“ landet datiert in den Notizen des Champions
+  const champ = await window.lol.champion((eog.localPlayer || {}).championId).catch(() => null);
+  let learn = '';
+  if (champ && champ.id) {
+    const all = await window.lol.notes().catch(() => ({}));
+    const entry = ((all[champ.id] || {}).journal || []).find((j) => String(j.gameId) === String(eog.gameId));
+    learn = `<div class="learn"><label for="learnText">${t('Was nehme ich mit? ({champ})', { champ: esc(champ.name) })}</label>` +
+      `<textarea id="learnText" spellcheck="false" placeholder="${esc(t('z. B. „Nach dem ersten Item früher zurück, nicht mit 1.500 Gold sterben“'))}">${esc(entry ? entry.text : '')}</textarea>` +
+      `<div class="learn-row"><button id="learnSave" class="ghost" data-champ="${esc(champ.id)}" data-game="${esc(eog.gameId)}" data-win="${won ? 1 : 0}">${t('Speichern')}</button>` +
+      `<span id="learnState" class="hint">${entry ? t('in deinen Notizen zu {champ}', { champ: esc(champ.name) }) : ''}</span></div></div>`;
+  }
   return `<div class="card review"><div class="card-head"><h2>${t('Rückblick')}</h2>${chips.join('')}</div>` +
     lines.map(([cls, label, text]) => `<div class="rv-row"><span class="rv-label ${cls}">${label}</span><span>${esc(text)}</span></div>`).join('') +
-    (base.length < 5 ? `<p class="hint">${t('Vergleich mit deinem Schnitt ab 5 Spielen auf dieser Map.')}</p>` : '') + '</div>';
+    (base.length < 5 ? `<p class="hint">${t('Vergleich mit deinem Schnitt ab 5 Spielen auf dieser Map.')}</p>` : '') + learn + '</div>';
+}
+$('eog').addEventListener('click', async (e) => {
+  const b = e.target.closest('#learnSave');
+  if (!b) return;
+  notesData = await window.lol.noteLearn(b.dataset.champ, { gameId: b.dataset.game, win: b.dataset.win === '1', text: $('learnText').value });
+  $('learnState').textContent = $('learnText').value.trim() ? t('gespeichert') : t('gelöscht');
+  drawNoteList();
+  if (noteKey === b.dataset.champ) openNote(noteKey);
+  renderNoteCard();
+});
+const RICH_GOLD = 1000; // ab so viel Gold in der Tasche zählt ein Tod als „mit Gold gestorben“
+const sgn = (v) => `${v > 0 ? '+' : ''}${n(v)}`;
+// „gegen Darius · 10 min: CS +12, Gold +450, Level +1 · 15 min: …“
+function duelText(tl, oc) {
+  const part = (a, b, m) => (a && b ? `${m} min: CS ${sgn(a.cs - b.cs)}, Gold ${sgn(a.gold - b.gold)}, Level ${sgn(a.lvl - b.lvl)}` : null);
+  return [t('gegen {c}', { c: oc ? oc.name : '?' }), part(tl.at10, tl.opp10, 10), part(tl.at15, tl.opp15, 15)].filter(Boolean).join(' · ');
 }
 
 // --- Verlauf (Match-History des Clients) ---
@@ -302,8 +343,27 @@ const GOALS = {
 };
 const GOAL_TEXT = Object.fromEntries(Object.values(GOALS).map((x) => [x.key, x.text]));
 const PMODES = { 11: 'Kluft', 12: 'ARAM' };
+// Modus-Gruppen nach Queue-ID des Clients; „Kluft (alle)“ fasst alle Queues auf Summoner's Rift zusammen.
+// Swiftplay hatte 27.10. die Queue 880 (früher 480)
+const PQUEUES = [
+  ['rift', 'Kluft (alle)', 11, null],
+  ['solo', 'Solo/Duo', 11, [420]],
+  ['flex', 'Flex', 11, [440]],
+  ['normal', 'Normal', 11, [400, 430, 490]],
+  ['swift', 'Swiftplay', 11, [480, 880]],
+  ['aram', 'ARAM', 12, [450]],
+  ['mayhem', 'ARAM Mayhem', 12, [2400]],
+];
+const ROLES = [['top', 'Top'], ['jungle', 'Jungle'], ['middle', 'Mid'], ['bottom', 'ADC'], ['utility', 'Support']];
+const inQueue = (g, q) => g.map === q[2] && (!q[3] || q[3].includes(g.queue));
+// Rolle: aus Farmys Spielprotokoll (Live-API, zuverlässig), sonst die Lane-Angabe des Clients
+const roleOf = (g) => (progLogs.find((l) => String(l.gameId) === String(g.id)) || {}).position || g.lane || '';
+let progQueue = null;
+let progRole = 'all';
 let progGames = [];
 let progLp = [];
+let progTimelines = {}; // gameId -> Spielverlauf aus dem Client (src/timelines.js)
+let progLogs = []; // Farmys Spielprotokolle (Gold beim Tod, Death Recap)
 let progGoal = null;
 let progMap = 11;
 $('progress').addEventListener('click', async (e) => {
@@ -313,9 +373,13 @@ $('progress').addEventListener('click', async (e) => {
     drawProgress();
     return;
   }
-  const b = e.target.closest('[data-map]');
-  if (!b) return;
-  progMap = Number(b.dataset.map);
+  const q = e.target.closest('[data-queue]');
+  const r = e.target.closest('[data-role]');
+  if (q) {
+    progQueue = q.dataset.queue;
+    progRole = 'all';
+  } else if (r) progRole = r.dataset.role;
+  else return;
   drawProgress();
 });
 
@@ -323,7 +387,7 @@ async function renderProgress() {
   let list;
   try {
     const r = await window.lol.progress();
-    [list, progLp, progGoal] = [r.games, r.lp || [], r.goal];
+    [list, progLp, progGoal, progTimelines, progLogs] = [r.games, r.lp || [], r.goal, r.timelines || {}, r.logs || []];
   } catch {
     list = [];
   }
@@ -332,25 +396,22 @@ async function renderProgress() {
     list.filter((g) => g.champ === id).forEach((g) => (g.c = c));
   }
   progGames = list;
-  if (!list.some((g) => g.map === progMap) && list.length) progMap = list[list.length - 1].map;
+  // Start mit dem Modus des letzten Spiels (genaueste Gruppe), eine eigene Wahl bleibt, solange es Spiele dafür gibt
+  const complete = list.filter((g) => g.cs != null);
+  const last = complete[complete.length - 1];
+  if (last && !(progQueue && complete.some((g) => inQueue(g, PQUEUES.find((x) => x[0] === progQueue))))) {
+    progQueue = (PQUEUES.slice(1).find((q) => inQueue(last, q)) || PQUEUES.find((q) => q[2] === last.map) || PQUEUES[0])[0];
+  }
   drawProgress();
+  renderNoteCard(); // Plan-Karte braucht Fokus und Session-Ziel
 }
 
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 
-function drawProgress() {
-  const el = $('progress');
-  const maps = [...new Set(progGames.map((g) => g.map))].filter((m) => PMODES[m]);
-  // Einträge vor dem 27.10. haben teils nur Items (keine K/D/A, CS): die zählen hier nicht
-  const games = progGames.filter((g) => g.map === progMap && g.cs != null);
-  const seg = maps.length > 1 ? `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${maps.map((m) =>
-    `<button data-map="${m}" aria-pressed="${m === progMap}">${t(PMODES[m])}</button>`).join('')}</div>` : '';
-  if (games.length < RECENT + 5) {
-    el.innerHTML = seg + `<div class="msg">${t('Noch zu wenige Spiele für einen Vergleich ({n} von {need}). Farmy merkt sich jedes Spiel, schau nach ein paar Runden wieder rein.', { n: games.length, need: RECENT + 5 })}</div>`;
-    return;
-  }
+// Skill-Bereiche: letzte 10 Spiele gegen alle davor; focus = der Bereich, der zuletzt am meisten nachgelassen hat
+function rateSkills(games, map) {
   const recent = games.slice(-RECENT), before = games.slice(0, -RECENT);
-  const skills = SKILLS.filter((s) => !s.maps || s.maps.includes(progMap)).map((s) => {
+  const skills = SKILLS.filter((s) => !s.maps || s.maps.includes(map)).map((s) => {
     const has = (g) => !s.needs || g[s.needs] != null;
     const r = recent.filter(has), b = before.filter(has);
     if (r.length < 5 || b.length < 5) return { ...s, missing: true };
@@ -365,6 +426,40 @@ function drawProgress() {
   });
   const rated = skills.filter((s) => !s.missing);
   const focus = rated.reduce((a, s) => (!a || s.better < a.better ? s : a), null);
+  return { recent, before, skills, rated, focus };
+}
+
+function drawProgress() {
+  const el = $('progress');
+  // Einträge vor dem 27.10. haben teils nur Items (keine K/D/A, CS): die zählen hier nicht
+  const complete = progGames.filter((g) => g.cs != null);
+  const groups = PQUEUES.filter((q) => complete.some((g) => inQueue(g, q)));
+  const queue = groups.find((q) => q[0] === progQueue) || groups[0] || PQUEUES[0];
+  progMap = queue[2];
+  const inMode = complete.filter((g) => inQueue(g, queue));
+  const roles = progMap === 11 ? ROLES.filter(([r]) => inMode.some((g) => roleOf(g) === r)) : [];
+  if (!roles.some(([r]) => r === progRole)) progRole = 'all';
+  const games = progRole === 'all' ? inMode : inMode.filter((g) => roleOf(g) === progRole);
+  const seg = `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${groups.map((q) =>
+    `<button data-queue="${q[0]}" aria-pressed="${q === queue}">${t(q[1])}</button>`).join('')}</div>` +
+    (roles.length ? `<div class="seg roles" role="group" aria-label="${t('Rolle')}">${[['all', 'Alle Rollen'], ...roles].map(([r, label]) =>
+      `<button data-role="${r}" aria-pressed="${r === progRole}">${t(label)} <small>${r === 'all' ? inMode.length : inMode.filter((g) => roleOf(g) === r).length}</small></button>`).join('')}</div>` +
+      `<p class="hint role-hint">${t('Rolle ab jetzt aus dem Spiel; bei älteren Spielen laut Client, bei Blind und Swiftplay nicht immer genau.')}</p>` : '');
+  // Ohne Spiele in dieser Auswahl nichts; unter 15 Spielen fehlen nur Skill-Vergleich, Fokus und Ziel-Vorschläge
+  if (!games.length) {
+    el.innerHTML = seg + `<div class="msg">${t('Keine Spiele gefunden.')}</div>`;
+    return;
+  }
+  const rest = `<h3 class="sec-title">${t('Wann du stirbst')}</h3>${deathCard(games)}` +
+    (progMap === 11 ? `<h3 class="sec-title">${t('Lane-Duell')}</h3>${duelCard(games)}` : '') +
+    `<h3 class="sec-title">${t('Wann du gewinnst')}</h3><div class="wins-grid">${winBlocks(games).join('')}</div>` +
+    `<h3 class="sec-title">${t('Champion-Pool')}</h3>${champPool(games)}`;
+  if (games.length < RECENT + 5) {
+    el.innerHTML = seg + weekCard(games) + lpCard() +
+      `<div class="msg">${t('Noch zu wenige Spiele für einen Vergleich ({n} von {need}). Farmy merkt sich jedes Spiel, schau nach ein paar Runden wieder rein.', { n: games.length, need: RECENT + 5 })}</div>` + rest;
+    return;
+  }
+  const { recent, before, skills, rated, focus } = rateSkills(games, progMap);
   const wr = (list) => Math.round((list.filter((g) => g.win).length / list.length) * 100);
 
   const tiles = `<div class="summary">
@@ -379,11 +474,9 @@ function drawProgress() {
     <p>${t('Zuletzt {now} {unit}, sonst {base}.', { now: dec(focus.now, focus.digits), unit: t(focus.unit), base: dec(focus.base, focus.digits) })}
     ${esc(t(focus.tip))}</p></div>` : '';
 
-  el.innerHTML = seg + tiles + focusCard + goalCard(recent, rated) + lpCard() +
+  el.innerHTML = seg + tiles + weekCard(games) + focusCard + goalCard(recent, rated) + lpCard() +
     `<h3 class="sec-title">${t('Skill-Bereiche · letzte {n} Spiele gegen deinen Schnitt davor', { n: RECENT })}</h3>` +
-    `<div class="skills">${skills.map(skillCard).join('')}</div>` +
-    `<h3 class="sec-title">${t('Wann du gewinnst')}</h3><div class="wins-grid">${winBlocks(games).join('')}</div>` +
-    `<h3 class="sec-title">${t('Champion-Pool')}</h3>${champPool(games)}`;
+    `<div class="skills">${skills.map(skillCard).join('')}</div>` + rest;
 }
 
 // Session-Ziel (wie eine Challenge): eins zur Zeit, im Spiel als Zeile im Panel, nach dem Spiel ✓/✗.
@@ -435,6 +528,114 @@ function lpCard() {
   return '';
 }
 
+// Wochenbericht: diese Woche (ab Montag) gegen letzte Woche, auf der gewählten Map; LP über alle Queues
+function weekCard(games) {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  const lastMonday = monday - 7 * 864e5;
+  const thisW = games.filter((g) => g.at >= monday), lastW = games.filter((g) => g.at >= lastMonday && g.at < monday);
+  if (!thisW.length && !lastW.length) return '';
+  const st = (list) => (!list.length ? null : {
+    n: list.length, wr: Math.round((list.filter((g) => g.win).length / list.length) * 100),
+    kda: list.reduce((a, g) => a + g.k + g.a, 0) / Math.max(list.reduce((a, g) => a + g.d, 0), 1),
+    csm: list.reduce((a, g) => a + g.cs, 0) / list.reduce((a, g) => a + gmins(g), 0),
+    dpm: (list.reduce((a, g) => a + g.d, 0) / list.reduce((a, g) => a + gmins(g), 0)) * 10,
+  });
+  const a = st(thisW), b = st(lastW);
+  const rows = [['Spiele', 'n', 0], ['Siegquote', 'wr', 0, ' %'], ['KDA', 'kda', 2], ['CS/min', 'csm', 1], ['Tode/10 min', 'dpm', 1, '', true]];
+  const cell = (x, k, d, suf = '') => (x ? `${dec(x[k], d)}${suf}` : '–');
+  const arrow = (k, lower) => {
+    if (!a || !b || k === 'n' || !b[k]) return '';
+    const better = ((a[k] - b[k]) / b[k]) * (lower ? -1 : 1);
+    return Math.abs(better) < 0.03 ? '' : better > 0 ? ' <span class="win">↑</span>' : ' <span class="loss">↓</span>';
+  };
+  // bester Champ der Woche: meiste Siege, dann meiste Spiele
+  const by = new Map();
+  for (const g of thisW) {
+    const c = by.get(g.champ) || { c: g.c, n: 0, w: 0 };
+    c.n++;
+    if (g.win) c.w++;
+    by.set(g.champ, c);
+  }
+  const best = [...by.values()].sort((x, y) => y.w - x.w || y.n - x.n)[0];
+  // LP seit Montag (Solo/Duo, sonst Flex): letzter Stand vor Montag gegen jetzt
+  let lp = '';
+  for (const [q, label] of [['solo', 'Solo/Duo'], ['flex', 'Flex']]) {
+    const pts = progLp.filter((x) => x[q] != null);
+    const start = [...pts].reverse().find((x) => x.at < monday) || pts.find((x) => x.at >= monday);
+    const end = pts[pts.length - 1];
+    if (start && end && end.at >= monday && start !== end) {
+      const d = end[q] - start[q];
+      lp = `<span class="${d >= 0 ? 'win' : 'loss'}">${d >= 0 ? '+' : ''}${d} LP</span> ${label}`;
+      break;
+    }
+  }
+  return `<div class="card week"><div class="card-head"><h2>${t('Wochenbericht')}</h2><span class="hint">${t('seit Montag gegen letzte Woche')}</span></div>` +
+    `<table class="pool"><thead><tr><th></th><th>${t('Diese Woche')}</th><th>${t('Letzte Woche')}</th></tr></thead><tbody>` +
+    rows.map(([label, k, d, suf, lower]) => `<tr><td>${t(label)}</td><td>${cell(a, k, d, suf)}${arrow(k, lower)}</td><td>${cell(b, k, d, suf)}</td></tr>`).join('') +
+    '</tbody></table>' +
+    `<p class="week-foot">${best && best.c ? `${t('Champ der Woche')}: <b>${esc(best.c.name)}</b> (${best.w}/${best.n})` : ''}${best && lp ? ' · ' : ''}${lp}</p></div>`;
+}
+
+// Wann du stirbst: Tode je 10 Minuten Spielzeit in jeder Phase (aus den Spielverläufen des Clients, also auch
+// rückwirkend), dazu Gold beim Tod und Schadensart je Phase aus Farmys Spielprotokoll, soweit vorhanden
+const PHASES = [[0, 600, '0–10 min'], [600, 1200, '10–20 min'], [1200, 1800, '20–30 min'], [1800, Infinity, '30+ min']];
+function deathCard(games) {
+  const tls = games.map((g) => progTimelines[g.id]).filter(Boolean);
+  if (tls.length < 3) return `<div class="card"><p class="hint">${t('Noch zu wenige Spielverläufe ({n} von 3). Farmy lädt sie aus dem Client, sobald er läuft.', { n: tls.length })}</p></div>`;
+  const ph = PHASES.map(([lo, hi, label]) => {
+    let mins = 0, deaths = 0;
+    for (const tl of tls) {
+      mins += Math.max(0, Math.min(tl.dur, hi) - lo) / 60;
+      deaths += tl.deaths.filter((s) => s >= lo && s < hi).length;
+    }
+    return { lo, hi, label, mins, deaths, rate: mins >= 20 ? (deaths / mins) * 10 : null };
+  });
+  const shown = ph.filter((x) => x.rate != null);
+  const max = Math.max(...shown.map((x) => x.rate), 0.1);
+  const worst = shown.reduce((a, x) => (!a || x.rate > a.rate ? x : a), null);
+  // Schadensart je Phase aus dem Death Recap (nur Spiele mit Farmy-Protokoll)
+  const ids = new Set(games.map((g) => String(g.id)));
+  const logs = progLogs.filter((l) => ids.has(String(l.gameId)));
+  const recap = logs.flatMap((l) => (l.deaths || []).filter((d) => d.phys != null && d.gameTime != null));
+  const mixOf = (x) => {
+    const list = recap.filter((d) => d.gameTime >= x.lo && d.gameTime < x.hi);
+    if (list.length < 3) return '';
+    const m = (k) => Math.round(mean(list.map((d) => d[k])));
+    const [p, g] = [m('phys'), m('magic')];
+    return p >= 60 ? t('meist physisch ({p} %)', { p }) : g >= 60 ? t('meist magisch ({p} %)', { p: g }) : t('gemischt');
+  };
+  const rows = shown.map((x) => `<div class="wrow phase"><span>${x.label}</span>` +
+    `<svg class="wtrack" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="8" rx="2" class="wbg"></rect>` +
+    `<rect width="${Math.round((x.rate / max) * 100)}" height="8" rx="2" class="${x === worst ? 'wbad' : 'wfill'}"></rect></svg>` +
+    `<small><b>${dec(x.rate, 1)}</b> · ${t('{n} Tode', { n: x.deaths })}${mixOf(x) ? ` · ${mixOf(x)}` : ''}</small></div>`).join('');
+  // Gold beim Tod über alle protokollierten Spiele
+  const golds = logs.flatMap((l) => (l.died || []).map((d) => d.gold));
+  const gold = golds.length >= 3 ? `<p class="hint">${t('Gold beim Tod: Ø {g} g, {p} % deiner Tode mit {min}+ g in der Tasche ({n} Tode).', { g: n(Math.round(mean(golds))), p: Math.round((golds.filter((x) => x >= RICH_GOLD).length / golds.length) * 100), min: n(RICH_GOLD), n: golds.length })}</p>`
+    : `<p class="hint">${t('Gold beim Tod misst Farmy ab jetzt in jedem Spiel live.')}</p>`;
+  return `<div class="card deaths"><p class="deaths-head">${worst ? t('Am häufigsten stirbst du in Minute {p}: {r} Tode je 10 Minuten.', { p: worst.label.replace(' min', ''), r: dec(worst.rate, 1) }) : ''}</p>` +
+    rows + `<p class="hint">${t('Tode je 10 Minuten Spielzeit in der Phase, aus {n} Spielverläufen.', { n: tls.length })}</p>${gold}</div>`;
+}
+
+// Lane-Duell (Kluft): CS-, Gold- und Level-Differenz zu deinem Lane-Gegner bei 10 und 15 Minuten. Nur Spiele, in
+// denen der Gegner eindeutig ist (siehe src/timelines.js)
+function duelCard(games) {
+  const list = games.map((g) => progTimelines[g.id]).filter((tl) => tl && tl.opp10 && tl.at10);
+  if (list.length < 3) return `<div class="card"><p class="hint">${t('Noch zu wenige Spiele mit eindeutigem Lane-Gegner ({n} von 3). Ab jetzt merkt sich Farmy deinen Gegner im Spiel.', { n: list.length })}</p></div>`;
+  const avg = (key, m) => {
+    const xs = list.filter((tl) => tl[`at${m}`] && tl[`opp${m}`]).map((tl) => tl[`at${m}`][key] - tl[`opp${m}`][key]);
+    return xs.length ? { v: mean(xs), n: xs.length } : null;
+  };
+  const cell = (x, d) => (x ? `<span class="${x.v >= 0 ? 'win' : 'loss'}">${x.v >= 0 ? '+' : ''}${dec(x.v, d)}</span>` : '–');
+  const row = (m) => `<tr><td>${m} min</td><td>${cell(avg('cs', m), 1)}</td><td>${cell(avg('gold', m), 0)}</td><td>${cell(avg('lvl', m), 1)}</td></tr>`;
+  const golds = list.map((tl) => tl.at10.gold - tl.opp10.gold);
+  const ahead = golds.filter((x) => x > 0).length;
+  return `<div class="card duel"><p>${t('In {a} von {n} Spielen warst du bei 10 Minuten im Gold vorne.', { a: ahead, n: list.length })}</p>` +
+    `<table class="pool"><thead><tr><th>${t('Ø Differenz')}</th><th>CS</th><th>Gold</th><th>Level</th></tr></thead><tbody>${row(10)}${row(15)}</tbody></table>` +
+    spark(golds, { label: t('Gold-Differenz bei 10 min'), unit: 'g', digits: 0 }, 1) +
+    `<p class="hint">${t('Gold-Differenz bei 10 Minuten je Spiel, gestrichelt dein Schnitt. {n} Spiele mit eindeutigem Gegner.', { n: list.length })}</p></div>`;
+}
+
 function skillCard(s) {
   if (s.missing) {
     return `<div class="skill"><label>${t(s.label)}</label><p class="hint">${t('Noch zu wenige Spiele mit diesem Wert')}</p></div>`;
@@ -451,7 +652,7 @@ function skillCard(s) {
 }
 
 // Gleitender Schnitt als Linie, gestrichelt dein Gesamtschnitt; Hover zeigt den Wert je Spiel
-function spark(values, s) {
+function spark(values, s, first = 5) {
   if (values.length < 2) return '';
   const W = 200, H = 56, pad = 5;
   const avg = mean(values);
@@ -459,7 +660,7 @@ function spark(values, s) {
   const x = (i) => pad + (i * (W - 2 * pad)) / (values.length - 1);
   const y = (v) => H - pad - ((v - min) / span) * (H - 2 * pad);
   const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const hits = values.map((v, i) => `<rect x="${(x(i) - (W - 2 * pad) / values.length / 2).toFixed(1)}" y="0" width="${((W - 2 * pad) / values.length).toFixed(1)}" height="${H}" fill="transparent"><title>${t('Spiel {i}: Ø {v} {unit}', { i: i + 5, v: dec(v, s.digits), unit: t(s.unit) })}</title></rect>`).join('');
+  const hits = values.map((v, i) => `<rect x="${(x(i) - (W - 2 * pad) / values.length / 2).toFixed(1)}" y="0" width="${((W - 2 * pad) / values.length).toFixed(1)}" height="${H}" fill="transparent"><title>${t('Spiel {i}: Ø {v} {unit}', { i: i + first, v: dec(v, s.digits), unit: t(s.unit) })}</title></rect>`).join('');
   return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('{label}: gleitender Schnitt über 5 Spiele', { label: t(s.label) })}">
     <line x1="${pad}" x2="${W - pad}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" stroke="rgba(255,255,255,0.18)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></line>
     <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
@@ -485,6 +686,7 @@ function winBlocks(games) {
   ];
   return blocks.map(([title, rows]) => `<div class="card wins"><h2>${title}</h2>${rows.map(([label, test]) => {
     const list = games.filter(test);
+    if (!list.length) return ''; // keine Spiele in dieser Zeile: weglassen statt „zu wenig · 0 Spiele“
     if (list.length < 3) return `<div class="wrow"><span>${label}</span><span class="hint">${t('zu wenig')}</span><small>${list.length === 1 ? t('1 Spiel') : t('{n} Spiele', { n: list.length })}</small></div>`;
     const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
     return `<div class="wrow" title="${t('{w} % Siege aus {n} Spielen', { w, n: list.length })}"><span>${label}</span>` +
@@ -630,7 +832,7 @@ function drawNoteList() {
   const keys = Object.keys(notesData).sort((a, b) => notesData[b].at - notesData[a].at);
   $('noteList').innerHTML = keys.length ? keys.map((k) => `<button class="note-item${k === noteKey ? ' active' : ''}" data-note="${esc(k)}">` +
     `${k === GENERAL ? '<span class="champ-ph" aria-hidden="true"></span>' : champImg(champById(k))}` +
-    `<span><b>${esc(noteName(k))}</b><small>${esc(notesData[k].text.split('\n')[0].slice(0, 60))}</small></span></button>`).join('')
+    `<span><b>${esc(noteName(k))}</b><small>${esc((notesData[k].text || ((notesData[k].journal || []).slice(-1)[0] || {}).text || '').split('\n')[0].slice(0, 60))}</small></span></button>`).join('')
     : `<p class="hint">${t('Noch keine Notizen. Wähl oben einen Champion.')}</p>`;
 }
 function openNote(key) {
@@ -642,6 +844,7 @@ function openNote(key) {
   $('noteState').textContent = n ? t('gespeichert {when}', { when: new Date(n.at).toLocaleString(i18n.locale(), { dateStyle: 'short', timeStyle: 'short' }) }) : '';
   $('noteChamp').value = key === GENERAL ? '' : noteName(key);
   resetDelete();
+  drawJournal();
   document.querySelectorAll('.note-item').forEach((b) => b.classList.toggle('active', b.dataset.note === key));
 }
 // Schlüssel und Text werden vor dem ersten await gelesen: ein Wechsel zum nächsten Champ kommt nicht dazwischen
@@ -656,6 +859,22 @@ async function saveNote() {
   drawNoteList();
   renderNoteCard();
 }
+// Tagebuch des Champions: Einträge aus dem Rückblick („Was nehme ich mit?“), neueste zuerst, einzeln löschbar
+function drawJournal() {
+  const list = [...((notesData[noteKey] || {}).journal || [])].sort((a, b) => b.at - a.at);
+  $('noteJournal').innerHTML = !list.length ? '' : `<h3>${t('Aus deinen Spielen')}</h3>` + list.map((j) =>
+    `<div class="j-row"><span class="j-meta"><b class="${j.win ? 'win' : 'loss'}">${j.win ? t('Sieg') : t('Niederlage')}</b> · ` +
+    `${new Date(j.at).toLocaleDateString(i18n.locale())}</span><span class="j-text">${esc(j.text)}</span>` +
+    `<button class="ghost j-del" data-game="${esc(j.gameId)}" title="${esc(t('Eintrag löschen'))}" aria-label="${esc(t('Eintrag löschen'))}">×</button></div>`).join('');
+}
+$('noteJournal').addEventListener('click', async (e) => {
+  const b = e.target.closest('.j-del');
+  if (!b) return;
+  notesData = await window.lol.noteLearn(noteKey, { gameId: b.dataset.game, text: '' });
+  drawJournal();
+  drawNoteList();
+  renderNoteCard();
+});
 // Löschen in zwei Schritten (ohne Browser-Dialog): erster Klick fragt nach, zweiter innerhalb von 4 s löscht
 let deleteArmed = null;
 function resetDelete() {
@@ -701,11 +920,35 @@ $('noteChamp').addEventListener('change', () => {
   if (c) openNote(c.id);
 });
 // „Build & Runen“: Notiz zum gewählten Champion, „Bearbeiten“ springt in den Reiter „Notizen“
+// „Build & Runen“ in der Champ-Auswahl: dein Plan für dieses Spiel – Notiz, letzte Learnings zum Champion,
+// Session-Ziel, Fokus aus dem Fortschritt und die Lane-Einschätzung gegen die gegnerischen Picks
 function renderNoteCard() {
   if (!champId) return;
-  const n = notesData[champId];
-  $('noteText').innerHTML = n ? esc(n.text) : `<span class="hint">${t('Noch keine Notiz zu diesem Champion.')}</span>`;
-  $('noteEdit').textContent = n ? t('Bearbeiten') : t('Notiz schreiben');
+  const note = notesData[champId];
+  $('noteText').innerHTML = note && note.text ? esc(note.text) : `<span class="hint">${t('Noch keine Notiz zu diesem Champion.')}</span>`;
+  $('noteEdit').textContent = note && note.text ? t('Bearbeiten') : t('Notiz schreiben');
+  const parts = [];
+  const learned = [...((note || {}).journal || [])].sort((a, b) => b.at - a.at).slice(0, 3);
+  if (learned.length) parts.push([t('Zuletzt gelernt'), learned.map((j) => esc(j.text)).join('<br>')]);
+  if (progGoal) {
+    const f = (v) => (progGoal.key === 'deaths' ? String(v) : dec(v, progGoal.key === 'vision' ? 2 : 1));
+    parts.push([t('Session-Ziel'), esc(t(GOAL_TEXT[progGoal.key], { n: f(progGoal.target) }))]);
+  }
+  // Fokus auf der Map des kommenden Spiels (ARAM-Bank sichtbar = ARAM)
+  const map = $('benchCard').hidden ? 11 : 12;
+  const games = progGames.filter((g) => g.map === map && g.cs != null);
+  if (games.length >= RECENT + 5) {
+    const { focus } = rateSkills(games, map);
+    if (focus && focus.better < 0) parts.push([t('Fokus'), `${esc(t(focus.label))}: ${esc(t(focus.tip))}`]);
+  }
+  const mu = Object.entries(matchupResults).filter(([id]) => id !== champId && matchupResults[id] && !matchupResults[id].error);
+  if (mu.length) {
+    parts.push([t('Lane'), mu.map(([id, d]) => {
+      const [label, cls] = laneVerdict(d);
+      return `${esc((champById(id) || { name: id }).name)} <span class="${cls}">${esc(label)}</span>`;
+    }).join(' · ')]);
+  }
+  $('planMore').innerHTML = parts.map(([label, html]) => `<div class="rv-row"><span class="rv-label">${label}</span><span>${html}</span></div>`).join('');
 }
 $('noteEdit').addEventListener('click', () => {
   showTab('notes');
@@ -715,6 +958,7 @@ $('noteEdit').addEventListener('click', () => {
 
 // --- Matchup: Lane gewinnend oder verlierend und wer auf Level 1–3 vorne liegt (nur vor dem Spiel) ---
 const matchup = { enemies: [], position: '', manual: null };
+let matchupResults = {}; // Gegner-ID -> Matchup-Daten (für die Plan-Karte), gilt für den gewählten Champion
 const signedPct = (v) => `${v >= 0 ? '+' : '−'}${dec(Math.abs(v), 1)} %`;
 function laneVerdict(d) {
   const v = d.normalized ?? d.delta;
@@ -754,12 +998,15 @@ async function renderMatchup() {
     return;
   }
   const forChamp = champId;
+  matchupResults = {};
   box.innerHTML = list.map((id) => `<div class="mu-row" data-vs="${esc(id)}"><span class="hint">${t('Lade Matchup…')}</span></div>`).join('');
   await Promise.all(list.map(async (id) => {
     const d = await window.lol.matchup(forChamp, id, matchup.position).catch((e) => ({ error: e.message }));
     const row = box.querySelector(`[data-vs="${CSS.escape(id)}"]`);
     if (row && forChamp === champId) row.innerHTML = matchupHtml(id, d);
+    if (forChamp === champId) matchupResults[id] = d && !d.error && d.winRate != null ? d : { error: true };
   }));
+  renderNoteCard();
 }
 $('vsInput').addEventListener('change', () => {
   const c = champByName.get($('vsInput').value.trim().toLowerCase());
@@ -801,6 +1048,7 @@ function renderSession(s) {
     (s.streak >= 3 ? ` · <span class="loss">${t('{n} Niederlagen am Stück', { n: s.streak })}</span>` : '');
 }
 window.lol.onSession(renderSession);
+window.lol.onProgressUpdate(() => renderProgress()); // neue Spielverläufe aus dem Client geladen
 window.lol.session().then(renderSession);
 window.lol.matchupState().then((s) => {
   if (!s) return;

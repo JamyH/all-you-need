@@ -30,7 +30,7 @@ function init(dir) {
 
 // Spielstart. at = Startzeit des Spiels (ms), champ = Champion-Key (Zahl wie in der Historie)
 function start({ champ, map, mode, at }) {
-  cur = { gameId: null, champ, map, mode, at, minutes: [], cs10: null, perfect10: null, deaths: [], ult: null };
+  cur = { gameId: null, champ, map, mode, at, minutes: [], cs10: null, perfect10: null, deaths: [], died: [], ult: null, oppChamp: null, position: '' };
 }
 // Spiel-ID kommt aus dem Client etwas später als der Spielstart
 function setGameId(id) {
@@ -54,6 +54,18 @@ function tick(s, perfect10) {
 
 function death(d) {
   if (cur) cur.deaths.push(d);
+}
+// Zeitpunkt (s) und Gold in der Tasche beim Tod, aus der Live-API (die Timeline kennt Gold nur je Minute)
+function died(t, gold) {
+  if (cur) cur.died.push({ t: Math.round(t), gold: Math.round(gold) });
+}
+// zugeteilte Rolle laut Live-API (zuverlässiger als die Lane-Angabe im Client-Verlauf)
+function role(pos) {
+  if (cur && pos && !cur.position) cur.position = pos;
+}
+// Lane-Gegner laut Live-API (Champion-Key), einmal je Spiel
+function opponent(key) {
+  if (cur && key && !cur.oppChamp) cur.oppChamp = Number(key);
 }
 
 // Spielende: speichern (nur mit Spiel-ID, sonst lässt es sich keinem Spiel zuordnen, z. B. Practice Tool)
@@ -87,4 +99,4 @@ function trackLp(now) {
 }
 const lpHistory = () => lp;
 
-module.exports = { init, start, setGameId, tick, death, finish, get, all, trackLp, lpHistory };
+module.exports = { init, start, setGameId, tick, death, died, opponent, role, finish, get, all, trackLp, lpHistory };

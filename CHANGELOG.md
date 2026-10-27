@@ -1,5 +1,21 @@
 # Changelog
 
+## Unveröffentlicht
+
+Neu
+- Fortschritt nach Modus getrennt (Kluft gesamt, Solo/Duo, Flex, Normal, Swiftplay, ARAM, ARAM Mayhem) und auf der
+  Kluft nach Rolle (Top, Jungle, Mid, ADC, Support). Rolle ab jetzt aus dem Spiel; ältere Spiele laut Client
+- Wochenbericht: diese Woche gegen letzte Woche (Spiele, Siegquote, KDA, CS/min, Tode), Champ der Woche, LP seit Montag
+- Wann du stirbst: Tode je 10 Minuten in jeder Spielphase, aus den Spielverläufen des Clients (auch rückwirkend),
+  dazu Schadensart je Phase (Death Recap) und Gold beim Tod
+- Gold beim Tod: Farmy misst live, wie viel Gold du beim Sterben in der Tasche hattest (Rückblick und Fortschritt)
+- Lane-Duell (Kluft): CS-, Gold- und Level-Differenz zu deinem Lane-Gegner bei 10 und 15 Minuten, je Spiel im
+  Rückblick und als Trend im Fortschritt. Nur bei eindeutigem Gegner (ab jetzt aus dem Spiel gemerkt)
+- Rückblick: Zeitpunkte deiner Tode und ein Spiel-Tagebuch „Was nehme ich mit?“, das datiert in den Notizen des
+  Champions landet (dort einzeln löschbar)
+- „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
+  gegen die gegnerischen Picks auf einen Blick
+
 ## 1.8.1 – 2026-10-27
 
 Behoben

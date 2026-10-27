@@ -24,6 +24,8 @@ const currentSummoner = (lp) => lcu(lp, '/lol-summoner/v1/current-summoner');
 const endOfGame = (lp) => lcu(lp, '/lol-end-of-game/v1/eog-stats-block');
 // Laufendes Spiel: gameData.gameId verknüpft Farmys Spielprotokoll mit der Historie
 const gameflowSession = (lp) => lcu(lp, '/lol-gameflow/v1/session');
+// Beliebiger GET (Spieldetails und Timelines für src/timelines.js)
+const get = (lp, endpoint) => lcu(lp, endpoint);
 // Ready-Check nach „Spiel gefunden“: { state: 'InProgress' | …, playerResponse: 'None' | 'Accepted' | 'Declined' }.
 // Ohne laufenden Check antwortet der Client mit 404 -> null
 const readyCheck = (lp) => lcu(lp, '/lol-matchmaking/v1/ready-check').catch(() => null);
@@ -155,6 +157,6 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 }
 
 module.exports = {
-  gameflowPhase, gameflowSession, currentSummoner, endOfGame, matchHistory, ranks, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
+  gameflowPhase, gameflowSession, get, currentSummoner, endOfGame, matchHistory, ranks, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
   applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments,
 };

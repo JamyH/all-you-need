@@ -49,6 +49,7 @@ const meraki = require('./src/meraki');
 const history = require('./src/history');
 const gamelog = require('./src/gamelog');
 const notes = require('./src/notes');
+const timelines = require('./src/timelines');
 const augments = require('./src/augments');
 const arammayhem = require('./src/arammayhem');
 const jungle = require('./src/jungle');
@@ -450,6 +451,9 @@ async function pollGame() {
   if (summary && data.gameData.gameMode === 'KIWI') arammayhem.prepare(lastChampion);
   lastItems = summary ? summary.myItems : [];
   blueSpells = summary ? summary.blueSpells : {};
+  if (summary && summary.isDead && !meDead) gamelog.died(summary.gameTime, (data.activePlayer && data.activePlayer.currentGold) || 0);
+  if (summary && summary.laneOpponent && summary.laneOpponent.id) gamelog.opponent(ddragon.championKey(summary.laneOpponent.id));
+  if (summary && summary.position) gamelog.role(summary.position);
   meDead = !!(summary && summary.isDead);
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (summary) summary.augments = screenState.augments || null;
@@ -1099,6 +1103,7 @@ async function importHistory() {
     const h = await lcu.matchHistory(config.leaguePath, 20);
     if (history.add(h)) notifyStats('history:items');
     historyImported = true;
+    fillTimelines().then((n) => n && notifyStats('progress:update')).catch((e) => console.warn('Spielverläufe:', e.message));
     updateSession().catch((e) => console.warn('Session:', e.message));
     await refreshAugmentNames();
   } catch (e) {
@@ -1440,20 +1445,35 @@ ipcMain.handle('stats:history', async () => {
   history.add(h);
   return h;
 });
+// Spielverläufe aus dem Client (Tode mit Zeit, Werte bei 10/15 min für dich und deinen Lane-Gegner), nur für
+// gemerkte Spiele mit vollständigen Werten, neueste zuerst. Der Lane-Gegner kommt bevorzugt aus dem Spielprotokoll
+async function fillTimelines(ids) {
+  const me = await lcu.currentSummoner(config.leaguePath);
+  const list = ids || history.all().filter((g) => g.cs != null).map((g) => g.id).reverse();
+  return timelines.fill(list, { fetch: (p) => lcu.get(config.leaguePath, p), puuid: me.puuid,
+    opp: (id) => (gamelog.get(id) || {}).oppChamp });
+}
+
 // Reiter „Fortschritt“: alle selbst gemerkten Spiele (nicht nur die 20 des Clients); vorher die neuesten übernehmen
 ipcMain.handle('stats:progress', async () => {
   try {
     history.add(await lcu.matchHistory(config.leaguePath, 20));
+    // Spielverläufe dauern ~0,25 s je Spiel: im Hintergrund nachladen, das Fenster zeichnet danach neu
+    fillTimelines().then((n) => n && notifyStats('progress:update')).catch((e) => console.warn('Spielverläufe:', e.message));
   } catch {
     // Client aus: dann eben nur die schon gemerkten Spiele
   }
-  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null };
+  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null, timelines: timelines.all(), logs: gamelog.all() };
 });
 // Eigene Notizen je Champion (Reiter „Notizen“, Anzeige in „Build & Runen“)
 ipcMain.handle('notes:all', () => notes.all());
 ipcMain.handle('notes:set', (_e, key, text) => notes.set(key, text));
+ipcMain.handle('notes:learn', (_e, key, entry) => notes.learn(key, entry));
 // „Letztes Spiel“: Farmys Protokoll zu diesem Spiel, dazu die Historie als Vergleich
-ipcMain.handle('stats:review', (_e, gameId) => ({ log: gamelog.get(gameId), games: history.all(), goal: config.goal || null }));
+ipcMain.handle('stats:review', async (_e, gameId) => {
+  await fillTimelines([gameId]).catch(() => {});
+  return { log: gamelog.get(gameId), tl: timelines.get(gameId), games: history.all(), goal: config.goal || null };
+});
 // Session-Ziel (wie eine Challenge): eins zur Zeit, Ergebnis je Spiel für Serie und Quote
 ipcMain.handle('goal:set', (_e, goal) => {
   saveConfig({ goal: goal ? { ...goal, since: Date.now(), results: [] } : null });
@@ -1716,6 +1736,7 @@ app.whenReady().then(async () => {
   history.init(app.getPath('userData'));
   gamelog.init(app.getPath('userData'));
   notes.init(app.getPath('userData'));
+  timelines.init(app.getPath('userData'));
   augments.init(app.getPath('userData'));
   arammayhem.init(app.getPath('userData'));
   jungle.init(app.getPath('userData'));

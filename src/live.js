@@ -72,6 +72,8 @@ function summarize(data) {
     // ARAM und ARAM Mayhem laufen auf Map 12: kein Recall, eigene lolalytics-Seite
     aram: data.gameData.mapNumber === 12,
     map: data.gameData.mapNumber,
+    // zugeteilte Rolle (top, jungle, middle, bottom, utility); leer ohne Rollen (ARAM, Practice Tool)
+    position: me.position && me.position !== 'NONE' ? me.position.toLowerCase() : '',
     side: myTeam === 'CHAOS' ? 'red' : 'blue',
     smite: [me.summonerSpells?.summonerSpellOne, me.summonerSpells?.summonerSpellTwo]
       .some((sp) => /SummonerSmite/.test(sp?.rawDisplayName || '')),
@@ -93,6 +95,7 @@ function summarize(data) {
     laneOpponent: opponent
       ? {
           champion: opponent.championName,
+          id: (opponent.rawChampionName || '').replace(/^game_character_displayname_|^Character_|_Name$/g, ''),
           level: opponent.level,
           cs: opponent.scores.creepScore,
           itemValue: itemValue(opponent),
