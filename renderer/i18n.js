@@ -250,6 +250,7 @@
     '{w} % Siege aus {n} Spielen': '{w} % wins from {n} games',
     'Champion': 'Champion',
     'Spiele': 'Games',
+    '1 Spiel': '1 game',
     'Notizen': 'Notes',
     'Löschen': 'Delete',
     'Wirklich löschen?': 'Really delete?',

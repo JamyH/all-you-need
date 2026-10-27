@@ -326,7 +326,7 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 
 /* Session in der Seitenleiste, beste Champs, eigene Clear-Zeiten */
 .session { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.session b { font-weight: 700; }
+.session b { display: inline; font-weight: 700; } /* .account b ist block (Kontoname) */
 .best { margin-bottom: 14px; }
 .best[hidden] { display: none; }
 .best-row { display: grid; grid-template-columns: minmax(150px, 1fr) 80px 60px 80px; align-items: center; gap: 12px;

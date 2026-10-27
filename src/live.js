@@ -251,7 +251,8 @@ function livePlayers(data, ranks = new Map()) {
   const active = data.activePlayer || {};
   const players = data.allPlayers || [];
   const row = (p) => {
-    const id = (p.rawChampionName || '').replace('game_character_displayname_', '');
+    // meist „game_character_displayname_Aatrox“, gesehen 27.10. auch „Character_Aatrox_Name“ (sonst kein Bild)
+    const id = (p.rawChampionName || '').replace(/^game_character_displayname_|^Character_|_Name$/g, '');
     const s = p.scores || {};
     return {
       championId: id,

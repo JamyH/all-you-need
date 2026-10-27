@@ -401,7 +401,7 @@ function goalCard(recent, rated) {
       `<p class="hint">${res.length ? t('{ok} von {n} der letzten Spiele geschafft · Serie {s}', { ok: last.filter((r) => r.ok).length, n: last.length, s: streak })
         : t('Noch kein Spiel mit diesem Ziel.')} ${last.map((r) => (r.ok ? '✓' : '✗')).join(' ')}</p>`;
   }
-  const options = rated.filter((s) => GOALS[s.key]).sort((a, b) => a.better - b.better).slice(0, 3).map((s) => {
+  const options = rated.filter((s) => GOALS[s.key] && (progMap === 11 || !['farm', 'vision'].includes(s.key))).sort((a, b) => a.better - b.better).slice(0, 3).map((s) => {
     const G = GOALS[s.key];
     const target = G.make(recent);
     return `<button class="ghost" data-goal="${G.key}" data-target="${target}">${t(G.text, { n: fmtT(G.key, target) })}</button>`;
@@ -478,14 +478,14 @@ function winBlocks(games) {
     nth.set(g, count[d]);
   }
   const blocks = [
-    [t('Spiel am Tag'), [['1.', (g) => nth.get(g) === 1], ['2.', (g) => nth.get(g) === 2], ['3.', (g) => nth.get(g) === 3], ['4.+', (g) => nth.get(g) >= 4]]],
+    [t('Spiel am Tag'), [['1.', (g) => nth.get(g) === 1], ['2.', (g) => nth.get(g) === 2], ['3.', (g) => nth.get(g) === 3], ['4+', (g) => nth.get(g) >= 4]]],
     [t('Tageszeit'), [[t('Morgens'), (g) => hour(g) >= 6 && hour(g) < 12], [t('Nachmittags'), (g) => hour(g) >= 12 && hour(g) < 18],
       [t('Abends'), (g) => hour(g) >= 18], [t('Nachts'), (g) => hour(g) < 6]]],
     [t('Spiellänge'), [['< 25 min', (g) => g.dur < 1500], ['25–35 min', (g) => g.dur >= 1500 && g.dur < 2100], ['> 35 min', (g) => g.dur >= 2100]]],
   ];
   return blocks.map(([title, rows]) => `<div class="card wins"><h2>${title}</h2>${rows.map(([label, test]) => {
     const list = games.filter(test);
-    if (list.length < 3) return `<div class="wrow"><span>${label}</span><span class="hint">${t('zu wenig')}</span><small>${t('{n} Spiele', { n: list.length })}</small></div>`;
+    if (list.length < 3) return `<div class="wrow"><span>${label}</span><span class="hint">${t('zu wenig')}</span><small>${list.length === 1 ? t('1 Spiel') : t('{n} Spiele', { n: list.length })}</small></div>`;
     const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
     return `<div class="wrow" title="${t('{w} % Siege aus {n} Spielen', { w, n: list.length })}"><span>${label}</span>` +
       // SVG statt style="width": die CSP des Fensters blockt style-Attribute in innerHTML; Strich = 50 %
@@ -508,7 +508,7 @@ function champPool(games) {
       const w = Math.round((list.filter((g) => g.win).length / list.length) * 100);
       const kda = list.reduce((a, g) => a + g.k + g.a, 0) / Math.max(list.reduce((a, g) => a + g.d, 0), 1);
       const csm = list.reduce((a, g) => a + g.cs, 0) / list.reduce((a, g) => a + gmins(g), 0);
-      return `<tr><td class="pool-champ">${c ? champImg(c) + esc(c.name) : '?'}</td><td>${list.length}</td>` +
+      return `<tr><td><span class="pool-champ">${c ? champImg(c) + esc(c.name) : '?'}</span></td><td>${list.length}</td>` +
         `<td class="${w >= 50 ? 'win' : 'loss'}">${w} %</td><td>${dec(kda, 2)}</td><td>${dec(csm, 1)}</td></tr>`;
     }).join('') + '</tbody></table></div>';
 }
@@ -797,7 +797,7 @@ function renderSession(s) {
   const el = $('session');
   if (!s || s.wins + s.losses === 0) return (el.textContent = '');
   const lp = [['Solo', s.lp.solo], ['Flex', s.lp.flex]].filter(([, v]) => v).map(([q, v]) => `${q} ${v > 0 ? '+' : ''}${v} LP`);
-  el.innerHTML = `${t('Heute')} <b class="win">${s.wins}S</b> <b class="loss">${s.losses}N</b>${lp.length ? ` · ${lp.join(' · ')}` : ''}` +
+  el.innerHTML = `${t('Heute')} <b class="win">${t('{n}S', { n: s.wins })}</b> <b class="loss">${t('{n}N', { n: s.losses })}</b>${lp.length ? ` · ${lp.join(' · ')}` : ''}` +
     (s.streak >= 3 ? ` · <span class="loss">${t('{n} Niederlagen am Stück', { n: s.streak })}</span>` : '');
 }
 window.lol.onSession(renderSession);
