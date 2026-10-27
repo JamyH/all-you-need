@@ -16,6 +16,11 @@ Neu
 - Fortschritt zeigt alle Modi, auch ohne Spiele (ausgegraut mit 0), und startet im Modus mit genug Spielen für die
   Skill-Verläufe; ältere gemerkte Spiele bekommen fehlende Werte (Objectives, Sicht …) aus den Spieldetails des Clients
 - ARAM: Farmen und Sicht werden dort nicht mehr bewertet (kein sinnvoller Maßstab), eigener Tipp fürs Überleben
+- Fortschritt, Ausbau nach Mobalytics-Vorbild (nur eigene Spiele): Zeitraum (letzte 20/50/alle), neuer Skill
+  Aggression, Skill-Profil „davor → zuletzt“, Skill-Details per Klick (woraus der Wert besteht, bestes und schwächstes
+  Spiel, Verlauf je Spiel), Siege gegen Niederlagen, Gegen wen du verlierst (Siegquote gegen gegnerische Champions),
+  Nach Niederlagen (Siegquote im Folgespiel, Hinweis nach 2 Niederlagen am Stück), Champion-Profil per Klick im Pool,
+  Vielseitigkeit, Rekorde (bestes Spiel je Wert, längste Siegesserie) und Ziel-Verlauf (frühere Session-Ziele)
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

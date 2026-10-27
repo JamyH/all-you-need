@@ -10,7 +10,9 @@ const fs = require('fs');
 const path = require('path');
 
 let file = null;
-let data = {}; // gameId -> { me, deaths: [s], dur, at10, at15, opp10, opp15, oppChamp, lane } oder { failed: true }
+// gameId -> { me, deaths: [s], dur, at10, at15, opp10, opp15, oppChamp, lane, enemies: [Champion-Keys] } oder { failed: true }.
+// Einträge ohne enemies (vor dem 27.10. spät) werden einmal neu geladen
+let data = {};
 
 function init(dir) {
   file = path.join(dir, 'timelines.json');
@@ -64,6 +66,7 @@ function digest(details, tl, puuid, oppChampKey) {
     at10: frameAt(tl, 10, me.participantId), at15: frameAt(tl, 15, me.participantId),
     opp10: opp ? frameAt(tl, 10, opp.participantId) : null, opp15: opp ? frameAt(tl, 15, opp.participantId) : null,
     oppChamp: opp ? opp.championId : null,
+    enemies: details.participants.filter((p) => p.teamId !== me.teamId).map((p) => p.championId),
   };
 }
 
@@ -75,7 +78,7 @@ function fill(gameIds, { fetch, puuid, opp = () => null, max = 25 }) {
   running = (async () => {
     let n = 0;
     for (const id of gameIds) {
-      if (data[id] || n >= max) continue;
+      if ((data[id] && (data[id].failed || data[id].enemies)) || n >= max) continue;
       n++;
       try {
         const [details, tl] = await Promise.all([fetch(`/lol-match-history/v1/games/${id}`), fetch(`/lol-match-history/v1/game-timelines/${id}`)]);

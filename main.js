@@ -1458,8 +1458,14 @@ ipcMain.handle('stats:history', async () => {
 async function fillTimelines(ids) {
   const me = await lcu.currentSummoner(config.leaguePath);
   const list = ids || history.all().filter((g) => g.cs != null).map((g) => g.id).reverse();
-  return timelines.fill(list, { fetch: (p) => lcu.get(config.leaguePath, p), puuid: me.puuid,
-    opp: (id) => (gamelog.get(id) || {}).oppChamp });
+  const opts = { fetch: (p) => lcu.get(config.leaguePath, p), puuid: me.puuid, opp: (id) => (gamelog.get(id) || {}).oppChamp };
+  // je Durchgang höchstens 25 Spiele; ohne feste Liste weiter, bis alles geladen ist
+  let total = 0;
+  for (let n = 25; n >= 25 && !(ids && total);) {
+    n = await timelines.fill(list, opts);
+    total += n;
+  }
+  return total;
 }
 
 // Reiter „Fortschritt“: alle selbst gemerkten Spiele (nicht nur die 20 des Clients); vorher die neuesten übernehmen
@@ -1471,7 +1477,8 @@ ipcMain.handle('stats:progress', async () => {
   } catch {
     // Client aus: dann eben nur die schon gemerkten Spiele
   }
-  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null, timelines: timelines.all(), logs: gamelog.all() };
+  return { games: history.all(), lp: gamelog.lpHistory(), goal: config.goal || null, goalHistory: config.goalHistory || [],
+    timelines: timelines.all(), logs: gamelog.all() };
 });
 // Eigene Notizen je Champion (Reiter „Notizen“, Anzeige in „Build & Runen“)
 ipcMain.handle('notes:all', () => notes.all());
@@ -1484,9 +1491,13 @@ ipcMain.handle('stats:review', async (_e, gameId) => {
 });
 // Session-Ziel (wie eine Challenge): eins zur Zeit, Ergebnis je Spiel für Serie und Quote
 ipcMain.handle('goal:set', (_e, goal) => {
-  saveConfig({ goal: goal ? { ...goal, since: Date.now(), results: [] } : null });
+  // das bisherige Ziel kommt in den Ziel-Verlauf (nur, wenn damit gespielt wurde)
+  const old = config.goal;
+  const past = old && old.results && old.results.length ? [...(config.goalHistory || []), { ...old, until: Date.now() }].slice(-30) : config.goalHistory || [];
+  saveConfig({ goal: goal ? { ...goal, since: Date.now(), results: [] } : null, goalHistory: past });
   return config.goal;
 });
+ipcMain.handle('goal:history', () => config.goalHistory || []);
 ipcMain.handle('goal:result', (_e, gameId, ok) => {
   const g = config.goal;
   if (!g || g.results.some((r) => String(r.gameId) === String(gameId))) return g;

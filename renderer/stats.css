@@ -419,3 +419,30 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .wbad { fill: var(--loss); }
 .duel p { margin: 0 0 8px; color: var(--text-2); }
 .seg button:disabled { opacity: 0.4; cursor: default; }
+
+/* Fortschritt-Ausbau: klickbare Skill-Karten und Champions, Skill-Profil, Details, Gegner, Rekorde, Ziel-Verlauf */
+.click { cursor: pointer; }
+.skill.click:hover, .pool tr.click:hover { background: var(--tile-hi); }
+.skill.open { border-color: var(--accent); }
+.pool tr.open td { background: var(--accent-soft); }
+.profile .prow { grid-template-columns: 110px 1fr 90px; }
+.ptrack { width: 100%; height: 10px; }
+.ptrack line { stroke-width: 6; stroke-linecap: round; }
+.pup { stroke: var(--win); }
+.pdown { stroke: var(--loss); }
+.muted { color: var(--muted); }
+.detail, .cprofile { margin-top: 12px; }
+.detail p { margin: 0 0 8px; color: var(--text-2); }
+.recs { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.recs.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; }
+.rec { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px; background: var(--tile); min-width: 160px; }
+.rec label { font-size: 12px; color: var(--muted); }
+.rec b { font-size: 18px; }
+.rec .champ { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
+.rec .champ img, .erow .champ img, .cprofile h2 img { width: 22px; height: 22px; border-radius: 5px; vertical-align: middle; }
+.ecols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.erow { display: grid; grid-template-columns: 1fr 60px 50px; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+.erow .champ { display: flex; align-items: center; gap: 8px; }
+.erow small { color: var(--muted); text-align: right; }
+.ghist { margin-top: 12px; }
+.ghist h3 { margin: 0 0 4px; font-size: 13px; color: var(--text-2); }
