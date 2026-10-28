@@ -30,7 +30,7 @@ function init(dir) {
 
 // Spielstart. at = Startzeit des Spiels (ms), champ = Champion-Key (Zahl wie in der Historie)
 function start({ champ, map, mode, at }) {
-  cur = { gameId: null, champ, map, mode, at, minutes: [], cs10: null, perfect10: null, deaths: [], died: [], ult: null, oppChamp: null, position: '' };
+  cur = { gameId: null, champ, map, mode, at, minutes: [], cs10: null, perfect10: null, deaths: [], died: [], ult: null, oppChamp: null, position: '', roles: null };
 }
 // Spiel-ID kommt aus dem Client etwas später als der Spielstart
 function setGameId(id) {
@@ -62,6 +62,11 @@ function died(t, gold) {
 // zugeteilte Rolle laut Live-API (zuverlässiger als die Lane-Angabe im Client-Verlauf)
 function role(pos) {
   if (cur && pos && !cur.position) cur.position = pos;
+}
+// Rollen aller 10 Spieler laut Live-API (Champion-Key → top/jungle/middle/bottom/utility), einmal je Spiel. Damit
+// lässt sich im Spielverlauf genau sagen, welche Lane du gegankt hast und wie sie stand (Client-Lanes sind unzuverlässig)
+function roles(map) {
+  if (cur && map && !cur.roles && Object.keys(map).length >= 8) cur.roles = map;
 }
 // Lane-Gegner laut Live-API (Champion-Key), einmal je Spiel
 function opponent(key) {
@@ -99,4 +104,4 @@ function trackLp(now) {
 }
 const lpHistory = () => lp;
 
-module.exports = { init, start, setGameId, tick, death, died, opponent, role, finish, get, all, trackLp, lpHistory };
+module.exports = { init, start, setGameId, tick, death, died, opponent, role, roles, finish, get, all, trackLp, lpHistory };

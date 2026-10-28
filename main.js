@@ -454,6 +454,16 @@ async function pollGame() {
   if (summary && summary.isDead && !meDead) gamelog.died(summary.gameTime, (data.activePlayer && data.activePlayer.currentGold) || 0);
   if (summary && summary.laneOpponent && summary.laneOpponent.id) gamelog.opponent(ddragon.championKey(summary.laneOpponent.id));
   if (summary && summary.position) gamelog.role(summary.position);
+  // Rollen aller Spieler (nur Spiele mit Rollen); rawChampionName ist der zuverlässige interne Name
+  if (summary && summary.position && data.allPlayers) {
+    const map = {};
+    for (const p of data.allPlayers) {
+      const id = (p.rawChampionName || '').replace(/^game_character_displayname_|^Character_|_Name$/g, '');
+      const key = id && ddragon.championKey(id);
+      if (key && p.position && p.position !== 'NONE') map[key] = p.position.toLowerCase();
+    }
+    gamelog.roles(map);
+  }
   meDead = !!(summary && summary.isDead);
   if (summary) summary.scoreboard = live.scoreboard(data);
   if (summary) summary.augments = screenState.augments || null;
@@ -1458,7 +1468,8 @@ ipcMain.handle('stats:history', async () => {
 async function fillTimelines(ids) {
   const me = await lcu.currentSummoner(config.leaguePath);
   const list = ids || history.all().filter((g) => g.cs != null).map((g) => g.id).reverse();
-  const opts = { fetch: (p) => lcu.get(config.leaguePath, p), puuid: me.puuid, opp: (id) => (gamelog.get(id) || {}).oppChamp };
+  const opts = { fetch: (p) => lcu.get(config.leaguePath, p), puuid: me.puuid, opp: (id) => (gamelog.get(id) || {}).oppChamp,
+    roles: (id) => (gamelog.get(id) || {}).roles || null };
   // je Durchgang höchstens 25 Spiele; ohne feste Liste weiter, bis alles geladen ist
   let total = 0;
   for (let n = 25; n >= 25 && !(ids && total);) {

@@ -31,6 +31,11 @@ Neu
   bei 15 bzw. 10 min gegen das Ergebnis), Level 6 (Kluft), Objective-Beteiligung, Ermüdung (KDA und Tode nach
   Spiel-Nr. in der Session), Lernkurve (n-tes Spiel auf einem Champion), Monatsvergleich und ein Trainingsplan mit
   2–3 Aufgaben aus deinen Schwächen, den Farmy nach jedem Spiel selbst auswertet
+- Jungle-Bereich im Fortschritt (Spiele mit Smite; gegnerischer Jungler = Gegner mit Smite, auch rückwirkend):
+  Jungler-Duell (CS/Level/XP/Gold bei 5/10/15 min), Konter-Jungling (geschätzt, der Client zählt es nicht mehr),
+  Präsenz auf der Karte (Minuten 2–14 je Zone, Siege gegen Niederlagen), Ganks je Lane und – für neue Spiele mit
+  gemerkten Rollen – nach Lane-Stand, Objective-Entscheidungen (wo du warst, tot, Trade, umkämpft), Startseite und
+  Pfad, tote Zeit, frühe Wirkung, Jungle-Tode. Farmy merkt sich dafür im Spiel die Rollen aller 10 Spieler
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
 

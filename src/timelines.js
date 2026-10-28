@@ -94,7 +94,7 @@ function digest(details, tl, puuid, oppChampKey, roles = null) {
     }));
   const jungle = jungleDigest(details, tl, me, events, byId, roles);
   return {
-    v: 4, me: pid, team: me.teamId, lane, dur: details.gameDuration || 0, deaths, deathsAt, kills: myKills, jungle,
+    v: 5, me: pid, team: me.teamId, lane, dur: details.gameDuration || 0, deaths, deathsAt, kills: myKills, jungle,
     teamKills: sum('kills'), share: { dmg: share('totalDamageDealtToChampions'), gold: share('goldEarned'), deaths: share('deaths') },
     goldDiff, lvl6: lvl6(pid), oppLvl6: opp ? lvl6(opp.participantId) : null, objectives,
     at10: frameAt(tl, 10, pid), at15: frameAt(tl, 15, pid),
@@ -108,6 +108,14 @@ function digest(details, tl, puuid, oppChampKey, roles = null) {
 // Lane-Angaben im Client eindeutig). Alles nach dem Spiel aus dem Spielverlauf, wie ein Replay-Review.
 // roles (optional, ab 28.10. aus der Live-API gemerkt): Champion-Key → top/jungle/middle/bottom/utility aller 10
 const SMITE = 11;
+// gegnerischer Dschungel (gleiche Grobzonen wie im Stats-Fenster): nicht Basis, Lane oder Fluss, auf der Gegnerseite
+const inEnemyJungle = (pos, team) => {
+  if (!pos) return false;
+  const { x, y } = pos;
+  if ((x < 3200 && y < 3200) || (x > 11600 && y > 11600) || x < 1900 || y > 12900 || y < 1900 || x > 12900) return false;
+  if (Math.abs(x - y) < 1300 || Math.abs(x + y - 14800) < 1500) return false;
+  return (team === 100) !== (x + y < 14800);
+};
 const hasSmite = (p) => p && (p.spell1Id === SMITE || p.spell2Id === SMITE);
 const dist = (a, b) => (a && b ? Math.hypot(a.x - b.x, a.y - b.y) : null);
 function jungleDigest(details, tl, me, events, byId, roles) {
@@ -172,15 +180,25 @@ function jungleDigest(details, tl, me, events, byId, roles) {
     if (!gotCs && !acted) idle++;
   }
   const st = (p) => p.stats || {};
+  const invaded = (id, team) => {
+    let n = 0;
+    for (let m = 1; m < frames.length && m <= 20; m++) {
+      const a = (frames[m - 1].participantFrames || {})[String(id)], b = (frames[m].participantFrames || {})[String(id)];
+      if (!a || !b) continue;
+      const got = (b.jungleMinionsKilled || 0) - (a.jungleMinionsKilled || 0);
+      if (got > 0 && (inEnemyJungle(b.position, team) || inEnemyJungle(a.position, team))) n += got;
+    }
+    return n;
+  };
   const early = (id) => kills.filter((e) => e.timestamp < 900000 && (e.killerId === id || (e.assistingParticipantIds || []).includes(id))).length;
   const teamEarly = (team) => kills.filter((e) => e.timestamp < 900000 && (byId.get(e.killerId) || {}).teamId === team).length;
   return {
     ejChamp: ej ? ej.championId : null,
     me5: at(5, pid), me10: at(10, pid), me15: at(15, pid),
     ej5: ej ? at(5, ej.participantId) : null, ej10: ej ? at(10, ej.participantId) : null, ej15: ej ? at(15, ej.participantId) : null,
-    // Konter-Jungling: Monster im gegnerischen bzw. eigenen Dschungel (Spielstatistik)
-    invade: st(me).neutralMinionsKilledEnemyJungle || 0, own: st(me).neutralMinionsKilledTeamJungle || 0,
-    ejInvade: ej ? st(ej).neutralMinionsKilledEnemyJungle || 0 : null,
+    // Konter-Jungling, geschätzt: Monster-CS, die in einer Minute dazukommen, während man im gegnerischen Dschungel steht
+    // (das Statistikfeld neutralMinionsKilledEnemyJungle ist im Client seit einiger Zeit immer 0, geprüft 28.10.)
+    invade: invaded(pid, me.teamId), ejInvade: ej ? invaded(ej.participantId, ej.teamId) : null,
     path, involved: involved.filter((x) => x.t < 840), died: died.filter((x) => x.t < 840),
     objs, idle, idleOf: counted,
     fb: !!(st(me).firstBloodKill || st(me).firstBloodAssist),
@@ -201,8 +219,8 @@ function fill(gameIds, { fetch, puuid, opp = () => null, roles = () => null, max
   running = (async () => {
     let n = 0;
     for (const id of gameIds) {
-      // v4 (28.10.): Jungle-Auswertung dazu – ältere Einträge einmal neu
-      if ((data[id] && (data[id].failed || data[id].v >= 4)) || n >= max) continue;
+      // v5 (28.10.): Jungle-Auswertung, Konter-Jungling geschätzt – ältere Einträge einmal neu
+      if ((data[id] && (data[id].failed || data[id].v >= 5)) || n >= max) continue;
       n++;
       try {
         const [details, tl] = await Promise.all([fetch(`/lol-match-history/v1/games/${id}`), fetch(`/lol-match-history/v1/game-timelines/${id}`)]);

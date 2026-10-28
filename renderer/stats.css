@@ -491,3 +491,9 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .m-base.blue { fill: rgba(138, 180, 248, 0.18); }
 .m-base.red { fill: rgba(255, 138, 122, 0.16); }
 .lead .rv-row { grid-template-columns: 230px 1fr; }
+
+/* Jungle-Bereich im Fortschritt */
+.jg-title { margin: 28px 0 4px; font-size: 18px; }
+.jg-head { margin: 0 0 6px; }
+.pd { fill: var(--accent); }
+.card h3.sub { margin: 12px 0 4px; font-size: 13px; color: var(--text-2); }
