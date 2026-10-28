@@ -102,7 +102,10 @@ async function reviewHtml(eog, ls, won) {
   } catch {
     return '';
   }
-  const map = eog.gameMode === 'CLASSIC' ? 11 : ['ARAM', 'KIWI'].includes(eog.gameMode) ? 12 : null;
+  // Map: aus Farmys Historie bzw. Spielprotokoll, sonst über den Modus (Swiftplay, URF … laufen auch auf der Kluft;
+  // vorher kannte das nur CLASSIC, und Swiftplay-Spiele bekamen keinen Vergleich)
+  const known = (r.games || []).find((g) => String(g.id) === String(eog.gameId)) || r.log;
+  const map = (known && known.map) || eog.mapId || (['ARAM', 'KIWI'].includes(eog.gameMode) ? 12 : ['CHERRY'].includes(eog.gameMode) ? 30 : 11);
   const me = { cs: (ls.MINIONS_KILLED || 0) + (ls.NEUTRAL_MINIONS_KILLED || 0), k: ls.CHAMPIONS_KILLED || 0, d: ls.NUM_DEATHS || 0,
     a: ls.ASSISTS || 0, vis: ls.VISION_SCORE || 0, dmg: ls.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS || 0, dur: eog.gameLength || 0 };
   const base = (r.games || []).filter((g) => g.map === map && g.cs != null && String(g.id) !== String(eog.gameId));
