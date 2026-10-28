@@ -1722,7 +1722,7 @@ function renderNoteCard() {
   // Fokus auf der Map des kommenden Spiels (ARAM-Bank sichtbar = ARAM)
   const map = $('benchCard').hidden ? 11 : 12;
   const games = progGames.filter((g) => g.map === map && g.cs != null);
-  if (games.length >= RECENT + 5) {
+  if (games.length >= MIN_COMPARE) {
     const { focus } = rateSkills(games, map);
     if (focus && focus.better < 0) parts.push([t('Fokus'), `${esc(t(focus.label))}: ${esc(t(focus.tip))}`]);
   }
