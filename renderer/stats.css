@@ -370,6 +370,25 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .rv-label { color: var(--muted); }
 .rv-label.good { color: var(--win); }
 .rv-label.bad { color: var(--loss); }
+/* Spielersuche */
+.player-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 16px; }
+.player-recent:empty { display: none; }
+.player-recent .hint { margin: 0 4px 0 0; }
+.player-recent .chip { height: auto; border: 0; cursor: pointer; }
+.player-recent .chip:hover { color: var(--text); }
+#playerOut > .card { margin-bottom: 16px; }
+.player-head { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.player-icon { width: 64px; height: 64px; border-radius: 12px; }
+.player-name { flex: 1; min-width: 160px; }
+.player-name h2 { margin: 0 0 2px; font-size: 20px; }
+.player-name .tag { margin-left: 4px; color: var(--muted); font-weight: 400; }
+.player-ranks { display: flex; flex-wrap: wrap; gap: 24px; }
+.player-ranks label { display: block; font-size: 12px; color: var(--muted); }
+.player-ranks .sub { display: block; color: var(--muted); font-size: 12px; }
+.mastery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.mastery small { display: block; font-size: 12px; }
+button.link { height: auto; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+button.link:hover { background: none; color: var(--accent); }
 .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--tile-hi); color: var(--text-2); font-size: 12px; }
 .chip.rec { background: rgba(242, 193, 78, 0.16); color: var(--gold); }
 .goal-card, .lp-card { margin-top: 12px; }

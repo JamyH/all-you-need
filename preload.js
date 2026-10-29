@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('lol', {
   settingsOpen: (on) => ipcRenderer.send('overlay:settingsOpen', on),
   endOfGame: () => ipcRenderer.invoke('stats:eog'),
   history: () => ipcRenderer.invoke('stats:history'),
+  findPlayer: (riotId) => ipcRenderer.invoke('player:find', riotId),
   progress: () => ipcRenderer.invoke('stats:progress'),
   review: (gameId) => ipcRenderer.invoke('stats:review', gameId),
   notes: () => ipcRenderer.invoke('notes:all'),

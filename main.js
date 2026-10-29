@@ -1532,6 +1532,12 @@ ipcMain.handle('goal:result', (_e, gameId, ok) => {
   return config.goal;
 });
 ipcMain.handle('stats:summoner', async () => lcu.currentSummoner(config.leaguePath));
+// „Name#Tag“ -> Spieler oder null (nicht gefunden); ohne Tag sucht der Client nicht
+ipcMain.handle('player:find', (_e, riotId) => {
+  const [gameName, tagLine] = String(riotId || '').split('#').map((s) => s.trim());
+  if (!gameName || !tagLine) throw new Error(t('Bitte als Name#Tag eingeben, z. B. Faker#KR1.'));
+  return lcu.findPlayer(config.leaguePath, gameName, tagLine);
+});
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));
 ipcMain.handle('ddragon:version', () => ddragon.getVersion());
 

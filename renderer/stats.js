@@ -226,7 +226,7 @@ async function renderHistory() {
 }
 
 // Modi getrennt: CS, KDA und Vision sind auf der Kluft und im ARAM nicht vergleichbar
-const MODES = { CLASSIC: 'Kluft', ARAM: 'ARAM', KIWI: 'ARAM Mayhem', CHERRY: 'Arena', URF: 'URF', ONEFORALL: 'Einer für alle' };
+const MODES = { CLASSIC: 'Kluft', ARAM: 'ARAM', KIWI: 'ARAM Mayhem', CHERRY: 'Arena', URF: 'URF', ONEFORALL: 'Einer für alle', SWIFTPLAY: 'Swiftplay' };
 const modeName = (m) => (MODES[m] ? t(MODES[m]) : m);
 let histGames = [];
 let histMode = null;
@@ -245,19 +245,18 @@ function drawHistory() {
     ? `<div class="seg" role="group" aria-label="${t('Spielmodus')}">${['all', ...modes].map((m) =>
       `<button data-mode="${esc(m)}" aria-pressed="${m === histMode}">${m === 'all' ? t('Alle') : esc(modeName(m))}</button>`).join('')}</div>`
     : '';
-  let wins = 0, kdaSum = 0, csmSum = 0;
-  let html = '';
-  for (const g of games) {
-    const p = g.participants[0];
-    const s = p.stats;
-    const champ = g.champ;
-    const mins = Math.max(g.gameDuration / 60, 1);
-    kdaSum += (s.kills + s.assists) / Math.max(s.deaths, 1);
-    csmSum += (s.totalMinionsKilled + s.neutralMinionsKilled) / mins;
-    const cs = s.totalMinionsKilled + s.neutralMinionsKilled;
-    if (s.win) wins++;
-    const when = new Date(g.gameCreation).toLocaleString(i18n.locale(), { dateStyle: 'short', timeStyle: 'short' });
-    html += `<div class="game ${s.win ? 'w' : 'l'}">
+  const label = t('Letzte {n}', { n: games.length }) + (histMode === 'all' ? '' : ` · ${esc(modeName(histMode))}`);
+  el.innerHTML = seg + summaryHtml(games, label) + trendsHtml(games) + games.map(gameRowHtml).join('');
+}
+
+// Eine Spielzeile (Verlauf und Spielersuche): participants[0] ist der abgefragte Spieler, g.champ sein Champion
+function gameRowHtml(g) {
+  const s = g.participants[0].stats;
+  const champ = g.champ;
+  const mins = Math.max(g.gameDuration / 60, 1);
+  const cs = s.totalMinionsKilled + s.neutralMinionsKilled;
+  const when = new Date(g.gameCreation).toLocaleString(i18n.locale(), { dateStyle: 'short', timeStyle: 'short' });
+  return `<div class="game ${s.win ? 'w' : 'l'}">
       <div class="bar"></div>
       <div class="champ">${champImg(champ)}<div>${esc(champ.name)}<small>${esc(QUEUES[g.queueId] || modeName(g.gameMode))} · ${when}</small></div></div>
       <div><b>${s.kills}/${s.deaths}/${s.assists}</b><small>${dec((s.kills + s.assists) / Math.max(s.deaths, 1), 2)} KDA</small></div>
@@ -266,14 +265,18 @@ function drawHistory() {
       <div><b>${dur(g.gameDuration)}</b><small>${t('Dauer')}</small></div>
       <div>${itemsHtml([s.item0, s.item1, s.item2, s.item3, s.item4, s.item5, s.item6])}</div>
     </div>`;
-  }
-  const avg = (sum, digits) => dec(sum / games.length, digits);
-  el.innerHTML = seg + `<div class="summary">
-    <div class="tile"><label>${t('Letzte {n}', { n: games.length })}${histMode === 'all' ? '' : ` · ${esc(modeName(histMode))}`}</label><b><span class="win">${t('{n}S', { n: wins })}</span> <span class="loss">${t('{n}N', { n: games.length - wins })}</span></b></div>
+}
+
+// Kacheln über einer Spielliste: Siege/Niederlagen, Siegquote, Ø KDA, Ø CS/min
+function summaryHtml(games, label) {
+  const stats = games.map((g) => [g.participants[0].stats, Math.max(g.gameDuration / 60, 1)]);
+  const wins = stats.filter(([s]) => s.win).length;
+  const avg = (f, digits) => dec(stats.reduce((sum, [s, mins]) => sum + f(s, mins), 0) / games.length, digits);
+  return `<div class="summary">
+    <div class="tile"><label>${label}</label><b><span class="win">${t('{n}S', { n: wins })}</span> <span class="loss">${t('{n}N', { n: games.length - wins })}</span></b></div>
     <div class="tile"><label>${t('Siegquote')}</label><b>${Math.round((wins / games.length) * 100)} %</b></div>
-    <div class="tile"><label>Ø KDA</label><b>${avg(kdaSum, 2)}</b></div>
-    <div class="tile"><label>Ø CS/min</label><b>${avg(csmSum, 1)}</b></div></div>` +
-    trendsHtml(games) + html;
+    <div class="tile"><label>Ø KDA</label><b>${avg((s) => (s.kills + s.assists) / Math.max(s.deaths, 1), 2)}</b></div>
+    <div class="tile"><label>Ø CS/min</label><b>${avg((s, mins) => (s.totalMinionsKilled + s.neutralMinionsKilled) / mins, 1)}</b></div></div>`;
 }
 
 // --- Trends: CS/min, KDA, Vision über die letzten Spiele (links alt, rechts neu) ---
@@ -1536,7 +1539,7 @@ async function renderLive() {
       const champ = { id: p.championId, name: p.champion };
       const name = p.champion || (d.gameMode === 'PRACTICETOOL' ? t('Übungspuppe') : 'Bot');
       html += `<tr class="${p.isMe ? 'me' : ''} ${p.isDead ? 'dead' : ''}">
-        <td><span class="champ">${champImg(champ)}<span>${esc(name)}<span class="sub">${p.isBot ? '' : esc(p.name)}${p.isDead ? `${p.isBot ? '' : ' · '}${t('tot {s}s', { s: p.respawn })}` : ''}</span></span></span></td>
+        <td><span class="champ">${champImg(champ)}<span>${esc(name)}<span class="sub">${p.isBot ? '' : p.riotId ? `<button class="link" data-player="${esc(p.riotId)}" title="${esc(t('Spieler ansehen'))}">${esc(p.name)}</button>` : esc(p.name)}${p.isDead ? `${p.isBot ? '' : ' · '}${t('tot {s}s', { s: p.respawn })}` : ''}</span></span></span></td>
         <td>${rankHtml(p)}</td><td>${p.level}</td><td>${p.kda}</td><td>${p.cs}</td><td>${p.vision}</td>
         <td>${n(p.itemValue)}</td><td>${itemsHtml(p.items)}</td></tr>`;
     }
@@ -1561,6 +1564,88 @@ $('calibBtn').addEventListener('click', async () => {
     out.innerHTML = `<span class="hint">${esc(errText(e))}</span>`;
   }
 });
+
+// --- Spieler: Suche nach Riot-ID über den Client (nur eigene Region, kein Riot-API-Key nötig) ---
+// Zuletzt gesuchte Spieler: nur eine Bequemlichkeit, daher im Fenster-Speicher statt in config.json
+const RECENT_KEY = 'farmy.playerSearches';
+const recentSearches = () => {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
+  } catch {
+    return [];
+  }
+};
+function rememberSearch(id) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([id, ...recentSearches().filter((x) => x.toLowerCase() !== id.toLowerCase())].slice(0, 8)));
+  } catch {
+    // Speicher gesperrt: dann eben ohne Liste
+  }
+}
+function drawRecent() {
+  const list = recentSearches();
+  $('playerRecent').innerHTML = list.length
+    ? `<span class="hint">${t('Zuletzt gesucht')}</span>` + list.map((id) => `<button class="chip" data-player="${esc(id)}">${esc(id)}</button>`).join('')
+    : '';
+}
+
+let playerReq = 0; // neue Suche, während die alte noch lädt: die alte nicht mehr anzeigen
+let lastPlayer = null;
+async function searchPlayer(riotId) {
+  riotId = String(riotId || '').trim();
+  if (!riotId) return;
+  $('playerInput').value = riotId;
+  const out = $('playerOut');
+  const req = ++playerReq;
+  out.innerHTML = `<div class="msg">${t('Suche…')}</div>`;
+  let p;
+  try {
+    p = await window.lol.findPlayer(riotId);
+  } catch (e) {
+    if (req === playerReq) out.innerHTML = `<div class="msg">${esc(errText(e))}</div>`;
+    return;
+  }
+  if (req !== playerReq) return;
+  if (!p) {
+    out.innerHTML = `<div class="msg">${t('Kein Spieler „{id}“ gefunden. Der Client findet nur Spieler deiner Region.', { id: esc(riotId) })}</div>`;
+    return;
+  }
+  lastPlayer = `${p.gameName}#${p.tagLine}`;
+  rememberSearch(lastPlayer);
+  drawRecent();
+  const games = p.games.filter((g) => g.gameMode !== 'PRACTICETOOL');
+  for (const g of games) g.champ = await window.lol.champion(g.participants[0].championId);
+  const mastery = await Promise.all(p.mastery.map(async (m) => ({ ...m, champ: await window.lol.champion(m.championId) })));
+  if (req !== playerReq) return;
+  const rank = (r) => rankHtml({ rank: r || { unranked: true } });
+  out.innerHTML = `<div class="card player-head">
+      <img class="player-icon" src="https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${p.icon}.png" alt="">
+      <div class="player-name"><h2>${esc(p.gameName)}<span class="tag">#${esc(p.tagLine)}</span></h2><span class="hint">${t('Level {n}', { n: p.level })}</span></div>
+      <div class="player-ranks"><div><label>Solo/Duo</label>${rank(p.solo)}</div><div><label>Flex</label>${rank(p.flex)}</div></div>
+    </div>` +
+    (mastery.length ? `<div class="card"><h2>${t('Meistgespielte Champions')}</h2><div class="mastery">${mastery.map((m) =>
+      `<div class="champ">${champImg(m.champ)}<div>${esc(m.champ.name)}<small>${t('Stufe {n}', { n: m.level })} · ${n(m.points)} ${t('Punkte')}</small></div></div>`).join('')}</div></div>` : '') +
+    (games.length ? summaryHtml(games, t('Letzte {n}', { n: games.length })) + games.map(gameRowHtml).join('')
+      : `<div class="msg">${t('Keine Spiele gefunden.')}</div>`);
+}
+const openPlayer = (riotId) => {
+  showTab('player');
+  searchPlayer(riotId);
+};
+$('playerForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  searchPlayer($('playerInput').value);
+});
+$('playerRecent').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-player]');
+  if (b) searchPlayer(b.dataset.player);
+});
+// Live-Spiel: Klick auf einen Spielernamen öffnet ihn in der Suche
+$('liveList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-player]');
+  if (b) openPlayer(b.dataset.player);
+});
+drawRecent();
 
 // --- Build & Runen ---
 let buildData = null;
@@ -2180,6 +2265,7 @@ const PAGES = {
   eog: ['Letztes Spiel', 'Auswertung direkt nach dem Spiel'],
   history: ['Verlauf', 'Deine letzten Spiele'],
   progress: ['Fortschritt', 'Deine letzten Spiele gegen deinen eigenen Schnitt'],
+  player: ['Spieler', 'Spieler deiner Region suchen: Rang, Champions und letzte Spiele'],
   notes: ['Notizen', 'Eigene Notizen je Champion, nur auf deinem PC'],
   build: ['Build & Runen', 'Eigene Einstellungen haben immer Vorrang vor Vorschlägen'],
 };
@@ -2234,7 +2320,10 @@ if (window.lol.dev) {
   setInterval(() => !page.hidden && renderDevInfo(), 2000);
   nav.addEventListener('click', renderDevInfo);
 }
-$('reload').addEventListener('click', loadAll);
+$('reload').addEventListener('click', () => {
+  loadAll();
+  if (lastPlayer && shownTab === 'player') searchPlayer(lastPlayer);
+});
 loadAll();
 
 // Fensterknöpfe (Fenster ohne Windows-Rahmen)

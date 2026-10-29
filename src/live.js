@@ -261,6 +261,7 @@ function livePlayers(data, ranks = new Map()) {
       championId: id,
       champion: p.championName,
       name: p.riotIdGameName || (p.riotId || p.summonerName || '').split('#')[0],
+      riotId: p.riotId || '', // Name#Tag für die Spielersuche
       isBot: !!p.isBot,
       isMe: sameName(p, active),
       level: p.level,

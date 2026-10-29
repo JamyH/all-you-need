@@ -91,6 +91,36 @@ async function soloRank(lp, puuid) {
   return { tier: q.tier, division: q.division, lp: q.leaguePoints, wins: q.wins, losses: q.losses };
 }
 
+// Spielersuche (Reiter „Spieler“): Riot-ID -> Profil, Ränge, Meisterschaft und letzte 20 Spiele.
+// Der Client findet nur Spieler der eigenen Region; unbekannte Namen liefert er mit leerer PUUID -> null
+async function findPlayer(lp, gameName, tagLine) {
+  const q = `gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}`;
+  const found = await lcu(lp, `/lol-summoner/v1/alias/lookup?${q}`);
+  if (!found || !found.puuid) return null;
+  const { puuid } = found;
+  const pick = (q) => (q && q.tier && q.tier !== 'NONE' ? { tier: q.tier, division: q.division, lp: q.leaguePoints, wins: q.wins, losses: q.losses } : null);
+  const [summoner, ranked, mastery, history] = await Promise.all([
+    lcu(lp, `/lol-summoner/v2/summoners/puuid/${puuid}`),
+    lcu(lp, `/lol-ranked/v1/ranked-stats/${puuid}`).catch(() => null),
+    lcu(lp, `/lol-champion-mastery/v1/${puuid}/champion-mastery`).catch(() => []),
+    lcu(lp, `/lol-match-history/v1/products/lol/${puuid}/matches?begIndex=0&endIndex=19`).catch(() => null),
+  ]);
+  const qm = (ranked && ranked.queueMap) || {};
+  return {
+    puuid,
+    gameName: summoner.gameName,
+    tagLine: summoner.tagLine,
+    level: summoner.summonerLevel,
+    icon: summoner.profileIconId,
+    solo: pick(qm.RANKED_SOLO_5x5),
+    flex: pick(qm.RANKED_FLEX_SR),
+    // absteigend nach Punkten, wie der Client sie liefert
+    mastery: (Array.isArray(mastery) ? mastery : []).slice(0, 5)
+      .map((m) => ({ championId: m.championId, level: m.championLevel, points: m.championPoints })),
+    games: (history && history.games && history.games.games) || [],
+  };
+}
+
 // Eigene Ränge in Solo/Duo und Flex (für die Session): { solo, flex }, je null wenn ungewertet
 async function ranks(lp, puuid) {
   const r = await lcu(lp, `/lol-ranked/v1/ranked-stats/${puuid}`);
@@ -158,5 +188,5 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 
 module.exports = {
   gameflowPhase, gameflowSession, get, currentSummoner, endOfGame, matchHistory, ranks, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
-  applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments,
+  applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments, findPlayer,
 };
