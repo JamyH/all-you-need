@@ -39,6 +39,7 @@ app.on('second-instance', () => {
 const ddragon = require('./src/ddragon');
 const live = require('./src/live');
 const lcu = require('./src/lcu');
+const lobbyskill = require('./src/lobbyskill');
 const ocr = require('./src/ocr');
 const capture = require('./src/screengrab'); // Bildschirm-Ausschnitte per GDI
 const setup = require('./src/setup');
@@ -1533,14 +1534,28 @@ ipcMain.handle('goal:result', (_e, gameId, ok) => {
 });
 ipcMain.handle('stats:summoner', async () => lcu.currentSummoner(config.leaguePath));
 // „Name#Tag“ -> Spieler oder null (nicht gefunden); ohne Tag sucht der Client nicht
-// entries: dieselben Werte je Spiel wie im eigenen Verlauf (nur echte Spiele), für den Skill-Vergleich im Profil
-const withEntries = (p) => p && { ...p, entries: p.games.filter((g) => g.gameType === 'MATCHED_GAME').map((g) => history.entry(g, g.participants[0])) };
-ipcMain.handle('player:find', async (_e, riotId) => {
+ipcMain.handle('player:find', (_e, riotId) => {
   const [gameName, tagLine] = String(riotId || '').split('#').map((s) => s.trim());
   if (!gameName || !tagLine) throw new Error(t('Bitte als Name#Tag eingeben, z. B. Faker#KR1.'));
-  return withEntries(await lcu.findPlayer(config.leaguePath, gameName, tagLine));
+  return lcu.findPlayer(config.leaguePath, gameName, tagLine);
 });
-ipcMain.handle('player:get', async (_e, puuid) => withEntries(await lcu.playerByPuuid(config.leaguePath, String(puuid))));
+ipcMain.handle('player:get', (_e, puuid) => lcu.playerByPuuid(config.leaguePath, String(puuid)));
+// Skill-Einschätzung: Spieldetails seiner echten Spiele laden (je ~0,25 s, daher 4 gleichzeitig) und gegen die Lobby werten
+ipcMain.handle('player:skill', async (_e, puuid, gameIds) => {
+  const ids = [...gameIds];
+  const details = [];
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (ids.length) {
+      const id = Number(ids.shift());
+      try {
+        details.push(await lcu.get(config.leaguePath, `/lol-match-history/v1/games/${id}`));
+      } catch {
+        // einzelnes Spiel nicht ladbar: ohne es weiter
+      }
+    }
+  }));
+  return lobbyskill.rate(details, String(puuid));
+});
 // Alle Spieler eines Spiels (Verlauf: Spiel aufklappen)
 ipcMain.handle('stats:game', (_e, gameId) => lcu.get(config.leaguePath, `/lol-match-history/v1/games/${Number(gameId)}`));
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));

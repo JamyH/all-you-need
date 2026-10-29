@@ -1596,7 +1596,6 @@ function drawRecent() {
     : '';
 }
 
-let myPuuid = null;
 let playerReq = 0; // neue Suche, während die alte noch lädt: die alte nicht mehr anzeigen
 let lastPlayer = null;
 // riotId „Name#Tag“ aus dem Suchfeld; puuid, wenn der Spieler aus einem Spiel angeklickt wurde
@@ -1635,44 +1634,46 @@ async function searchPlayer(riotId, puuid) {
     </div>` +
     (mastery.length ? `<div class="card"><h2>${t('Meistgespielte Champions')}</h2><div class="mastery">${mastery.map((m) =>
       `<div class="champ">${champImg(m.champ)}<div>${esc(m.champ.name)}<small>${t('Stufe {n}', { n: m.level })} · ${n(m.points)} ${t('Punkte')}</small></div></div>`).join('')}</div></div>` : '') +
-    compareCard(p) +
+    (games.length >= 3 ? `<div class="card" id="playerSkill"><h2>${t('Skill-Einschätzung')}</h2><span class="hint">${t('Lädt…')}</span></div>` : '') +
     (games.length ? summaryHtml(games, t('Letzte {n}', { n: games.length })) + games.map(gameRowHtml).join('')
       : `<div class="msg">${t('Keine Spiele gefunden.')}</div>`);
+  loadSkill(p, games, req);
 }
-// Skill-Vergleich im Profil: seine echten Spiele gegen deine auf derselben Map (Kluft oder ARAM), je die letzten 20.
-// Je Achse kommt der Bessere von euch beiden auf 100, der andere anteilig darunter (bei „weniger ist besser“
-// umgekehrt). Ein Vergleich nur mit sich selbst (wie im Fortschritt) sagte über einen fremden Spieler nichts.
-// Teamplay fehlt: dafür bräuchte es die Spielverläufe
-const COMPARE_MIN = 3;
-function compareCard(p) {
-  if (!p.entries || p.puuid === myPuuid) return '';
-  const byMap = (list, map) => list.filter((g) => g.map === map).sort((a, b) => a.at - b.at).slice(-20);
-  const map = [11, 12].sort((a, b) => byMap(p.entries, b).length - byMap(p.entries, a).length)[0];
-  const his = byMap(p.entries, map), mine = byMap(progGames.filter((g) => g.cs != null), map);
-  const mapName = t(PMODES[map]);
-  if (his.length < COMPARE_MIN || mine.length < COMPARE_MIN) {
-    return `<div class="card"><h2>${t('Skill-Vergleich mit dir')}</h2><p class="hint">${t('Zu wenige Spiele für einen Vergleich ({map}): er {a}, du {b}, nötig sind je {n}.', { map: mapName, a: his.length, b: mine.length, n: COMPARE_MIN })}</p></div>`;
+// Skill-Einschätzung im Profil (src/lobbyskill.js): je Wert, wie viel Prozent der anderen Spieler in seinen Spielen er
+// im Schnitt übertrifft. 50 = Lobby-Schnitt (gestrichelt), lädt nach dem Profil, weil es alle Spieldetails braucht
+async function loadSkill(p, games, req) {
+  const box = $('playerSkill');
+  const ids = games.filter((g) => g.gameType === 'MATCHED_GAME').map((g) => g.gameId);
+  if (!box || ids.length < 3) return box && box.remove();
+  let r;
+  try {
+    r = await window.lol.playerSkill(p.puuid, ids);
+  } catch (e) {
+    if (req === playerReq) box.innerHTML = `<h2>${t('Skill-Einschätzung')}</h2><p class="hint">${esc(errText(e))}</p>`;
+    return;
   }
-  const rows = SKILLS.filter((s) => (!s.maps || s.maps.includes(map)) && s.needs !== 'kp').map((s) => {
-    const agg = s.set || ((list) => mean(list.map(s.val)));
-    const h = agg(his), m = agg(mine);
-    const best = s.lower ? Math.min(h, m) : Math.max(h, m);
-    const score = (v) => (s.lower ? (v ? (best / v) * 100 : 100) : best ? (v / best) * 100 : 100);
-    return { s, now: Math.round(score(h)), before: Math.round(score(m)), h, m };
-  });
-  const fmt = (s, v) => dec(v, s.digits);
+  if (req !== playerReq) return;
+  const rows = SKILLS.filter((s) => r.metrics[s.key]).map((s) => ({ s, now: r.metrics[s.key].score, before: 50, value: r.metrics[s.key].value }));
+  if (rows.length < 3) {
+    box.innerHTML = `<h2>${t('Skill-Einschätzung')}</h2><p class="hint">${t('Zu wenige Spiele ohne Bots für eine Einschätzung.')}</p>`;
+    return;
+  }
   const text = {
-    tip: (s, now, before) => t('{label}: er {now}, du {before}', { label: t(s.label), now, before }),
-    aria: t('Skill-Vergleich als Netzdiagramm: er gegen dich'),
-    caption: `<span class="lg now"></span>${esc(p.gameName)} <span class="lg before"></span>${t('du')}`,
-    hint: t('Je Achse hat der Bessere von euch beiden 100.'),
+    tip: (s, now) => t('{label}: besser als {n} % seiner Mitspieler und Gegner', { label: t(s.label), n: now }),
+    aria: t('Skill-Einschätzung als Netzdiagramm'),
+    caption: `<span class="lg now"></span>${esc(p.gameName)} <span class="lg before"></span>${t('Lobby-Schnitt')}`,
+    hint: t('Weiter außen = besser als die anderen Spieler in seinen Spielen.'),
   };
-  return `<div class="card profile"><div class="card-head"><h2>${t('Skill-Vergleich mit dir')}</h2>` +
-    `<span class="hint">${t('{map} · seine letzten {a} gegen deine letzten {b} Spiele', { map: mapName, a: his.length, b: mine.length })}</span></div>` +
+  const overall = Math.round(mean(rows.map((x) => x.now)));
+  box.className = 'card profile';
+  box.innerHTML = `<div class="card-head"><h2>${t('Skill-Einschätzung')} <b class="${overall >= 50 ? 'win' : 'loss'}">${overall}</b></h2>` +
+    `<span class="hint">${t('{map} · {n} Spiele, verglichen mit den anderen 9 Spielern je Spiel', { map: t(PMODES[r.map]), n: r.games })}</span></div>` +
     `<div class="pgrid">${radarSvg(rows, text)}<div class="pbars">` +
-    rows.map(({ s, h, m }) => `<div class="wrow prow"><span>${t(s.label)}</span>` +
-      `<small><b class="${better(s, h, m) ? 'win' : better(s, m, h) ? 'loss' : ''}">${fmt(s, h)}</b> <span class="muted">${t('gegen')} ${fmt(s, m)} ${esc(t(s.unit))}</span></small></div>`).join('') +
-    `<p class="hint">${t('Grün: er ist besser als du, Rot: du bist besser.')}</p></div></div></div>`;
+    rows.map(({ s, now, value }) => `<div class="wrow prow" title="${esc(text.tip(s, now))}"><span>${t(s.label)}</span>` +
+      `<svg class="ptrack" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect y="4" width="100" height="2" rx="1" class="wbg"></rect>` +
+      `<line x1="50" x2="${now}" y1="5" y2="5" class="${now >= 50 ? 'pup' : 'pdown'}" vector-effect="non-scaling-stroke"></line></svg>` +
+      `<small><b class="${now >= 50 ? 'win' : 'loss'}">${now}</b> <span class="muted">· ${dec(value, s.digits)} ${esc(t(s.unit))}</span></small></div>`).join('') +
+    `<p class="hint">${t('50 = so gut wie der Schnitt seiner Lobbys, 100 = in jedem Spiel der Beste.')}</p></div></div>`;
 }
 
 const openPlayer = (riotId, puuid) => {
@@ -2344,7 +2345,6 @@ async function loadAll() {
   const state = $('clientState');
   try {
     const me = await window.lol.summoner();
-    myPuuid = me.puuid;
     $('who').textContent = me.gameName ? `${me.gameName}#${me.tagLine}` : me.displayName;
     state.className = 'client-state on';
     state.lastElementChild.textContent = t('Client verbunden');

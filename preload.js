@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('lol', {
   history: () => ipcRenderer.invoke('stats:history'),
   findPlayer: (riotId) => ipcRenderer.invoke('player:find', riotId),
   playerByPuuid: (puuid) => ipcRenderer.invoke('player:get', puuid),
+  playerSkill: (puuid, gameIds) => ipcRenderer.invoke('player:skill', puuid, gameIds),
   gameDetail: (gameId) => ipcRenderer.invoke('stats:game', gameId),
   progress: () => ipcRenderer.invoke('stats:progress'),
   review: (gameId) => ipcRenderer.invoke('stats:review', gameId),
