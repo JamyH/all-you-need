@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.9.0 – 2026-10-28
+## 1.9.0 – 2026-10-29
 
 Neu
 - Fortschritt nach Modus getrennt (Kluft gesamt, Solo/Duo, Flex, Normal, Swiftplay, ARAM, ARAM Mayhem) und auf der
@@ -40,6 +40,20 @@ Neu
   gegen die gegnerischen Picks auf einen Blick
 - Website und README: neuer Abschnitt „Besser werden mit deinen eigenen Spielen“ mit Bildern von Fortschritt,
   Todes-Karte, Rückblick und Jungle-Bereich
+- Neuer Reiter „Spieler“: Spieler deiner Region per Riot-ID suchen (Rang in Solo/Duo und Flex, meistgespielte
+  Champions, letzte 20 Spiele), über den League-Client, ohne Riot-API-Schlüssel. Zuletzt gesuchte bleiben gemerkt
+- Spieler anklicken: Namen im Live-Spiel, im letzten Spiel und in aufgeklappten Spielen öffnen das Profil; Spiele im
+  Verlauf und im Profil klappen per Klick auf und zeigen beide Teams mit allen 10 Spielern
+- Skill-Einschätzung im Spielerprofil als Netzdiagramm: je Spiel gegen die anderen 9 Spieler derselben Lobby
+  gewertet (50 = Lobby-Schnitt), mit Kämpfen, Aggression, Teamplay, Überleben, Schaden, Schaden pro Tod und auf der
+  Kluft Farmen, Sicht und Objectives
+- Overlay-Farben im ⚙ einstellbar: Hintergrund, Akzent, Text, Gold und Warnung, mit „Farben zurücksetzen“
+
+Behoben und aufgeräumt
+- Tab in einem anderen Fenster (z. B. Discord) löst keine Scoreboard-Suche mehr aus
+- Overlay schreibt Texte nur noch bei Änderungen neu und baut das Scoreboard nur bei neuen Werten neu auf
+- Alte Stream-Aufnahme entfernt, kleinerer Installer (Tesseract-Browserdateien nicht mehr dabei)
+- Fehler-Log stürzt bei voller Platte nicht mehr ab
 
 ## 1.8.1 – 2026-10-27
 
