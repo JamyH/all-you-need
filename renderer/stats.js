@@ -1641,6 +1641,8 @@ async function searchPlayer(riotId, puuid) {
 }
 // Skill-Einschätzung im Profil (src/lobbyskill.js): je Wert, wie viel Prozent der anderen Spieler in seinen Spielen er
 // im Schnitt übertrifft. 50 = Lobby-Schnitt (gestrichelt), lädt nach dem Profil, weil es alle Spieldetails braucht
+// nur im Profil: Schaden pro Tod (im Fortschritt deckt Schaden/min mit Überleben das ab)
+const PROFILE_SKILLS = SKILLS.flatMap((s) => (s.key === 'damage' ? [s, { key: 'dpd', label: 'Schaden pro Tod', unit: 'Schaden/Tod', digits: 0 }] : [s]));
 async function loadSkill(p, games, req) {
   const box = $('playerSkill');
   const ids = games.filter((g) => g.gameType === 'MATCHED_GAME').map((g) => g.gameId);
@@ -1653,7 +1655,7 @@ async function loadSkill(p, games, req) {
     return;
   }
   if (req !== playerReq) return;
-  const rows = SKILLS.filter((s) => r.metrics[s.key]).map((s) => ({ s, now: r.metrics[s.key].score, before: 50, value: r.metrics[s.key].value }));
+  const rows = PROFILE_SKILLS.filter((s) => r.metrics[s.key]).map((s) => ({ s, now: r.metrics[s.key].score, before: 50, value: r.metrics[s.key].value }));
   if (rows.length < 3) {
     box.innerHTML = `<h2>${t('Skill-Einschätzung')}</h2><p class="hint">${t('Zu wenige Spiele ohne Bots für eine Einschätzung.')}</p>`;
     return;

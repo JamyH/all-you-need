@@ -191,6 +191,8 @@
     'Spieler ansehen': 'View player',
     'Klicken für alle Spieler': 'Click to see all players',
     'Skill-Einschätzung': 'Skill rating',
+    'Schaden pro Tod': 'Damage per death',
+    'Schaden/Tod': 'damage/death',
     'Zu wenige Spiele ohne Bots für eine Einschätzung.': 'Not enough games without bots for a rating.',
     '{label}: besser als {n} % seiner Mitspieler und Gegner': '{label}: better than {n} % of their teammates and opponents',
     'Skill-Einschätzung als Netzdiagramm': 'Skill rating radar chart',

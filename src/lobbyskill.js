@@ -10,6 +10,8 @@ const METRICS = [
   { key: 'survive', lower: true, val: (s, mins) => (s.deaths / mins) * 10 },
   { key: 'vision', maps: [11], val: (s, mins) => (s.visionScore || 0) / mins },
   { key: 'damage', val: (s, mins) => (s.totalDamageDealtToChampions || 0) / mins },
+  // Schaden pro Tod: lohnt sich sein Sterben? KDA bestraft jeden Tod gleich, das hier nicht
+  { key: 'dpd', val: (s) => (s.totalDamageDealtToChampions || 0) / Math.max(s.deaths, 1) },
   { key: 'obj', maps: [11], val: (s, mins) => (s.damageDealtToObjectives || 0) / mins },
 ];
 const MIN_GAMES = 3; // je Wert, darunter keine Aussage
