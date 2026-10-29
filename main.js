@@ -86,14 +86,15 @@ const saveConfig = (patch) => {
 const detectedPath = setup.findLeaguePath(config.leaguePath);
 if (detectedPath !== config.leaguePath) saveConfig({ leaguePath: detectedPath });
 
-// Overlay-Einstellungen (⚙ im Panel-Kopf): Module ein/aus, UI-Größe, Transparenz, Klick-durch.
+// Overlay-Einstellungen (⚙ im Panel-Kopf): Module ein/aus, UI-Größe, Transparenz, Farben, Klick-durch.
 // Fehlende Werte (ältere config.json) kommen aus den Vorgaben.
 const OVERLAY_DEFAULTS = { modules: {}, scale: 1, bgTransparency: 30, hoverTransparency: 20, clickThrough: true, compact: false,
-  jungleSize: 1, jungleTransparency: 40 };
+  jungleSize: 1, jungleTransparency: 40, colors: {} };
 const overlaySettings = () => ({
   ...OVERLAY_DEFAULTS,
   ...config.overlay,
   modules: { ...(config.overlay && config.overlay.modules) },
+  colors: { ...(config.overlay && config.overlay.colors) },
 });
 // Modul an? Ausgeschaltete Module sparen auch die Bildschirm-Erkennung (Cooldowns, Augments, Scoreboard)
 const moduleOn = (key) => overlaySettings().modules[key] !== false;
@@ -1451,7 +1452,9 @@ ipcMain.on('hit-rects', (_e, r) => {
 ipcMain.on('overlay:settingsOpen', (_e, on) => setSettingsOpen(on));
 ipcMain.handle('overlay:set', (_e, patch) => {
   const s = overlaySettings();
-  saveConfig({ overlay: { ...s, ...patch, modules: { ...s.modules, ...patch.modules } } });
+  // Farbe auf null = zurück zur Vorgabe
+  const colors = Object.fromEntries(Object.entries({ ...s.colors, ...patch.colors }).filter(([, v]) => v));
+  saveConfig({ overlay: { ...s, ...patch, modules: { ...s.modules, ...patch.modules }, colors } });
   return overlaySettings();
 });
 ipcMain.handle('panel-moved', (_e, pos) => {

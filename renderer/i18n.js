@@ -47,6 +47,13 @@
     'UI-Größe': 'UI size',
     'Hintergrund-Transparenz': 'Background transparency',
     'Hover-Transparenz': 'Hover transparency',
+    'Farben': 'Colors',
+    'Hintergrund': 'Background',
+    'Akzent': 'Accent',
+    'Text': 'Text',
+    'Gold': 'Gold',
+    'Warnung': 'Warning',
+    'Farben zurücksetzen': 'Reset colors',
     // Augment- und Splitter-Tiers
     'keine Daten': 'no data',
     'Falle mit {champ}': 'trap with {champ}',

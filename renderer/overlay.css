@@ -4,7 +4,8 @@
   --ui: 1;
   --bg-a: 0.7;
   --hover-op: 0.8;
-  --panel: rgba(22, 24, 29, var(--bg-a));
+  --panel-rgb: 22, 24, 29;
+  --panel: rgba(var(--panel-rgb), var(--bg-a));
   --tile: rgba(255, 255, 255, 0.04);
   --tile-hi: rgba(255, 255, 255, 0.06);
   --line: rgba(255, 255, 255, 0.06);
@@ -139,6 +140,12 @@ body:not(.click-through) .panel { cursor: move; }
 .slider { padding: 5px 0 3px; }
 .slider output { color: var(--accent); font-variant-numeric: tabular-nums; }
 .slider input { width: 100%; margin: 6px 0 0; accent-color: var(--accent); cursor: pointer; }
+.color { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+.color input { flex: none; width: 38px; height: 22px; padding: 0; border: 1px solid var(--line-2); border-radius: 6px; background: none; cursor: pointer; }
+.color input::-webkit-color-swatch-wrapper { padding: 2px; }
+.color input::-webkit-color-swatch { border: none; border-radius: 4px; }
+.reset { width: 100%; margin-top: 8px; padding: 6px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: var(--tile-hi); color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; }
+.reset:hover { background: var(--line-2); color: var(--text); }
 
 .row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; }
 .head {
@@ -217,7 +224,7 @@ small { margin-left: 4px; font-size: 11px; }
 
 .spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
 .spells:empty { display: none; }
-.spell { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: var(--r-tile); background: rgba(94, 234, 212, 0.1); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.35); }
+.spell { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: var(--r-tile); background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
 .spell.cd { background: var(--tile); box-shadow: none; }
 .spell label { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spell b { font-size: 14px; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -277,7 +284,7 @@ small { margin-left: 4px; font-size: 11px; }
 .dial .bg { position: absolute; inset: 0; width: 38px; height: 38px; transform: rotate(-90deg); }
 .dial .trk { fill: rgba(255, 255, 255, 0.04); stroke: rgba(255, 255, 255, 0.1); stroke-width: 3; }
 .dial .arc { fill: none; stroke: var(--muted); stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.3s; }
-.ring.ready .trk { fill: rgba(94, 234, 212, 0.12); stroke: var(--accent); }
+.ring.ready .trk { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent); }
 .dial span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; }
 .dial .check { position: absolute; left: 11px; top: 11px; color: var(--accent); }
 
@@ -331,8 +338,8 @@ small { margin-left: 4px; font-size: 11px; }
 /* Jungle-Route auf der Minimap */
 .jroute { position: fixed; pointer-events: none; overflow: visible; }
 .jroute[hidden] { display: none; }
-.jroute polyline { fill: none; stroke: #5eead4; stroke-linejoin: round; stroke-dasharray: 2 1.2; }
-.jroute circle { fill: #5eead4; stroke: #0f1115; stroke-width: .3; }
+.jroute polyline { fill: none; stroke: var(--accent); stroke-linejoin: round; stroke-dasharray: 2 1.2; }
+.jroute circle { fill: var(--accent); stroke: #0f1115; stroke-width: .3; }
 .jroute text { fill: #0f1115; font-family: Inter, sans-serif; font-weight: 700; text-anchor: middle; }
 
 .aug-badge {

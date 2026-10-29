@@ -423,6 +423,20 @@ const SLIDERS = [
   ['jungleSize', 'Jungle-Route: Größe', 0.5, 2, 0.1, (v) => num(v, 1)],
   ['jungleTransparency', 'Jungle-Route: Transparenz', 0, 90, 5, (v) => `${v} %`],
 ];
+// [Schlüssel, Name, Vorgabe wie in overlay.css]
+const COLORS = [
+  ['panel', 'Hintergrund', '#16181d'],
+  ['accent', 'Akzent', '#5eead4'],
+  ['text', 'Text', '#e8eaed'],
+  ['gold', 'Gold', '#f2c14e'],
+  ['bad', 'Warnung', '#ff8a7a'],
+];
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+// Schrift auf Akzent-, Gold- und Warn-Flächen: dunkel auf hellen Farben, sonst weiß
+const ink = (hex) => {
+  const [r, g, b] = rgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? '#111111' : '#ffffff';
+};
 let settings = null;
 const moduleOn = (key) => !settings || settings.modules[key] !== false;
 const isCompact = () => !!(settings && settings.compact);
@@ -438,7 +452,10 @@ function buildSettings() {
     SLIDERS.map(([k, n, min, max, step]) =>
       `<div class="slider"><label><span>${t(n)}</span><output data-out="${k}"></output></label>` +
 
-      `<input type="range" data-range="${k}" min="${min}" max="${max}" step="${step}"></div>`).join('');
+      `<input type="range" data-range="${k}" min="${min}" max="${max}" step="${step}"></div>`).join('') +
+    `<h4>${t('Farben')}</h4>` +
+    COLORS.map(([k, n]) => `<label class="color"><span>${esc(t(n))}</span><input type="color" data-color="${k}"></label>`).join('') +
+    `<button type="button" id="colorsReset" class="reset">${esc(t('Farben zurücksetzen'))}</button>`;
 
   $('settingsBody').querySelectorAll('[data-mod]').forEach((el) => el.addEventListener('change', () =>
     save({ modules: { [el.dataset.mod]: el.checked } })));
@@ -450,6 +467,13 @@ function buildSettings() {
     el.addEventListener('input', () => applySettings({ ...settings, [key]: Number(el.value) }));
     el.addEventListener('change', () => save({ [key]: Number(el.value) }));
   });
+  $('settingsBody').querySelectorAll('[data-color]').forEach((el) => {
+    const key = el.dataset.color;
+    // wie bei den Reglern: beim Auswählen anzeigen, gespeichert wird beim Schließen des Farbwählers
+    el.addEventListener('input', () => applySettings({ ...settings, colors: { ...settings.colors, [key]: el.value } }));
+    el.addEventListener('change', () => save({ colors: { [key]: el.value } }));
+  });
+  $('colorsReset').addEventListener('click', () => save({ colors: Object.fromEntries(COLORS.map(([k]) => [k, null])) }));
   $('settings').addEventListener('mousedown', () => {
     holding = true;
     sendHover();
@@ -465,6 +489,14 @@ function applySettings(s) {
   root.setProperty('--ui', s.scale);
   root.setProperty('--bg-a', (1 - s.bgTransparency / 100).toFixed(2));
   root.setProperty('--hover-op', (1 - s.hoverTransparency / 100).toFixed(2));
+  // nicht gesetzte Farben: Vorgabe aus overlay.css
+  const colors = s.colors || {};
+  for (const [k] of COLORS) {
+    const c = colors[k];
+    const vars = k === 'panel' ? { '--panel-rgb': c && rgb(c).join(', ') } :
+      k === 'text' ? { '--text': c } : { [`--${k}`]: c, [`--${k}-ink`]: c && ink(c) };
+    for (const [v, val] of Object.entries(vars)) val ? root.setProperty(v, val) : root.removeProperty(v);
+  }
   for (const [, list] of MODULES) for (const [k] of list) document.body.classList.toggle(`off-${k}`, s.modules[k] === false);
   document.body.classList.toggle('click-through', s.clickThrough);
   document.body.classList.toggle('compact', !!s.compact);
@@ -475,6 +507,7 @@ function applySettings(s) {
   const body = $('settingsBody');
   body.querySelectorAll('[data-mod]').forEach((el) => { el.checked = s.modules[el.dataset.mod] !== false; });
   body.querySelectorAll('[data-opt]').forEach((el) => { el.checked = !!s[el.dataset.opt]; });
+  for (const [k, , def] of COLORS) body.querySelector(`[data-color="${k}"]`).value = colors[k] || def;
   for (const [k, , , , , show] of SLIDERS) {
     const el = body.querySelector(`[data-range="${k}"]`);
     if (Number(el.value) !== s[k]) el.value = s[k];
