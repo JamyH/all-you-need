@@ -387,6 +387,10 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 .player-ranks .sub { display: block; color: var(--muted); font-size: 12px; }
 .mastery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
 .mastery small { display: block; font-size: 12px; }
+.game[data-game] { cursor: pointer; }
+.game[data-game]:hover, .game.open { border-color: var(--line-2); background: var(--tile); }
+.game-detail { margin: -4px 0 12px; padding: 4px 16px 12px; border-radius: 0 0 12px 12px; background: var(--card); border: 1px solid var(--line); border-top: 0; }
+.game-detail .hint { display: block; padding: 10px 0 0; }
 button.link { height: auto; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
 button.link:hover { background: none; color: var(--accent); }
 .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--tile-hi); color: var(--text-2); font-size: 12px; }

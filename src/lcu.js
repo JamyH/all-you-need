@@ -96,8 +96,10 @@ async function soloRank(lp, puuid) {
 async function findPlayer(lp, gameName, tagLine) {
   const q = `gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}`;
   const found = await lcu(lp, `/lol-summoner/v1/alias/lookup?${q}`);
-  if (!found || !found.puuid) return null;
-  const { puuid } = found;
+  return found && found.puuid ? playerByPuuid(lp, found.puuid) : null;
+}
+// Klick auf einen Spieler in einem Spiel: PUUID ist schon bekannt (und stimmt auch nach einer Namensänderung)
+async function playerByPuuid(lp, puuid) {
   const pick = (q) => (q && q.tier && q.tier !== 'NONE' ? { tier: q.tier, division: q.division, lp: q.leaguePoints, wins: q.wins, losses: q.losses } : null);
   const [summoner, ranked, mastery, history] = await Promise.all([
     lcu(lp, `/lol-summoner/v2/summoners/puuid/${puuid}`),
@@ -188,5 +190,5 @@ async function applyItemSet(lp, championKey, title, blocks, map = 11) {
 
 module.exports = {
   gameflowPhase, gameflowSession, get, currentSummoner, endOfGame, matchHistory, ranks, champSelect, mapId, recommendedRunes, recommendedRunePages, recommendedSpells, applySpells, currentRunePage, applyRunePage, PAGE_NAME,
-  applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments, findPlayer,
+  applyItemSet, gamePlayers, soloRank, readyCheck, acceptReadyCheck, cherryAugments, findPlayer, playerByPuuid,
 };

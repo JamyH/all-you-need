@@ -79,7 +79,7 @@ async function renderEog() {
       const name = p.riotIdGameName || p.summonerName || '';
       const isMe = p.puuid && p.puuid === local.puuid;
       html += `<tr class="${isMe ? 'me' : ''}">
-        <td><span class="champ">${champImg(champ)}${esc(champ.name)} <small>${esc(name)}</small></span></td>
+        <td><span class="champ">${champImg(champ)}${esc(champ.name)} <small>${isMe ? esc(name) : playerLink(name, p.puuid)}</small></span></td>
         <td>${s.CHAMPIONS_KILLED || 0}/${s.NUM_DEATHS || 0}/${s.ASSISTS || 0}</td>
         <td>${(s.MINIONS_KILLED || 0) + (s.NEUTRAL_MINIONS_KILLED || 0)}</td>
         <td>${n(s.GOLD_EARNED)}</td>
@@ -256,7 +256,7 @@ function gameRowHtml(g) {
   const mins = Math.max(g.gameDuration / 60, 1);
   const cs = s.totalMinionsKilled + s.neutralMinionsKilled;
   const when = new Date(g.gameCreation).toLocaleString(i18n.locale(), { dateStyle: 'short', timeStyle: 'short' });
-  return `<div class="game ${s.win ? 'w' : 'l'}">
+  return `<div class="game ${s.win ? 'w' : 'l'}" data-game="${g.gameId}" data-pid="${g.participants[0].participantId}" title="${esc(t('Klicken für alle Spieler'))}">
       <div class="bar"></div>
       <div class="champ">${champImg(champ)}<div>${esc(champ.name)}<small>${esc(QUEUES[g.queueId] || modeName(g.gameMode))} · ${when}</small></div></div>
       <div><b>${s.kills}/${s.deaths}/${s.assists}</b><small>${dec((s.kills + s.assists) / Math.max(s.deaths, 1), 2)} KDA</small></div>
@@ -1591,16 +1591,17 @@ function drawRecent() {
 
 let playerReq = 0; // neue Suche, während die alte noch lädt: die alte nicht mehr anzeigen
 let lastPlayer = null;
-async function searchPlayer(riotId) {
+// riotId „Name#Tag“ aus dem Suchfeld; puuid, wenn der Spieler aus einem Spiel angeklickt wurde
+async function searchPlayer(riotId, puuid) {
   riotId = String(riotId || '').trim();
-  if (!riotId) return;
+  if (!riotId && !puuid) return;
   $('playerInput').value = riotId;
   const out = $('playerOut');
   const req = ++playerReq;
   out.innerHTML = `<div class="msg">${t('Suche…')}</div>`;
   let p;
   try {
-    p = await window.lol.findPlayer(riotId);
+    p = puuid ? await window.lol.playerByPuuid(puuid) : await window.lol.findPlayer(riotId);
   } catch (e) {
     if (req === playerReq) out.innerHTML = `<div class="msg">${esc(errText(e))}</div>`;
     return;
@@ -1611,6 +1612,7 @@ async function searchPlayer(riotId) {
     return;
   }
   lastPlayer = `${p.gameName}#${p.tagLine}`;
+  $('playerInput').value = lastPlayer;
   rememberSearch(lastPlayer);
   drawRecent();
   const games = p.games.filter((g) => g.gameMode !== 'PRACTICETOOL');
@@ -1628,22 +1630,78 @@ async function searchPlayer(riotId) {
     (games.length ? summaryHtml(games, t('Letzte {n}', { n: games.length })) + games.map(gameRowHtml).join('')
       : `<div class="msg">${t('Keine Spiele gefunden.')}</div>`);
 }
-const openPlayer = (riotId) => {
+const openPlayer = (riotId, puuid) => {
   showTab('player');
-  searchPlayer(riotId);
+  document.querySelector('.content').scrollTop = 0;
+  searchPlayer(riotId, puuid);
 };
+// Bots haben eine PUUID aus Nullen: dort gibt es kein Profil
+const realPuuid = (id) => !!id && !/^0{8}-/.test(id);
+const playerLink = (name, puuid) => (realPuuid(puuid) && name
+  ? `<button class="link" data-player="${esc(name)}" data-puuid="${esc(puuid)}" title="${esc(t('Spieler ansehen'))}">${esc(name)}</button>`
+  : esc(name));
+
+// Spiel aufklappen: beide Teams mit allen Spielern, Namen führen zum Profil. Details je Spiel nur einmal laden
+const gameCache = new Map();
+async function toggleGame(row) {
+  const next = row.nextElementSibling;
+  if (next && next.classList.contains('game-detail')) {
+    next.remove();
+    row.classList.remove('open');
+    return;
+  }
+  row.classList.add('open');
+  const box = document.createElement('div');
+  box.className = 'game-detail';
+  box.innerHTML = `<span class="hint">${t('Lädt…')}</span>`;
+  row.after(box);
+  const id = row.dataset.game;
+  try {
+    if (!gameCache.has(id)) gameCache.set(id, window.lol.gameDetail(id));
+    box.innerHTML = await gameDetailHtml(await gameCache.get(id), Number(row.dataset.pid));
+  } catch (e) {
+    gameCache.delete(id);
+    box.innerHTML = `<span class="hint">${esc(errText(e))}</span>`;
+  }
+}
+async function gameDetailHtml(g, pid) {
+  const who = new Map((g.participantIdentities || []).map((x) => [x.participantId, x.player || {}]));
+  let html = '';
+  for (const team of [...new Set(g.participants.map((p) => p.teamId))]) {
+    const list = g.participants.filter((p) => p.teamId === team);
+    const won = list.some((p) => p.stats.win);
+    html += `<div class="team-title ${won ? 'win' : 'loss'}">${won ? t('Sieg') : t('Niederlage')}</div>
+      <table><tr><th>${t('Spieler')}</th><th>KDA</th><th>CS</th><th>Gold</th><th>${t('Schaden')}</th><th>Vision</th><th>Items</th></tr>`;
+    for (const p of list) {
+      const s = p.stats;
+      const pl = who.get(p.participantId) || {};
+      const champ = await window.lol.champion(p.championId);
+      const name = pl.gameName ? `${pl.gameName}#${pl.tagLine}` : pl.summonerName || '';
+      html += `<tr class="${p.participantId === pid ? 'me' : ''}">
+        <td><span class="champ">${champImg(champ)}${esc(champ.name)} <small>${p.participantId === pid ? esc(name) : playerLink(name, pl.puuid)}</small></span></td>
+        <td>${s.kills}/${s.deaths}/${s.assists}</td><td>${s.totalMinionsKilled + s.neutralMinionsKilled}</td>
+        <td>${n(s.goldEarned)}</td><td>${n(s.totalDamageDealtToChampions)}</td><td>${s.visionScore || 0}</td>
+        <td>${itemsHtml([s.item0, s.item1, s.item2, s.item3, s.item4, s.item5, s.item6])}</td></tr>`;
+    }
+    html += '</table>';
+  }
+  return html;
+}
+
 $('playerForm').addEventListener('submit', (e) => {
   e.preventDefault();
   searchPlayer($('playerInput').value);
 });
-$('playerRecent').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-player]');
-  if (b) searchPlayer(b.dataset.player);
-});
-// Live-Spiel: Klick auf einen Spielernamen öffnet ihn in der Suche
-$('liveList').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-player]');
-  if (b) openPlayer(b.dataset.player);
+// Klick auf einen Spieler (Letztes Spiel, Verlauf, Live-Spiel, Zuletzt gesucht) öffnet sein Profil; Klick auf ein
+// Spiel im Verlauf oder im Profil klappt es auf
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('[data-player], [data-puuid]');
+  if (link) {
+    openPlayer(link.dataset.player, link.dataset.puuid);
+    return;
+  }
+  const row = e.target.closest('.game[data-game]');
+  if (row) toggleGame(row);
 });
 drawRecent();
 

@@ -1538,6 +1538,9 @@ ipcMain.handle('player:find', (_e, riotId) => {
   if (!gameName || !tagLine) throw new Error(t('Bitte als Name#Tag eingeben, z. B. Faker#KR1.'));
   return lcu.findPlayer(config.leaguePath, gameName, tagLine);
 });
+ipcMain.handle('player:get', (_e, puuid) => lcu.playerByPuuid(config.leaguePath, String(puuid)));
+// Alle Spieler eines Spiels (Verlauf: Spiel aufklappen)
+ipcMain.handle('stats:game', (_e, gameId) => lcu.get(config.leaguePath, `/lol-match-history/v1/games/${Number(gameId)}`));
 ipcMain.handle('ddragon:champion', (_e, id) => ddragon.champion(id));
 ipcMain.handle('ddragon:version', () => ddragon.getVersion());
 

@@ -189,6 +189,8 @@
     'Stufe {n}': 'Level {n}',
     'Punkte': 'points',
     'Spieler ansehen': 'View player',
+    'Klicken für alle Spieler': 'Click to see all players',
+    'Lädt…': 'Loading…',
     'Anteil': 'Share',
     'Dein Team': 'Your team',
     'Gegner': 'Enemy team',
