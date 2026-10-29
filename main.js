@@ -317,8 +317,13 @@ function setEditMode(on) {
 // Dev-Helfer: Änderungen in renderer/ laden sofort neu, Rohdaten und Fehler landen in debug/
 const DEBUG_DIR = path.join(DATA_DIR, 'debug');
 const logError = (e) => {
-  fs.mkdirSync(DEBUG_DIR, { recursive: true });
-  fs.appendFileSync(path.join(DEBUG_DIR, 'error.log'), `${new Date().toISOString()} ${e && e.stack ? e.stack : e}\n`);
+  try {
+    fs.mkdirSync(DEBUG_DIR, { recursive: true });
+    fs.appendFileSync(path.join(DEBUG_DIR, 'error.log'), `${new Date().toISOString()} ${e && e.stack ? e.stack : e}\n`);
+  } catch {
+    // z. B. Platte voll: ein Fehler hier im Handler für unbehandelte Fehler beendete sonst die ganze App
+    console.error(e);
+  }
 };
 process.on('unhandledRejection', logError);
 process.on('uncaughtException', logError);
@@ -946,6 +951,9 @@ function startTabWatch() {
   const scoreboardOn = !!(config.scoreboard && config.scoreboard.enabled);
   keys.start(
     () => {
+      // Tab in einem anderen Fenster (Alt-Tab in Discord, Browser): das Overlay ist dann ausgeblendet, die
+      // Scoreboard-Suche über den ganzen Bildschirm wäre vergebens
+      if (!gameFocused(false)) return;
       overlay.webContents.send('tab-held', true); // Jungle-Route auf der Minimap nur, solange Tab gedrückt ist
       // im ⚙ abgeschaltet oder ohne Bildschirm-Erkennung: keine Scoreboard-Suche
       if (!scoreboardOn || !screenReading || !moduleOn('scoreboard')) return;

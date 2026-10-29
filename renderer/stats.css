@@ -471,7 +471,6 @@ nav .dev-nav.active { color: #fff; background: rgba(124, 58, 237, .35); }
 @media (max-width: 900px) { .dmap-grid { grid-template-columns: 1fr; } }
 .minimap { margin: 0; }
 .minimap svg { display: block; width: 100%; height: auto; border-radius: 10px; overflow: hidden; background: #0b0d10; }
-.mapimg { opacity: 0.55; }
 .dd { stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.3; }
 .dd.early { fill: #f2c14e; }
 .dd.mid { fill: #ff8a7a; }
