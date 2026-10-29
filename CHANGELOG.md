@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 1.9.0 – 2026-10-28
 
 Neu
 - Fortschritt nach Modus getrennt (Kluft gesamt, Solo/Duo, Flex, Normal, Swiftplay, ARAM, ARAM Mayhem) und auf der
@@ -38,6 +38,8 @@ Neu
   Pfad, tote Zeit, frühe Wirkung, Jungle-Tode. Farmy merkt sich dafür im Spiel die Rollen aller 10 Spieler
 - „Dein Plan“ in „Build & Runen“: Notiz, zuletzt Gelerntes zum Champion, Session-Ziel, Fokus und die Lane-Einschätzung
   gegen die gegnerischen Picks auf einen Blick
+- Website und README: neuer Abschnitt „Besser werden mit deinen eigenen Spielen“ mit Bildern von Fortschritt,
+  Todes-Karte, Rückblick und Jungle-Bereich
 
 ## 1.8.1 – 2026-10-27
 

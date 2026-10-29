@@ -4,12 +4,15 @@
 
 *Formerly known as „All You Need“.*
 
-**Version 1.8** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
+**Version 1.9** · [Website](https://jamyh.github.io/farmy/) · [Changelog](CHANGELOG.md) · [Download](https://github.com/JamyH/farmy/releases/latest) · [💡 Share an idea](https://github.com/JamyH/farmy/issues/new?template=idea.yml)
 
 A free, small and clean overlay for League of Legends on Windows. It shows what matters in a fight – exact CS,
 your summoner cooldowns, XP to the next level, mana for your combo, the gold you still need – without
 covering your screen. It only uses information you can already see as a player and never touches the
 game process.
+
+After the game it works like a personal coach: a review of every game, your progress per skill, where and why you
+die, and – for junglers – a full jungle analysis, all from your own match history (new in 1.9).
 
 > The interface is available in **English** and **German**. Switch it in the tray menu → *Sprache / Language*;
 > on first start it follows your Windows language.
@@ -98,17 +101,39 @@ often there is an allowed variant. Found something that is read wrong? Use the
 - Build order and rune page per champion; runes are applied automatically in champ select to a
   dedicated page called "Farmy" (your other pages are never touched)
 - **Review** after each game: what went well and what cost you the game compared with your own average, what to
-  improve first, CS at 10 minutes vs. the possible CS, which damage type killed you (read from the death recap),
-  how long your ultimate was ready but unused, records and top-10 % badges
-- **Progress**: your last 10 games against your own average in farming, fighting, survival, vision, damage,
-  objectives and consistency, with trend lines; your focus with a tip; win rate by game of the day, time of day and
-  game length; champion pool; LP history; session goals with streak – only your own games, no comparison with
-  other players
+  improve first, CS at 10 minutes vs. the possible CS, when you died, which damage type killed you (read from the
+  death recap) and how much gold you were carrying, how long your ultimate was ready but unused, lane duel at
+  10/15 minutes, records and top-10 % badges – plus a short "what do I take away?" note that is saved with the champion
+- **Progress**, split by mode (Solo/Duo, Flex, Normal, Swiftplay, ARAM, ARAM Mayhem) and on the Rift by role – only
+  your own games, no comparison with other players:
+  - skill cards (fighting, aggression, teamplay, survival, farming, vision, damage, objectives, consistency): your
+    last 10 games against your own average, with trend lines, a skill radar chart and details per skill on click
+  - your focus (weakest area) with a tip, a session goal shown in the in-game panel, and a training plan with 2–3
+    tasks that Farmy checks after every game
+  - where you die (deaths as dots on a map, share per zone), who kills you, when you die per game phase, share of
+    team damage/gold/deaths, leads and comebacks, level 6 timing, objective participation
+  - who you lose against, win rate after losses, fatigue per game of the session, learning curve per champion,
+    weekly report, month comparison, records, champion pool, LP history and win rate by time of day or game length
+- **Jungle** (games with Smite; the enemy jungler is the enemy with Smite, also for older games): jungler duel
+  (CS/level/XP/gold at 5/10/15 min), counter-jungling (estimated), map presence per zone in wins vs. losses, ganks per
+  lane, objective decisions (where you were, dead, trade, contested), starting side and path, dead time, early
+  impact and jungle deaths
+- **Your plan** in Build & Runes: your note, what you learned last time on the champion, session goal, focus and the
+  lane outlook against the enemy picks at a glance
 - **Notes** per champion (and a general one), stored only on your PC and shown with the champion in champ select
 - Build and rune suggestions from [lolalytics.com](https://lolalytics.com) for your champion and role,
   loaded once when you lock in; your own builds and runes always take priority (can be switched off)
 - Several rune pages to choose from (lolalytics plus Riot's recommended pages for your role): apply one
   with a click or keep it as your own; the stats window opens on lock-in without stealing focus
+
+<p>
+  <img src="docs/stats-progress-en.png" alt="Progress: skill cards and skill radar chart against your own average" width="440">
+  <img src="docs/stats-deaths-en.png" alt="Where you die: deaths on the map and who kills you" width="440">
+</p>
+<p>
+  <img src="docs/stats-review-en.png" alt="Review after a game" width="440">
+  <img src="docs/stats-jungle-en.png" alt="Jungle analysis: jungler duel and counter-jungling" width="440">
+</p>
 
 <img src="docs/stats-build-en.png" alt="Build and runes" width="720">
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Farmy LoL – Free LoL Overlay: Exact CS &amp; Summoner Timers</title>
-  <meta name="description" content="Free, open-source League of Legends overlay for Windows: exact CS, summoner and item cooldowns, mana for your combo, gold to your next item. No ads, no Overwolf.">
+  <meta name="description" content="Free, open-source League of Legends overlay for Windows: exact CS, summoner and item cooldowns, mana for your combo, gold to your next item, plus game reviews and progress tracking from your own games. No ads, no Overwolf.">
   <link rel="canonical" href="https://jamyh.github.io/farmy/">
   <link rel="alternate" hreflang="en" href="https://jamyh.github.io/farmy/">
   <link rel="alternate" hreflang="de" href="https://jamyh.github.io/farmy/de/">
@@ -32,7 +32,7 @@
         "description": "Free, lightweight League of Legends overlay for Windows with exact CS, summoner spell and item cooldowns, mana for your combo, gold to your next item, auto runes and matchup win rates.",
         "operatingSystem": "Windows 10, Windows 11",
         "applicationCategory": "GameApplication",
-        "softwareVersion": "1.7.0",
+        "softwareVersion": "1.9.0",
         "inLanguage": ["en", "de"],
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
         "url": "https://jamyh.github.io/farmy/",
@@ -49,7 +49,9 @@
           "XP to the next level in melee and caster minions",
           "Item value difference to your lane opponent and team",
           "Matchup win rates in champ select",
-          "Automatic rune pages, Summoner Spells and Item Sets"
+          "Automatic rune pages, Summoner Spells and Item Sets",
+          "Game review and progress tracking from your own match history",
+          "Death map, jungle analysis and training plan"
         ]
       },
       {
@@ -79,6 +81,7 @@
       <a class="home" href="./"><img src="icon.png" alt="" width="36" height="36"><b>Farmy</b></a>
       <nav>
         <a href="#features">Features</a>
+        <a href="#improve">Improve</a>
         <a href="are-lol-overlays-allowed/">Is it safe?</a>
         <a href="de/" hreflang="de" lang="de">Deutsch</a>
         <a href="https://github.com/JamyH/farmy">GitHub</a>
@@ -113,7 +116,7 @@
           <div class="card"><div class="k">LVL 1–3</div><h3>Matchup and auto runes</h3><p>Win rate per enemy pick in champ select, who wins the early all-in, and runes set on their own page.</p></div>
           <div class="card"><div class="k">TAB 1→6</div><h3>Jungle route</h3><p>Your first clear per starting camp in champ select, and on your minimap while you hold Tab.</p></div>
           <div class="card"><div class="k">1920×1080</div><h3>Any window, any size</h3><p>Borderless or windowed, any resolution: Farmy follows the game window and hides when you Alt-Tab.</p></div>
-          <div class="card"><div class="k">v1.7</div><h3>Updates itself</h3><p>New versions download in the background and install when you quit. No more downloading by hand.</p></div>
+          <div class="card"><div class="k">v1.9</div><h3>Updates itself</h3><p>New versions download in the background and install when you quit. No more downloading by hand.</p></div>
         </div>
       </section>
 
@@ -124,6 +127,60 @@
         <div class="shots">
           <img src="stats-history-en.png" width="1164" height="655" loading="lazy" alt="League of Legends match history with CS per minute, KDA and vision score trends">
           <img src="stats-build-en.png" width="1164" height="655" loading="lazy" alt="Build order, rune page and Summoner Spells per champion with lolalytics suggestions">
+        </div>
+      </section>
+
+      <section id="improve">
+        <h2>Get better from your own games</h2>
+        <p class="sub">New in 1.9: after every game Farmy turns the client's match history and game timelines into a
+          personal coach – like a replay review, only from your own games, no comparison with other players and no
+          account needed.</p>
+        <div class="feat">
+          <div>
+            <h3>Progress: your skills over time</h3>
+            <p>Your last 10 games against your own average, split by mode (Solo/Duo, Flex, Swiftplay, ARAM …) and role.</p>
+            <ul>
+              <li>Skill profile as a radar chart: fighting, aggression, teamplay, survival, damage, consistency</li>
+              <li>Your focus – the weakest area – with a concrete tip</li>
+              <li>Session goal shown in the in-game panel, and a training plan Farmy checks after every game</li>
+              <li>Weekly report, month comparison, records, learning curve per champion and tilt check after losses</li>
+            </ul>
+          </div>
+          <img src="stats-progress-en.png" width="918" height="1263" loading="lazy" alt="Progress tab with skill cards, trend lines and a skill radar chart compared with your own average">
+        </div>
+        <div class="feat">
+          <div>
+            <h3>Where and why you die</h3>
+            <p>Every death from the game timeline as a dot on the map, with the zone you die in most.</p>
+            <ul>
+              <li>Who kills you most, deaths against 2+ enemies, solo kills vs. solo deaths</li>
+              <li>When you die (per game phase), with damage type and the gold you were still carrying</li>
+              <li>Lane duel at 10 and 15 minutes, level 6 timing, throws and comebacks</li>
+            </ul>
+          </div>
+          <img src="stats-deaths-en.png" width="918" height="754" loading="lazy" alt="Map of your deaths in League of Legends with the most common zones and the champions that kill you most">
+        </div>
+        <div class="feat">
+          <div>
+            <h3>Review after every game</h3>
+            <p>What went well and what cost you the game compared with your average, what to improve first, CS at
+              10 minutes vs. possible, when you died and how long your ultimate sat unused.</p>
+            <p>Write down what you take away – it lands in your notes for that champion and shows up in champ select next time.</p>
+          </div>
+          <img src="stats-review-en.png" width="918" height="483" loading="lazy" alt="Game review with strengths, weaknesses, CS at 10 minutes, death times and unused ultimate">
+        </div>
+        <div class="feat">
+          <div>
+            <h3>Jungle coaching</h3>
+            <p>For games with Smite: everything a jungle coach looks at in a replay.</p>
+            <ul>
+              <li>Jungler duel: CS, level, XP and gold against the enemy jungler at 5/10/15 minutes</li>
+              <li>Counter-jungling, map presence per zone, gank success per lane</li>
+              <li>Objective decisions: where you were when a dragon or Baron was lost</li>
+              <li>Starting side and path, dead time, early impact, jungle deaths</li>
+            </ul>
+          </div>
+          <img src="stats-jungle-en.png" width="918" height="636" loading="lazy" alt="Jungle analysis with jungler duel table and counter-jungling statistics">
         </div>
       </section>
 
