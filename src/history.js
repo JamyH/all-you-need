@@ -134,4 +134,4 @@ const since = (at) => Object.values(games).filter((g) => g.at >= at).sort((a, b)
 // Alle gemerkten Spiele, älteste zuerst (Reiter „Fortschritt“)
 const all = () => Object.entries(games).map(([id, g]) => ({ id, ...g })).sort((a, b) => a.at - b.at);
 
-module.exports = { init, add, backfill, topItems, csPerMin, bestChamps, since, all };
+module.exports = { init, add, backfill, topItems, csPerMin, bestChamps, since, all, entry };

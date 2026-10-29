@@ -767,7 +767,14 @@ function profileCard(rated) {
 
 // Netzdiagramm (wie das Skill-Hexagon bei Mobalytics): je Skill eine Achse von der Mitte (0) nach außen (100).
 // Fläche = zuletzt, gestrichelt = davor. Gleiche Werte wie die Balken daneben, die bleiben als genaue Ablesung
-function radarSvg(rows) {
+// text: Beschriftungen für einen anderen Vergleich (Spielerprofil: er gegen dich); ohne = zuletzt gegen davor
+function radarSvg(rows, text = null) {
+  const T = text || {
+    tip: (s, now, before) => t('{label}: zuletzt {now}, davor {before}', { label: t(s.label), now, before }),
+    aria: t('Skill-Profil als Netzdiagramm: zuletzt gegen davor'),
+    caption: `<span class="lg now"></span>${t('letzte {n} Spiele', { n: progK })} <span class="lg before"></span>${t('die Spiele davor')}`,
+    hint: t('Weiter außen = besser, gemessen an dir selbst. Fläche innerhalb der Linie: zuletzt schwächer als sonst.'),
+  };
   const n = rows.length, cx = 160, cy = 150, R = 105;
   const pt = (i, v) => {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
@@ -788,13 +795,13 @@ function radarSvg(rows) {
   // Punkte mit Hover: Wert zuletzt und davor
   const dots = rows.map(({ s, now, before }, i) => {
     const [x, y] = pt(i, now);
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="rdot"><title>${esc(t('{label}: zuletzt {now}, davor {before}', { label: t(s.label), now, before }))}</title></circle>`;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="rdot"><title>${esc(T.tip(s, now, before))}</title></circle>`;
   }).join('');
-  return `<figure class="radar"><svg viewBox="-20 0 360 310" role="img" aria-label="${esc(t('Skill-Profil als Netzdiagramm: zuletzt gegen davor'))}">` +
+  return `<figure class="radar"><svg viewBox="-20 0 360 310" role="img" aria-label="${esc(T.aria)}">` +
     `${rings}${axes}<polygon points="${poly(rows.map((r) => r.before))}" class="rbefore"></polygon>` +
     `<polygon points="${poly(rows.map((r) => r.now))}" class="rnow"></polygon>${dots}${labels}</svg>` +
-    `<figcaption><span class="lg now"></span>${t('letzte {n} Spiele', { n: progK })} <span class="lg before"></span>${t('die Spiele davor')}</figcaption>` +
-    `<p class="hint radar-hint">${t('Weiter außen = besser, gemessen an dir selbst. Fläche innerhalb der Linie: zuletzt schwächer als sonst.')}</p></figure>`;
+    `<figcaption>${T.caption}</figcaption>` +
+    `<p class="hint radar-hint">${T.hint}</p></figure>`;
 }
 
 // Skill-Details („Metric Allocation“): woraus der Wert besteht, bestes und schlechtestes Spiel, Verlauf je Spiel
@@ -1589,6 +1596,7 @@ function drawRecent() {
     : '';
 }
 
+let myPuuid = null;
 let playerReq = 0; // neue Suche, während die alte noch lädt: die alte nicht mehr anzeigen
 let lastPlayer = null;
 // riotId „Name#Tag“ aus dem Suchfeld; puuid, wenn der Spieler aus einem Spiel angeklickt wurde
@@ -1627,9 +1635,46 @@ async function searchPlayer(riotId, puuid) {
     </div>` +
     (mastery.length ? `<div class="card"><h2>${t('Meistgespielte Champions')}</h2><div class="mastery">${mastery.map((m) =>
       `<div class="champ">${champImg(m.champ)}<div>${esc(m.champ.name)}<small>${t('Stufe {n}', { n: m.level })} · ${n(m.points)} ${t('Punkte')}</small></div></div>`).join('')}</div></div>` : '') +
+    compareCard(p) +
     (games.length ? summaryHtml(games, t('Letzte {n}', { n: games.length })) + games.map(gameRowHtml).join('')
       : `<div class="msg">${t('Keine Spiele gefunden.')}</div>`);
 }
+// Skill-Vergleich im Profil: seine echten Spiele gegen deine auf derselben Map (Kluft oder ARAM), je die letzten 20.
+// Je Achse kommt der Bessere von euch beiden auf 100, der andere anteilig darunter (bei „weniger ist besser“
+// umgekehrt). Ein Vergleich nur mit sich selbst (wie im Fortschritt) sagte über einen fremden Spieler nichts.
+// Teamplay fehlt: dafür bräuchte es die Spielverläufe
+const COMPARE_MIN = 3;
+function compareCard(p) {
+  if (!p.entries || p.puuid === myPuuid) return '';
+  const byMap = (list, map) => list.filter((g) => g.map === map).sort((a, b) => a.at - b.at).slice(-20);
+  const map = [11, 12].sort((a, b) => byMap(p.entries, b).length - byMap(p.entries, a).length)[0];
+  const his = byMap(p.entries, map), mine = byMap(progGames.filter((g) => g.cs != null), map);
+  const mapName = t(PMODES[map]);
+  if (his.length < COMPARE_MIN || mine.length < COMPARE_MIN) {
+    return `<div class="card"><h2>${t('Skill-Vergleich mit dir')}</h2><p class="hint">${t('Zu wenige Spiele für einen Vergleich ({map}): er {a}, du {b}, nötig sind je {n}.', { map: mapName, a: his.length, b: mine.length, n: COMPARE_MIN })}</p></div>`;
+  }
+  const rows = SKILLS.filter((s) => (!s.maps || s.maps.includes(map)) && s.needs !== 'kp').map((s) => {
+    const agg = s.set || ((list) => mean(list.map(s.val)));
+    const h = agg(his), m = agg(mine);
+    const best = s.lower ? Math.min(h, m) : Math.max(h, m);
+    const score = (v) => (s.lower ? (v ? (best / v) * 100 : 100) : best ? (v / best) * 100 : 100);
+    return { s, now: Math.round(score(h)), before: Math.round(score(m)), h, m };
+  });
+  const fmt = (s, v) => dec(v, s.digits);
+  const text = {
+    tip: (s, now, before) => t('{label}: er {now}, du {before}', { label: t(s.label), now, before }),
+    aria: t('Skill-Vergleich als Netzdiagramm: er gegen dich'),
+    caption: `<span class="lg now"></span>${esc(p.gameName)} <span class="lg before"></span>${t('du')}`,
+    hint: t('Je Achse hat der Bessere von euch beiden 100.'),
+  };
+  return `<div class="card profile"><div class="card-head"><h2>${t('Skill-Vergleich mit dir')}</h2>` +
+    `<span class="hint">${t('{map} · seine letzten {a} gegen deine letzten {b} Spiele', { map: mapName, a: his.length, b: mine.length })}</span></div>` +
+    `<div class="pgrid">${radarSvg(rows, text)}<div class="pbars">` +
+    rows.map(({ s, h, m }) => `<div class="wrow prow"><span>${t(s.label)}</span>` +
+      `<small><b class="${better(s, h, m) ? 'win' : better(s, m, h) ? 'loss' : ''}">${fmt(s, h)}</b> <span class="muted">${t('gegen')} ${fmt(s, m)} ${esc(t(s.unit))}</span></small></div>`).join('') +
+    `<p class="hint">${t('Grün: er ist besser als du, Rot: du bist besser.')}</p></div></div></div>`;
+}
+
 const openPlayer = (riotId, puuid) => {
   showTab('player');
   document.querySelector('.content').scrollTop = 0;
@@ -2299,6 +2344,7 @@ async function loadAll() {
   const state = $('clientState');
   try {
     const me = await window.lol.summoner();
+    myPuuid = me.puuid;
     $('who').textContent = me.gameName ? `${me.gameName}#${me.tagLine}` : me.displayName;
     state.className = 'client-state on';
     state.lastElementChild.textContent = t('Client verbunden');
