@@ -176,7 +176,6 @@
     'Niederlage': 'Defeat',
     'Dauer': 'Duration',
     'Schaden': 'Damage',
-    'Schaden/min': 'Damage/min',
     'Anteil': 'Share',
     'Dein Team': 'Your team',
     'Gegner': 'Enemy team',

@@ -4,7 +4,7 @@
 // braucht weder Fenster noch Puffer, liefert die echten Farben (der Stream verwischte Gelb durch die
 // Video-Kompression) und kostet ~6 ms je Aufruf, fast unabhängig von der Größe: daher nah beieinanderliegende
 // Ausschnitte (untere Leiste) in einem Aufruf holen. Das Overlay taucht wegen setContentProtection auch hier
-// nicht auf. Gleiche Schnittstelle wie vorher src/capture.js: start/stop/grab/findScoreboard.
+// nicht auf. Schnittstelle: start/stop/grab/findScoreboard.
 const koffi = require('koffi');
 
 const user32 = koffi.load('user32.dll');

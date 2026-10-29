@@ -65,7 +65,7 @@ async function renderEog() {
     <div class="tile"><label>${t('Dauer')}</label><b>${dur(eog.gameLength || 0)}</b></div>
     <div class="tile"><label>KDA</label><b>${ls.CHAMPIONS_KILLED || 0}/${ls.NUM_DEATHS || 0}/${ls.ASSISTS || 0}</b></div>
     <div class="tile"><label>CS/min</label><b>${dec(cs / mins, 1)}</b></div>
-    <div class="tile"><label>${t('Schaden/min')}</label><b>${n(Math.round((ls.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS || 0) / mins))}</b></div>
+    <div class="tile"><label>${t('Schaden')}/min</label><b>${n(Math.round((ls.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS || 0) / mins))}</b></div>
     <div class="tile"><label>Vision</label><b>${ls.VISION_SCORE || 0}</b></div>
   </div>`;
 

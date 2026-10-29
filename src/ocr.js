@@ -2,7 +2,7 @@
 // - CS-Zahl oben rechts per Texterkennung
 // - XP-Fortschritt aus dem lila Bogen am Portrait
 // - Summoner-Cooldowns (Icon wird blau mit weißer Restzeit)
-// Alle Funktionen bekommen kleine RGBA-Ausschnitte { width, height, data } aus src/capture.js.
+// Alle Funktionen bekommen kleine RGBA-Ausschnitte { width, height, data } aus src/screengrab.js.
 // Ziffern liest zuerst die eigene Erkennung (src/digits.js); Tesseract nur, wenn die unsicher ist.
 // Tesseract (rund 55 MB) wird erst beim ersten Bedarf geladen und nach dem Spiel wieder freigegeben.
 const { desktopCapturer, nativeImage, screen } = require('electron');

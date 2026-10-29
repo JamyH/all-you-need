@@ -22,6 +22,11 @@ const setHtml = (el, html) => {
   el.innerHTML = html;
   return true;
 };
+// dasselbe für reinen Text: gleicher Text neu gesetzt ersetzt trotzdem den Textknoten (Layout und Neuzeichnen)
+const setText = (el, text) => {
+  text = text == null ? '' : String(text); // wie textContent = null/undefined
+  if (el.textContent !== text) el.textContent = text;
+};
 // Panel bleibt im Bild (Ziehen, gespeicherte Position nach Auflösungswechsel)
 const clampPos = (x, y) => ({
   x: Math.max(0, Math.min(x, window.innerWidth - panel.offsetWidth)),
@@ -148,22 +153,21 @@ window.lol.onGame((g) => {
 function renderGame(g) {
   renderJungleRoute(g.jungleRoute);
   const small = isCompact();
-  $('champ').textContent = g.champion;
-  $('lvl').textContent = g.level;
-  $('time').textContent = fmtTime(g.gameTime);
-  $('kda').textContent = g.kda;
-  $('kdaRatio').textContent = g.kdaRatio;
-  $('cs').textContent = g.cs;
+  setText($('champ'), g.champion);
+  setText($('lvl'), g.level);
+  setText($('time'), fmtTime(g.gameTime));
+  setText($('kda'), g.kda);
+  setText($('kdaRatio'), g.kdaRatio);
+  // ohne OCR liefert Riot CS nur in 10er-Schritten
+  setText($('cs'), g.csExact ? g.cs : `${g.cs}+`);
   // CS-Ziel: Schnitt gegen Ziel pro Minute (eigener Schnitt auf dem Champ oder Vorgabe)
   // (kompakt ist die Kachel zu schmal für „Ziel“: dort nur „6,1 / 7,4“)
   const ct = g.csTarget;
   const pm = num(Number(g.csPerMin), 1);
   // Dev „Perfekt-CS“: noch eine Zeile „max 107 · 84 %“ (nur im normalen Panel)
   const max = g.csMax != null && !small ? `\nmax ${g.csMax} · ${g.csMax ? Math.round((g.cs / g.csMax) * 100) : 0} %` : '';
-  $('csm').textContent = (!ct ? `${pm}/min` : small ? `${pm} / ${num(ct.perMin, 1)}` : `${pm}/min\n${t('Ziel')} ${num(ct.perMin, 1)}`) + max;
+  setText($('csm'), (!ct ? `${pm}/min` : small ? `${pm} / ${num(ct.perMin, 1)}` : `${pm}/min\n${t('Ziel')} ${num(ct.perMin, 1)}`) + max);
   $('csm').className = ct || max ? 'target' + (ct && g.gameTime > 300 ? (Number(g.csPerMin) >= ct.perMin ? ' good' : ' bad') : '') : '';
-  // ohne OCR liefert Riot CS nur in 10er-Schritten
-  if (!g.csExact) $('cs').textContent = `${g.cs}+`;
 
   // Spar-Ziel aus dem Build; RECALL, sobald das Gold reicht. Im ARAM gibt es kein Recall:
   // dort KAUFEN, solange du tot bist (nur dann kommst du an den Shop)
@@ -172,8 +176,8 @@ function renderGame(g) {
   $('recall').hidden = !(b && b.affordable && (!g.aram || g.isDead));
   if (b) {
     $('build').classList.toggle('ready', b.affordable);
-    $('buildLabel').textContent = b.name;
-    $('buildMissing').textContent = b.affordable ? t('bezahlbar') : small ? `−${num(b.missing)} g` : t('noch {gold} g', { gold: num(b.missing) });
+    setText($('buildLabel'), b.name);
+    setText($('buildMissing'), b.affordable ? t('bezahlbar') : small ? `−${num(b.missing)} g` : t('noch {gold} g', { gold: num(b.missing) }));
     $('buildFill').style.width = `${b.progress}%`;
     setHtml($('recall'), (g.aram ? ICON_BUY : ICON_RECALL) + (g.aram ? t('KAUFEN') : t('RECALL')));
   }
@@ -191,7 +195,7 @@ function renderGame(g) {
   $('noMana').hidden = !(m && m.low);
   if (m) {
     $('mana').classList.toggle('low', m.low);
-    $('manaVal').textContent = m.combo ? `${m.value} / ${m.max} · Combo ${m.combo}` : `${m.value} / ${m.max}`;
+    setText($('manaVal'), m.combo ? `${m.value} / ${m.max} · Combo ${m.combo}` : `${m.value} / ${m.max}`);
     $('manaFill').style.width = `${m.percent}%`;
     $('manaCombo').hidden = !m.combo;
     if (m.combo) $('manaCombo').style.left = `${Math.min(100, (m.combo / m.max) * 100)}%`;
@@ -209,18 +213,18 @@ function renderGame(g) {
   const xp = g.xp;
   $('xp').hidden = !xp;
   if (xp) {
-    $('xpLabel').textContent = small ? `Lvl ${g.level + 1} ·` : `Lvl ${g.level} → ${g.level + 1}`;
-    $('xpPct').textContent = `${xp.percent} %`;
+    setText($('xpLabel'), small ? `Lvl ${g.level + 1} ·` : `Lvl ${g.level} → ${g.level + 1}`);
+    setText($('xpPct'), `${xp.percent} %`);
     $('xpFill').style.width = `${xp.percent}%`;
     // Vasallen-XP gelten nur auf Summoner's Rift; im ARAM nur den Prozentwert zeigen
     $('xpMinions').hidden = !!g.aram;
-    $('xpMinions').textContent = small
+    setText($('xpMinions'), small
       ? `${xp.melee} Melee / ${xp.caster} Caster`
-      : t('noch {xp} XP ≈ {melee} Melee / {caster} Caster · {waves} Wellen', { ...xp, xp: xp.missing, waves: num(Number(xp.waves), 1) });
+      : t('noch {xp} XP ≈ {melee} Melee / {caster} Caster · {waves} Wellen', { ...xp, xp: xp.missing, waves: num(Number(xp.waves), 1) }));
 
   }
-  $('gold').textContent = num(g.gold);
-  $('ward').textContent = g.wardScore;
+  setText($('gold'), num(g.gold));
+  setText($('ward'), g.wardScore);
 
   // Kompakt: Lane-Gegner, CS-Diff und Team in einer Fußzeile
   const o = g.laneOpponent;
@@ -243,7 +247,7 @@ function renderGame(g) {
 
   // Erste Runde im Jungle: gemessene Zeit (eine Weile nach dem Ende), bestes bisheriges zum Vergleich
   $('clear').hidden = !g.clear;
-  if (g.clear) $('clearVal').textContent = `${fmtTime(g.clear.time)} · ${g.clear.cs} CS` + (g.clear.best != null ? ` · ${t('Bestzeit')} ${fmtTime(g.clear.best)}` : '');
+  if (g.clear) setText($('clearVal'), `${fmtTime(g.clear.time)} · ${g.clear.cs} CS` + (g.clear.best != null ? ` · ${t('Bestzeit')} ${fmtTime(g.clear.best)}` : ''));
 
   // Gank-Priorität (nur Jungler): Lane-Stand je Lane wie im Tab-Scoreboard, ohne Empfehlung
   $('gank').hidden = !g.lanes;
@@ -257,22 +261,22 @@ function renderGame(g) {
   if (g.goal) {
     const G = g.goal;
     const fmt = (v) => (G.key === 'deaths' ? String(v) : num(v, G.key === 'vision' ? 2 : 1));
-    $('goalLabel').textContent = t({ deaths: 'Ziel: höchstens {n} Tode', csm: 'Ziel: {n} CS/min', kda: 'Ziel: KDA {n}',
-      vision: 'Ziel: {n} Sicht/min' }[G.key], { n: fmt(G.target) });
-    $('goalVal').textContent = `${fmt(G.now)} ${G.early ? '' : G.ok ? '✓' : '✗'}`.trim();
+    setText($('goalLabel'), t({ deaths: 'Ziel: höchstens {n} Tode', csm: 'Ziel: {n} CS/min', kda: 'Ziel: KDA {n}',
+      vision: 'Ziel: {n} Sicht/min' }[G.key], { n: fmt(G.target) }));
+    setText($('goalVal'), `${fmt(G.now)} ${G.early ? '' : G.ok ? '✓' : '✗'}`.trim());
     $('goalVal').className = G.early ? 'early' : G.ok ? '' : 'bad';
   }
 
   // Rollen-Quest (Ring-Fortschritt vom HUD, nur Summoner's Rift): schmale Zeile unter dem Namen
   $('quest').hidden = g.quest == null;
   if (g.quest != null) {
-    $('questPct').textContent = g.quest >= 0.99 ? t('fertig') : `${Math.round(g.quest * 100)} %`;
+    setText($('questPct'), g.quest >= 0.99 ? t('fertig') : `${Math.round(g.quest * 100)} %`);
     $('questFill').style.width = `${Math.round(g.quest * 100)}%`;
   }
   $('quest').classList.toggle('done', g.quest != null && g.quest >= 0.99);
 
   const team = $('teamDiff');
-  team.textContent = `${signed(g.teamItemDiff)} g`;
+  setText(team, `${signed(g.teamItemDiff)} g`);
   team.className = cls(g.teamItemDiff);
 }
 
@@ -290,10 +294,15 @@ function renderScoreboard() {
   const team = $('sbTeam');
   team.style.left = `${a.x}px`;
   team.style.top = `${a.y + o.top - 8}px`;
-  team.innerHTML = `<label>${t('Team-Itemwert')}</label><b class="${cls(sb.teamDiff)}">${signed(sb.teamDiff)} g</b>`;
+  setHtml(team, `<label>${t('Team-Itemwert')}</label><b class="${cls(sb.teamDiff)}">${signed(sb.teamDiff)} g</b>`);
 
-  // Positionen per element.style setzen: die CSP blockt style-Attribute aus innerHTML
+  // Badges nur neu bauen, wenn sich Werte oder Lage geändert haben (bei gedrückter Tab-Taste kommt jede Sekunde
+  // ein neuer Stand, meist mit denselben Zahlen)
   const rows = $('sbRows');
+  const key = JSON.stringify([a, o, sb.myTeamLeft, sb.rows.map((r) => r.diff)]);
+  if (rows.__key === key) return;
+  rows.__key = key;
+  // Positionen per element.style setzen: die CSP blockt style-Attribute aus innerHTML
   rows.replaceChildren();
   sb.rows.forEach((r, i) => {
     if (r.diff == null || o.rows[i] == null) return;

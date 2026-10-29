@@ -29,14 +29,14 @@
     "files": [
       "main.js",
       "preload.js",
-      "preload-capture.js",
       "config.example.json",
       "src/**",
       "renderer/**",
       "assets/icon.ico",
       "assets/icon.png",
       "package.json",
-      "node_modules/**"
+      "node_modules/**",
+      "!node_modules/tesseract.js-core/*.wasm.js"
     ],
     "asarUnpack": [
       "node_modules/tesseract.js/**",
